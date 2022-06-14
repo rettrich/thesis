@@ -1,0 +1,167 @@
+\documentclass [11pt]{article}
+% vim: wm=0
+%\usepackage[square, numbers]{natbib}
+\usepackage[hmargin=2.5cm,vmargin=3cm,bindingoffset=0.0cm]{geometry}
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{longtable}
+\usepackage{mathtools}
+% \usepackage{array}
+\usepackage{hyperref}
+\evensidemargin\oddsidemargin
+\usepackage{graphicx}
+\pagestyle{plain}
+\usepackage{algorithm}
+\usepackage{algpseudocode} 
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{pdflscape}
+\usepackage{afterpage}
+\usepackage{todonotes}
+\usepackage{rotating}
+
+\usepackage{pgf}
+% \usepackage{supertabular}
+\usepackage{color}
+\usepackage[draft,nomargin,inline]{fixme}
+\fxsetface{inline}{\itshape}
+\fxsetface{env}{\itshape}
+\fxusetheme{color}
+
+\newcommand{\tpdfstr}[1]{\texorpdfstring{#1}{...}}
+\newcommand{\Vext}{\ensuremath{V_{\mathrm{ext}}}}
+\newcommand{\Vextsub}{\ensuremath{V_{\mathrm{ext}}^{\mathrm{sub}}}}
+\newcommand{\qext}{\ensuremath{q_{\mathrm{ext}}}}
+\newcommand{\oext}{\ensuremath{o_{\mathrm{ext}}}}
+\newcommand{\bq}{\ensuremath{b^{\mathrm{sl}}}}
+\newcommand{\bo}{\ensuremath{b^{\mathrm{mlo}}}}
+
+
+\sloppy
+
+%allow math-environments to be split among several pages
+\allowdisplaybreaks
+
+\parindent0em \parskip1.5ex plus0.5ex minus 0.5ex
+
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{conjecture}{Conjecture}
+\DeclareMathOperator*{\argmin}{arg\ min}
+\DeclareMathOperator*{\argmax}{arg\ max}
+\newcommand\floor[1]{\lfloor#1\rfloor}
+\newcommand\ceil[1]{\lceil#1\rceil}
+\newcommand\tildelmax{\ensuremath{\tilde l_{\max}}}
+\newcommand\str[1]{\texttt{#1}}
+\newcommand\pL[1][]{\ensuremath{p^{\mathrm{L}#1}}}
+\newcommand\pR[1][]{\ensuremath{p^{\mathrm{R}#1}}}
+\newcommand\pLH{\ensuremath{\hat{p}^\mathrm{L}}}
+\newcommand\pRH{\ensuremath{\hat{p}^\mathrm{R}}}
+\newcommand\UB{\ensuremath{\mathrm{UB}}}
+\newcommand\Sigmand{\ensuremath{\Sigma^\mathrm{nd}}}
+\renewcommand{\labelenumii}{\theenumii}
+\renewcommand{\theenumii}{\theenumi.\arabic{enumii}.}
+\newcommand{\for}{\text{for }}
+\newcommand{\of}{\mathrm{\ of\ }}
+\setlength{\leftmarginii}{1.8ex}
+
+
+\title{Using Graph Neural Networks in Local Search for Relaxations of the Maximum Clique Problem}
+\author{Rupert Ettrich, 01129393 \\\\ Thesis Supervisor: Ao.Univ.Prof. Dipl.-Ing. Dr.techn. Günther R. Raidl}
+\date{}
+\begin{document}
+	
+\maketitle 
+ 
+\section{Problem Statement and Motivation}
+
+% Combinatorial Optimization Problems are an important class of problems with a wide variety of applications. They are usually 
+In many Combinatorial Optimization Problems (COPs), problem instances exhibit clearly defined internal structures that can be expressed as graphs. Here, a graph is a tuple $G = (V, E)$, where $V$ is the set of vertices and the set of edges $E \subseteq V \times V$ defines the relationships among vertices. While there are other methods to deal with inputs of variable size (Convolutional Neural Networks, Recurrent Neural Networks), Graph Neural Networks (GNNs) are Neural Networks tailored specifically to learn from structured input in the form of graphs. 
+
+In recent years, GNNs have gained popularity in their application in the context of COPs. However, current end-to-end ML approaches are in most cases not competitive to state-of-the-art heuristic solutions, as training is very expensive, and the application is limited to small instances, where exact algorithms are available. Nonetheless, GNNs show promise in their use in COPs, and there have been many successful applications over the last years, e.g. \cite{NEURIPS2021_0db2e204}, \cite{Oberweger2022}. 
+
+The main motivation of this thesis is to further study the application of GNNs in the context of metaheuristics for COPs defined on graphs. We address the problems of current end-to-end approaches by using a GNN only as a component of a metaheuristic procedure that should enhance the search for high quality solutions. To evaluate our method, we choose several relaxations of a COP defined on graphs, the Maximum Clique Problem (MCP), that seem to be well-suited for our purpose. 
+
+The Maximum Clique Problem (Definition \ref{def:mcp}) is a well-studied graph problem with several applications, e.g. in social network analysis, prediction in protein sequences. However, for some real-world applications that require to search for dense subgraphs, MCP is too strict of a model. This leads to the introduction of several clique relaxations such as - among others - the Maximum Quasi-Clique Problem (MQCP) (Definition \ref{def:mqcp}), the Maximum $s$-defective Clique Problem (MDCP) (Definition \ref{def:mdcp}), and the Maximum $s$-plex Problem (MPP) (Definition \ref{def:mpp}). 
+As all of these problems are NP-hard, it is infeasible to obtain exact solutions for large instances. However, real-world applications often require solutions for large graphs. Therefore, efficient heuristic methods are needed that produce high quality solutions in an acceptable amount of time. While the MCP has been studied well over the last decades, heuristic methods for MQCP, MDCP, and MPP are less abundant. It is therefore another motivation of this thesis to enrich the arsenal of heuristic methods for these relaxations of the MCP. 
+
+
+\begin{definition}[Maximum Clique Problem]
+	\label{def:mcp}
+	Given a graph $G = (V,E)$, the Maximum Clique Problem (MCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
+	such that each node in $S$ is adjacent to all other nodes in $S$, or $S \times S \subseteq E$. 
+\end{definition}
+
+\begin{definition}[Maximum Quasi-Clique Problem]
+	\label{def:mqcp}
+	Given a graph $G = (V,E)$ and $\gamma \in (0,1]$, the Maximum $\gamma$-Quasi-Clique Problem (MQCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
+	such that the induced subgraph $G[S]$ has an edge density of at least $\gamma$. 
+\end{definition}
+
+\begin{definition}[Maximum $s$-defective-Clique Problem]
+	\label{def:mdcp}
+	Given a graph $G = (V,E)$ and integer $s$, the Maximum $s$-defective Clique Problem (MDCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
+	such that the induced subgraph $G[S]$ contains at least ${|S| \choose 2} - s$ edges. 
+\end{definition}
+
+\begin{definition}[Maximum s-Plex Problem]
+	\label{def:mpp}
+	Given a graph $G = (V,E)$ and integer $s$, the Maximum $s$-plex Problem (MPP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
+	such that each $v \in S$ is adjacent to at least $|S| - s$ vertices in $S$. 
+\end{definition}
+
+\section{Aim of the Thesis and Expected Results}
+The main goal of this thesis is to contribute to the study of the application of GNNs in COPs by developing a heuristic algorithm for relaxations of the MCP that is enhanced by a GNN. To do so, we start by focusing on the MQCP, which is NP-complete for any $\gamma \in (0,1)$ as shown by Pattillo et al. \cite{pattillo_maximum_2013}, and we plan to adapt our algorithm to the other two problems later on. 
+As state-of-the-art heuristic methods for the MQCP mostly use variations of the Local Search paradigm, we plan to build upon existing methods and develop a Local Search algorithm that uses a GNN to guide the exploration of neighborhoods. 
+
+With this thesis we therefore want to provide valuable insights in the application of GNNs in a Local Search algorithm: we plan to explore suitable GNN architectures by considering relevant similar applications found in the literature, and we develop and investigate methods for training data generation and for training the GNN. 
+
+To the best of our knowledge, no other heuristic methods found in the literature for any of the considered problems (MQCP, MDCP, MPP) already use GNNs. We thus want to contribute a new heuristic solution to the mentioned problems that is significantly different from current state-of-the-art methods and provides new ideas that might lead to future research in the context of GNNs in COPs. 
+
+Furthermore, we hope to develop an algorithm that produces high quality solutions in a reasonable amount of time that come close to existing state-of-the-art methods. In this regard, we will evaluate our approach by comparing the performance of our algorithm to the performance of leading methods found in the literature on commonly used benchmark sets (e.g., DIMACS benchmark, BHOSLIB benchmark, Florida Sparse Matrix Collection, and Standford Large Network Dataset Collection) that contain a wide variety of graphs of different sizes and densities. 
+
+\section{Methodology}
+\begin{itemize}
+	\item How are the goals and results from Section 2 addressed and solved?
+	\item What working directions/methods will be used and investigated?
+\end{itemize}
+
+Local search algorithm
+
+GNN architecture - encoder - decoder approach
+
+In Local Search algorithms, a solution is obtained by making small improvements to a candidate solution. These small improvements are called moves, and each move operator defines a neighborhood containing all the neighboring solutions that can be obtained by applying a move, e.g. adding a node to the candidate solution. 
+
+\section{State of the Art}
+
+Use of ML in COPs and MHs
+
+Use of GNNs in COPs
+
+Exact algorithms and heuristic methods 
+
+What makes our approach different
+
+\section{Context within the Logic and Computation Master's Program}
+
+The proposed thesis fits well within the context of the Logic and Computation's Master's Program, as its subjects lie at the intersection of algorithmics and artificial intelligence. The following courses and respective subjects are relevant to our work:
+\begin{itemize}
+	\item 186.814 Algorithmics - Design and application of algorithmic concepts for the solution of computational problems. 
+	\item 186.112 Heuristic Optimization Techniques - Design and application of heuristic methods and techniques, especially for computationally hard optimization problems.
+	\item 184.702 Machine Learning - Among other things, design and application of neural networks.
+	\item 186.835 Mathematical Programming - Development and analysis of MILP-models as exact solutions for (combinatorial) optimization problems.
+	\item 186.820 Project in Computer Science 1 - Development of a policy-based Beam Search algorithm for the Longest Common Subsequence Problem that uses a ML model to guide the search. 
+\end{itemize}
+
+\bibliographystyle{abbrv} 
+\bibliography{abstract-proposal}
+
+\end{document}
