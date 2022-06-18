@@ -1,7 +1,7 @@
 \documentclass [11pt]{article}
 % vim: wm=0
 %\usepackage[square, numbers]{natbib}
-\usepackage[hmargin=2.5cm,vmargin=3cm,bindingoffset=0.0cm]{geometry}
+\usepackage[hmargin=3cm,vmargin=3cm,bindingoffset=0.0cm]{geometry}
 \usepackage{mathtools}
 \usepackage{amssymb}
 \usepackage{amsmath}
@@ -74,7 +74,7 @@
 \setlength{\leftmarginii}{1.8ex}
 
 
-\title{Using Graph Neural Networks in Local Search for Relaxations of the Maximum Clique Problem}
+\title{A Graph Neural Network Guided Local Search Algorithm for Relaxations of the Maximum Clique Problem}
 \author{Rupert Ettrich, 01129393 \\\\ Thesis Supervisor: Ao.Univ.Prof. Dipl.-Ing. Dr.techn. Günther R. Raidl}
 \date{}
 \begin{document}
@@ -84,71 +84,66 @@
 \section{Problem Statement and Motivation}
 
 % Combinatorial Optimization Problems are an important class of problems with a wide variety of applications. They are usually 
-In many Combinatorial Optimization Problems (COPs), problem instances exhibit clearly defined internal structures that can be expressed as graphs. Here, a graph is a tuple $G = (V, E)$, where $V$ is the set of vertices and the set of edges $E \subseteq V \times V$ defines the relationships among vertices. While there are other methods to deal with inputs of variable size (Convolutional Neural Networks, Recurrent Neural Networks), Graph Neural Networks (GNNs) are Neural Networks tailored specifically to learn from structured input in the form of graphs. 
+In many Combinatorial Optimization Problems (COPs), problem instances exhibit clearly defined internal structures that can be expressed as graphs. Here, a graph is a tuple $G = (V, E)$, where $V$ is the set of vertices and the set of edges $E \subseteq V \times V$ defines the relationships among vertices. While there are other methods to deal with inputs of variable size (Convolutional Neural Networks, Recurrent Neural Networks), Graph Neural Networks (GNNs) are Neural Networks tailored specifically to learn from structured input in the form of graphs, making them a valuable tool for Machine Learning (ML) tasks on data with graph-like structure.   
 
-In recent years, GNNs have gained popularity in their application in the context of COPs. However, current end-to-end ML approaches are in most cases not competitive to state-of-the-art heuristic solutions, as training is very expensive, and the application is limited to small instances, where exact algorithms are available. Nonetheless, GNNs show promise in their use in COPs, and there have been many successful applications over the last years, e.g. \cite{NEURIPS2021_0db2e204}, \cite{Oberweger2022}. 
+In recent years, GNNs have gained popularity in their application in the context of COPs. However, current end-to-end ML approaches are in most cases not competitive to state-of-the-art heuristic solutions, as training is very expensive, and the application is limited to small instances, where exact algorithms are available. Nonetheless, GNNs show promise in their use in COPs, and there have been many successful applications over the last years, e.g. 
+% \cite{NEURIPS2021_0db2e204}, where a GNN is used to find maximal Independent Sets by imitating a time-expensive Monte-Carlo Tree Search, or
+\cite{Oberweger2022}, where a Large Neighborhood Search is enhanced by a GNN that guides a destroy-operator, or \cite{NEURIPS2021_0db2e204}, where a GNN is used to find maximal Independent Sets by imitating a time-expensive Monte-Carlo Tree Search, producing solutions that reach a solution quality of $99.5\%$ while being 3 orders of magnitude faster. 
 
 The main motivation of this thesis is to further study the application of GNNs in the context of metaheuristics for COPs defined on graphs. We address the problems of current end-to-end approaches by using a GNN only as a component of a metaheuristic procedure that should enhance the search for high quality solutions. To evaluate our method, we choose several relaxations of a COP defined on graphs, the Maximum Clique Problem (MCP), that seem to be well-suited for our purpose. 
 
-The Maximum Clique Problem (Definition \ref{def:mcp}) is a well-studied graph problem with several applications, e.g. in social network analysis, prediction in protein sequences. However, for some real-world applications that require to search for dense subgraphs, MCP is too strict of a model. This leads to the introduction of several clique relaxations such as - among others - the Maximum Quasi-Clique Problem (MQCP) (Definition \ref{def:mqcp}), the Maximum $s$-defective Clique Problem (MDCP) (Definition \ref{def:mdcp}), and the Maximum $s$-plex Problem (MPP) (Definition \ref{def:mpp}). 
-As all of these problems are NP-hard, it is infeasible to obtain exact solutions for large instances. However, real-world applications often require solutions for large graphs. Therefore, efficient heuristic methods are needed that produce high quality solutions in an acceptable amount of time. While the MCP has been studied well over the last decades, heuristic methods for MQCP, MDCP, and MPP are less abundant. It is therefore another motivation of this thesis to enrich the arsenal of heuristic methods for these relaxations of the MCP. 
-
-
-\begin{definition}[Maximum Clique Problem]
-	\label{def:mcp}
-	Given a graph $G = (V,E)$, the Maximum Clique Problem (MCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
-	such that each node in $S$ is adjacent to all other nodes in $S$, or $S \times S \subseteq E$. 
-\end{definition}
+The MCP is the problem of finding a fully connected (complete) subgraph of maximum size in a given graph. It is a fundamental problem in computer science, as its decision variant is one of Karp's 21 NP-complete problems \cite{Karp1972}. The MCP has several practical applications, e.g. in bioinformatics \cite{Dognin2010} and social network analysis \cite{Pattillo_network_analysis_2013}. However, for some real-world applications that require identifying dense subgraphs, MCP is too strict of a model. This leads to the introduction of several clique relaxations such as - among others - the Maximum Quasi-Clique Problem (MQCP) (introduced in \cite{Abello2002}, Definition \ref{def:mqcp}), the Maximum $k$-defective Clique Problem (MDCP) (introduced in \cite{Yu2006}, Definition \ref{def:mdcp}), and the Maximum $k$-plex Problem (MPP) (introduced in \cite{Seidman1978}, Definition \ref{def:mpp}). 
+As all of these problems are NP-hard optimization problems, it is infeasible to obtain exact solutions for large instances. However, real-world applications often require solutions for large graphs. Therefore, efficient heuristic methods are needed that produce high quality solutions in an acceptable amount of time. While the MCP has been studied well over the last decades, heuristic methods for MQCP, MDCP, and MPP are less abundant. It is therefore another motivation of this thesis to enrich the arsenal of heuristic methods for these relaxations of the MCP. 
 
 \begin{definition}[Maximum Quasi-Clique Problem]
 	\label{def:mqcp}
 	Given a graph $G = (V,E)$ and $\gamma \in (0,1]$, the Maximum $\gamma$-Quasi-Clique Problem (MQCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
-	such that the induced subgraph $G[S]$ has an edge density of at least $\gamma$. 
+	such that the induced subgraph $G[S]$ has an edge density of at least $\gamma$, or, in other words, $G[S]$ contains at least $\gamma { |S| \choose 2 }$ edges. 
 \end{definition}
 
-\begin{definition}[Maximum $s$-defective-Clique Problem]
+\begin{definition}[Maximum $k$-defective-Clique Problem]
 	\label{def:mdcp}
-	Given a graph $G = (V,E)$ and integer $s$, the Maximum $s$-defective Clique Problem (MDCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
-	such that the induced subgraph $G[S]$ contains at least ${|S| \choose 2} - s$ edges. 
+	Given a graph $G = (V,E)$ and integer $k$, the Maximum $k$-defective Clique Problem (MDCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
+	such that the induced subgraph $G[S]$ contains at least ${|S| \choose 2} - k$ edges. 
 \end{definition}
 
-\begin{definition}[Maximum s-Plex Problem]
+\begin{definition}[Maximum $k$-plex Problem]
 	\label{def:mpp}
-	Given a graph $G = (V,E)$ and integer $s$, the Maximum $s$-plex Problem (MPP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
-	such that each $v \in S$ is adjacent to at least $|S| - s$ vertices in $S$. 
+	Given a graph $G = (V,E)$ and integer $k$, the Maximum $k$-plex Problem (MPP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
+	such that each $v \in S$ is adjacent to at least $|S| - k$ vertices in $S$. 
 \end{definition}
 
 \section{Aim of the Thesis and Expected Results}
 The main goal of this thesis is to contribute to the study of the application of GNNs in COPs by developing a heuristic algorithm for relaxations of the MCP that is enhanced by a GNN. To do so, we start by focusing on the MQCP, which is NP-complete for any $\gamma \in (0,1)$ as shown by Pattillo et al. \cite{pattillo_maximum_2013}, and we plan to adapt our algorithm to the other two problems later on. 
-As state-of-the-art heuristic methods for the MQCP mostly use variations of the Local Search paradigm, we plan to build upon existing methods and develop a Local Search algorithm that uses a GNN to guide the exploration of neighborhoods. 
+As state-of-the-art heuristic methods for the MQCP mostly use variations of the local search paradigm, we plan to build upon existing methods and develop a local search algorithm that uses a GNN to guide the exploration of neighborhoods. 
 
-With this thesis we therefore want to provide valuable insights in the application of GNNs in a Local Search algorithm: we plan to explore suitable GNN architectures by considering relevant similar applications found in the literature, and we develop and investigate methods for training data generation and for training the GNN. 
+With this thesis we therefore want to provide valuable insights in the application of GNNs in a local search algorithm: we plan to explore suitable GNN architectures by considering relevant similar applications of GNNs in COPs found in the literature (e.g. \cite{Kool2019} or \cite{Hudson2021}), and we develop and investigate methods for training data generation and for training the GNN tailored to our purpose. 
 
 To the best of our knowledge, no other heuristic methods found in the literature for any of the considered problems (MQCP, MDCP, MPP) already use GNNs. We thus want to contribute a new heuristic solution to the mentioned problems that is significantly different from current state-of-the-art methods and provides new ideas that might lead to future research in the context of GNNs in COPs. 
 
-Furthermore, we hope to develop an algorithm that produces high quality solutions in a reasonable amount of time that come close to existing state-of-the-art methods. In this regard, we will evaluate our approach by comparing the performance of our algorithm to the performance of leading methods found in the literature on commonly used benchmark sets (e.g., DIMACS benchmark, BHOSLIB benchmark, Florida Sparse Matrix Collection, and Standford Large Network Dataset Collection) that contain a wide variety of graphs of different sizes and densities. 
+Furthermore, 
+% we hope to develop an algorithm that produces high quality solutions in a reasonable amount of time that come close to existing state-of-the-art methods. In this regard, 
+we will evaluate our approach by comparing the performance of our algorithm to the performance of leading methods found in the literature on commonly used benchmark sets that contain a wide variety of graphs of different sizes and densities. 
 
 \section{Methodology}
-\begin{itemize}
-	\item How are the goals and results from Section 2 addressed and solved?
-	\item What working directions/methods will be used and investigated?
-\end{itemize}
 
-Local search algorithm
+As already mentioned, we initially want to focus on the MQCP before adapting our algorithm to other problems. Most current state-of-the-art heuristic for the MQCP methods apply variations of the local search paradigm, which is why we choose to develop a local search algorithm. We follow the same general approach as the leading heuristic methods (\cite{djeddi_extension_2019}, \cite{zhou_opposition-based_2020}, \cite{chen_nuqclq_2021}), where the maximum quasi-clique is approximated the following way: Initially, a $k$-element subset $S \subset V$ of vertices, the \textit{candidate solution}, is generated by some construction heuristic. The move operator used in the previously mentioned algorithms is a swap operator, where a node in $S$ is swapped with a node in $V \setminus S$ in order to obtain an improved solution. The neighborhood of a candidate solution is therefore defined by this swap operator and contains all $k$-element subsets of nodes that can be obtained by swapping a node from $S$ with a node from $S \setminus V$. If a feasible solution is found, $k$ is increased and the search is started again. Otherwise, if no feasible solution can be obtained, the search is restarted from a newly constructed initial solution, or, if the stop criterion is met, the best found feasible solution is returned. Additionally, diversification mechanisms like tabu lists or configuration checking prevent short-term-cycling, and restarts should produce diverse initial solutions to avoid reaching the same local optima.  
 
-GNN architecture - encoder - decoder approach
+In order to guide the exploration of neighborhoods we plan to use a GNN. Here we follow similar applications (e.g. \cite{Kool2019}, \cite{Hudson2021}) and use the encoder-decoder paradigm: First, the attention-based encoder produces embeddings for each node of the graph, and an additional graph embedding, that capture the structure of the graph. This encoder is more complex and its application is more time-consuming than the simpler and faster decoder, but it has to be applied only once per graph. The state corresponds to the current candidate solution, from which we obtain a context embedding. Finally, we apply an attention-based decoder that takes as input the graph embedding, the node embeddings, and the context embedding to generate scores for each node in $V$, where higher scores indicate that a node is more likely to lead to an improving solution. Thus, during the exploration of the neighborhood, we will consider swaps of nodes in $S$ with low scores with nodes in $V \setminus S$ with high scores. 
 
-In Local Search algorithms, a solution is obtained by making small improvements to a candidate solution. These small improvements are called moves, and each move operator defines a neighborhood containing all the neighboring solutions that can be obtained by applying a move, e.g. adding a node to the candidate solution. 
+Training the GNN is an essential part of the algorithm. In each episode of the training process, a representative problem instance is generated and our local search procedure is executed. During the execution, at random points of the local search, we generate a training sample from the graph and the current candidate solution. The target is obtained by applying a look-ahead search for the best solution (or an approximation thereof) that can be obtained from the candidate solution after $d$ swaps. Training samples are then stored in a replay buffer. Between episodes, the GNN is trained with samples from the replay buffer. More precisely, it is trained to predict higher scores for nodes that are in the solution returned by the look-ahead search, and to predict lower scores for nodes that are not in said solution. Furthermore, we also plan to evaluate suitable hyperparameters (e.g. the number of layers in the GNNs, or the depth of the look-ahead search) in order to maximize the performance of our algorithm. 
+
+Finally, we plan to evaluate our method on commonly used benchmark instances (e.g., DIMACS benchmark, BHOSLIB benchmark, Florida Sparse Matrix Collection, and Standford Large Network Dataset Collection) in order to measure its performance and compare it to the leading heuristic methods. 
 
 \section{State of the Art}
 
-Use of ML in COPs and MHs
+In recent years, the application of ML techniques in algorithms for COPs has been a field of study of growing interest. To name only a few examples, consider \cite{Zarpellon2021}, where a ML model is used as a key heuristic in a Mixed-Integer Linear Programming solver, or \cite{Huber2021}, where a ML model is used as the guidance function in a Beam Search. For a detailed survey of the usage of ML specifically in metaheuristics for optimization problems we refer to Karimi-Mamaghan et al. \cite{KARIMIMAMAGHAN2022393}. 
 
-Use of GNNs in COPs
+ The Graph Attention Network (introduced in \cite{Velickovic2018}) is a prominent GNN model that translates the popular attention mechanism, which was originally introduced in the context of sequence-based tasks (\cite{Bahdanau2015}), to graph-based tasks. It has been used in many applications, including COPs, e.g. \cite{Kool2019} and \cite{Joshi2021}, where GNNs based on the Graph Attention Network model are used in an end-to-end ML approach for routing problems like the Traveling Salesperson Problem (TSP) or the Vehicle Routing Problem. In \cite{Hudson2021}, the authors present a local search algorithm for the TSP, where the exploration of neighborhoods is guided by a GNN that predicts which edges might lead to improved solutions. The authors show that their approach generalizes better on larger instances and yields lower optimality gaps than the end-to-end ML approaches in \cite{Kool2019} and \cite{Joshi2021}.  
 
-Exact algorithms and heuristic methods 
+As we focus on the MQCP initially, we present the results of our literature research on this problem. Most exact algorithms for the MQCP are based on branch and bound algorithms \cite{mahdavi2014branch} or on Mixed Integer Linear Programming formulations \cite{ribeiro_exact_2019}, \cite{Marinelli2021}. Concerning heuristic approaches, we identified the following leading methods: a biased random-key genetic algorithm \cite{pinto_biased_2018}, an extension of an adaptive multi-start tabu search \cite{djeddi_extension_2019}, where the authors adapt a well-working tabu search for the MCP to the MQCP, an opposition based memetic algorithm that uses a tabu search as a local search procedure \cite{zhou_opposition-based_2020}, and a local search algorithm that uses a more fine-grained scoring function in the evaluation of neighboring solutions \cite{chen_nuqclq_2021}. Local search techniques are applied in three out of the four leading heuristic methods, which is why we decided to base our approach on local search as well.  
 
-What makes our approach different
+What makes our approach different from existing methods is the usage of a GNN in order to evaluate neighboring solutions. Concerning the MCP, several methods ML-based methods can be found in recent literature, e.g. in \cite{Gu2020}, where a Pointer Network is used to enhance a backtracking search, or in \cite{Li2018}, where Graph Convolutional Networks are used to guide a tree search. However, to the best of our knowledge, there are no heuristic approaches utilizing GNNs for the MQCP, the MDCP, or the MPP. 
 
 \section{Context within the Logic and Computation Master's Program}
 
