@@ -1,4 +1,4 @@
-\documentclass [11pt]{article}
+\documentclass[11pt]{article}
 % vim: wm=0
 %\usepackage[square, numbers]{natbib}
 \usepackage[hmargin=3cm,vmargin=3cm,bindingoffset=0.0cm]{geometry}
@@ -98,13 +98,13 @@ As all of these problems are NP-hard optimization problems, it is infeasible to 
 \begin{definition}[Maximum Quasi-Clique Problem]
 	\label{def:mqcp}
 	Given a graph $G = (V,E)$ and $\gamma \in (0,1]$, the Maximum $\gamma$-Quasi-Clique Problem (MQCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
-	such that the induced subgraph $G[S]$ has an edge density of at least $\gamma$, or, in other words, $G[S]$ contains at least $\gamma { |S| \choose 2 }$ edges. 
+	such that the induced subgraph $G[S]$ has an edge density of at least $\gamma$, or, in other words, $G[S]$ contains at least $\gamma \binom{|S|}{2}$ edges. 
 \end{definition}
 
 \begin{definition}[Maximum $k$-defective-Clique Problem]
 	\label{def:mdcp}
 	Given a graph $G = (V,E)$ and integer $k$, the Maximum $k$-defective Clique Problem (MDCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
-	such that the induced subgraph $G[S]$ contains at least ${|S| \choose 2} - k$ edges. 
+	such that the induced subgraph $G[S]$ contains at least $\binom{|S|}{2} - k$ edges. 
 \end{definition}
 
 \begin{definition}[Maximum $k$-plex Problem]
