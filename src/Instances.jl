@@ -4,6 +4,12 @@ export load_instance, load_instances, generate_instance
 using Graphs
 using StatsBase
 
+"""
+    load_instance(file)
+Load graph instance from file as `SimpleGraph`
+
+-`file`: Path to the instance file
+"""
 function load_instance(file)
     g = SimpleGraph()
     open(file) do f
@@ -16,6 +22,12 @@ function load_instance(file)
     return g
 end
 
+"""
+    load_instances(dir)
+Load all graph instances in directory `dir` as `Dict` of `SimpleGraph`s
+
+-`dir`: Directory to instance files
+"""
 function load_instances(dir)
     graphs = Dict()
     for file in readdir(dir)
@@ -31,10 +43,10 @@ end
 Generate random simple graph with `n` vertices and density γ with uniformly sampled edges.
 
 - `n`: Number of nodes in graph
-- `γ`: Density of graph
+- `γ`: Density of graph, `γ`∈(0,1]
 
 """
-function generate_instance(n, γ)
+function generate_instance(n::Int, γ::Float32)
     g = SimpleGraph(n)
     m = Int(n * (n - 1) / 2) # number of edges
     edge_list = sample(1:m, round(Int, γ*m); replace=false)
@@ -44,6 +56,7 @@ function generate_instance(n, γ)
     end
     return g
 end
+
 """
     _num_to_edge(num, n)
 Maps integers in the range 1:(n*(n-1)/2) to distinct edges in a simple graph with `n` vertices
