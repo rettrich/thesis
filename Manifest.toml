@@ -87,6 +87,12 @@ git-tree-sha1 = "eb4cb44a499229b3b8426dcfb5dd85333951ff90"
 uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
 version = "0.4.2"
 
+[[deps.CPLEX]]
+deps = ["CEnum", "Libdl", "MathOptInterface", "SparseArrays"]
+git-tree-sha1 = "919740592714cf4750c17ee52ef64aadab203df9"
+uuid = "a076750e-1247-5638-91d2-ce28b192dca0"
+version = "0.9.3"
+
 [[deps.CUDA]]
 deps = ["AbstractFFTs", "Adapt", "BFloat16s", "CEnum", "CompilerSupportLibraries_jll", "ExprTools", "GPUArrays", "GPUCompiler", "LLVM", "LazyArtifacts", "Libdl", "LinearAlgebra", "Logging", "Printf", "Random", "Random123", "RandomNumbers", "Reexport", "Requires", "SparseArrays", "SpecialFunctions", "TimerOutputs"]
 git-tree-sha1 = "e4e5ece72fa2f108fb20c3c5538a5fa9ef3d668a"
@@ -289,6 +295,12 @@ deps = ["ArnoldiMethod", "Compat", "DataStructures", "Distributed", "Inflate", "
 git-tree-sha1 = "4888af84657011a65afc7a564918d281612f983a"
 uuid = "86223c79-3864-5bf0-83f7-82e725a168b6"
 version = "1.7.0"
+
+[[deps.Gurobi]]
+deps = ["Libdl", "MathOptInterface", "Pkg"]
+git-tree-sha1 = "87c018cbd2fd33e6d2462d486abee53a27c91c91"
+uuid = "2e9cd046-0924-5485-92f1-d5272153d98b"
+version = "0.11.3"
 
 [[deps.IRTools]]
 deps = ["InteractiveUtils", "MacroTools", "Test"]

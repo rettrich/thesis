@@ -1,6 +1,6 @@
 module thesis
 
-export Instances
+export Instances, MPModels
 
 include("Instances.jl")
 include("MPModels.jl")

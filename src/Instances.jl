@@ -46,9 +46,9 @@ Generate random simple graph with `n` vertices and density γ with uniformly sam
 - `γ`: Density of graph, `γ`∈(0,1]
 
 """
-function generate_instance(n::Int, γ::Float32)
+function generate_instance(n::Int, γ::Real)
     g = SimpleGraph(n)
-    m = Int(n * (n - 1) / 2) # number of edges
+    m = Int(n * (n - 1) / 2) # number of edges in complete graph
     edge_list = sample(1:m, round(Int, γ*m); replace=false)
     for num in edge_list
         i,j = _num_to_edge(num, n)
