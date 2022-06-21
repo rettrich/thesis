@@ -76,7 +76,7 @@ size of vertices in graph `g`.
 -`timelimit`: Timelimit for solver
 """
 function get_MQCP_model(g::SimpleGraph, γ::Real;
-                        opt::String="CPLEX", 
+                        opt::String="Gurobi", 
                         verbosity::Int=0, eps_int::Real=1e-6, timelimit::Real=Inf)
     n = nv(g)
 
@@ -115,12 +115,30 @@ a candidate solution, where the solution can only change up to `d` nodes from th
 -`timelimit`: Timelimit for solver
 """
 function get_MQCP_neighborhood_model(g::SimpleGraph, γ::Real, candidate_solution::Vector{Int}, d::Int; 
-                                     verbosity::Int=0, eps_int::Real=1e-6, timelimit::Real=Inf)
+                                     opt::String="Gurobi", verbosity::Int=0, eps_int::Real=1e-6, timelimit::Real=Inf)
     
-    error("not implemented")
-    # model = get_MQCP_model(g, γ)
-    # @constraint(model, sum(x[i] for i in candidate_solution) ≥ length(candidate_solution) - d)
-    # return model
+    n = nv(g)
+    k = length(candidate_solution)
+    model = get_empty_model(opt; verbosity, eps_int, timelimit)
+
+    # variables x[i] indicate whether node i is in solution
+    @variable(model, x[i=1:n], Bin)
+    # variables w[i,j] = x[i]*x[j] indicate edges in solution
+    @variable(model, w[i=1:n, j=1:n; i < j] ≥ 0)
+
+    @objective(model, Max, sum(a(g,i,j)*w[i,j] for i=1:n, j=(i+1):n))
+
+    @constraint(model, sum(x[i] for i=1:n) == k)
+
+    @constraint(model, sum(x[i] for i in candidate_solution) ≥ k - d)
+
+    for i=1:n, j=(i+1):n
+        @constraint(model, w[i,j] ≤ x[i])
+        @constraint(model, w[i,j] ≤ x[j])
+        @constraint(model, w[i,j] ≥ x[i] + x[j] - 1)
+    end
+
+    return model
 end
 
 function check_MQCP_solution(g::SimpleGraph, γ::Real, solution::Vector{Int})
