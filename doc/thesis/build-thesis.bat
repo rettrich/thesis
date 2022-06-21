@@ -2,7 +2,7 @@ rem Copyright (C) 2014-2020 by Thomas Auzinger <thomas@auzinger.name>
 
 @echo off
 rem Replace the 'x' in the next line with the name of the thesis' main LaTeX document without the '.tex' extension
-set SOURCE=x
+set SOURCE=thesis
 @echo on
 
 rem Build the thesis document

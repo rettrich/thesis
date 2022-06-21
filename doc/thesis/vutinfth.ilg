@@ -1,0 +1,17 @@
+This is makeindex, version 2.16 [TeX Live 2022] (kpathsea + Thai support).
+Scanning style file c:/texlive/2022/texmf-dist/makeindex/latex/gind.ist..........
+** Input style error (file = c:/texlive/2022/texmf-dist/makeindex/latex/gind.ist, line = 75):
+   -- Unknown specifier lethead_prefix.
+** Input style error (file = c:/texlive/2022/texmf-dist/makeindex/latex/gind.ist, line = 76):
+   -- Unknown specifier lethead_suffix.
+** Input style error (file = c:/texlive/2022/texmf-dist/makeindex/latex/gind.ist, line = 77):
+   -- Unknown specifier lethead_flag.
+...done (13 attributes redefined, 3 ignored).
+Scanning input file vutinfth.idx....done (986 entries accepted, 0 rejected).
+Sorting entries...........done (10582 comparisons).
+Generating output file vutinfth.ind....
+## Warning (input = vutinfth.idx, line = 25; output = vutinfth.ind, line = 81):
+   -- Conflicting entries: multiple encaps for the same page under same key.
+done (850 lines written, 1 warning).
+Output written in vutinfth.ind.
+Transcript written in vutinfth.ilg.

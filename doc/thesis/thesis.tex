@@ -1,0 +1,264 @@
+% Copyright (C) 2014-2020 by Thomas Auzinger <thomas@auzinger.name>
+
+\documentclass[draft,final]{vutinfth} % Remove option 'final' to obtain debug information.
+
+% Load packages to allow in- and output of non-ASCII characters.
+\usepackage{lmodern}        % Use an extension of the original Computer Modern font to minimize the use of bitmapped letters.
+\usepackage[T1]{fontenc}    % Determines font encoding of the output. Font packages have to be included before this line.
+\usepackage[utf8]{inputenc} % Determines encoding of the input. All input files have to use UTF8 encoding.
+
+% Extended LaTeX functionality is enables by including packages with \usepackage{...}.
+\usepackage{amsmath}    % Extended typesetting of mathematical expression.
+\usepackage{amssymb}    % Provides a multitude of mathematical symbols.
+\usepackage{mathtools}  % Further extensions of mathematical typesetting.
+\usepackage{microtype}  % Small-scale typographic enhancements.
+\usepackage[inline]{enumitem} % User control over the layout of lists (itemize, enumerate, description).
+\usepackage{multirow}   % Allows table elements to span several rows.
+\usepackage{booktabs}   % Improves the typesettings of tables.
+\usepackage{subcaption} % Allows the use of subfigures and enables their referencing.
+\usepackage[ruled,linesnumbered,algochapter]{algorithm2e} % Enables the writing of pseudo code.
+\usepackage[usenames,dvipsnames,table]{xcolor} % Allows the definition and use of colors. This package has to be included before tikz.
+\usepackage{nag}       % Issues warnings when best practices in writing LaTeX documents are violated.
+\usepackage{todonotes} % Provides tooltip-like todo notes.
+\usepackage{hyperref}  % Enables cross linking in the electronic document version. This package has to be included second to last.
+\usepackage[acronym,toc]{glossaries} % Enables the generation of glossaries and lists fo acronyms. This package has to be included last.
+
+% Define convenience functions to use the author name and the thesis title in the PDF document properties.
+\newcommand{\authorname}{Rupert Ettrich} % The author name without titles.
+\newcommand{\thesistitle}{Using Graph Neural Networks in Local Search for Relaxations of the Maximum Clique Problem} % The title of the thesis. The English version should be used, if it exists.
+
+% Set PDF document properties
+\hypersetup{
+    pdfpagelayout   = TwoPageRight,           % How the document is shown in PDF viewers (optional).
+    linkbordercolor = {Melon},                % The color of the borders of boxes around crosslinks (optional).
+    pdfauthor       = {\authorname},          % The author's name in the document properties (optional).
+    pdftitle        = {\thesistitle},         % The document's title in the document properties (optional).
+    pdfsubject      = {Subject},              % The document's subject in the document properties (optional).
+    pdfkeywords     = {a, list, of, keywords} % The document's keywords in the document properties (optional).
+}
+
+\setpnumwidth{2.5em}        % Avoid overfull hboxes in the table of contents (see memoir manual).
+\setsecnumdepth{subsection} % Enumerate subsections.
+
+\nonzeroparskip             % Create space between paragraphs (optional).
+\setlength{\parindent}{0pt} % Remove paragraph identation (optional).
+
+\makeindex      % Use an optional index.
+\makeglossaries % Use an optional glossary.
+%\glstocfalse   % Remove the glossaries from the table of contents.
+
+% Set persons with 4 arguments:
+%  {title before name}{name}{title after name}{gender}
+%  where both titles are optional (i.e. can be given as empty brackets {}).
+\setauthor{}{\authorname}{BA BSc}{male}
+\setadvisor{Ao.Univ.Prof. Dipl.-Ing. Dr.techn.}{Günther Raidl}{}{male}
+
+% For bachelor and master theses:
+\setfirstassistant{Projektass.}{Marc Huber}{MSc}{male}
+% \setsecondassistant{Pretitle}{Forename Surname}{Posttitle}{male}
+% \setthirdassistant{Pretitle}{Forename Surname}{Posttitle}{male}
+
+% For dissertations:
+% \setfirstreviewer{Pretitle}{Forename Surname}{Posttitle}{male}
+% \setsecondreviewer{Pretitle}{Forename Surname}{Posttitle}{male}
+
+% For dissertations at the PhD School and optionally for dissertations:
+% \setsecondadvisor{Pretitle}{Forename Surname}{Posttitle}{male} % Comment to remove.
+
+% Required data.
+\setregnumber{01129393}
+\setdate{21}{06}{2022} % Set date with 3 arguments: {day}{month}{year}.
+\settitle{\thesistitle}{Using Graph Neural Networks in Local Search for Relaxations of the Maximum Clique Problem} % Sets English and German version of the title (both can be English or German). If your title contains commas, enclose it with additional curvy brackets (i.e., {{your title}}) or define it as a macro as done with \thesistitle.
+% \setsubtitle{Optional Subtitle of the Thesis}{Optionaler Untertitel der Arbeit} % Sets English and German version of the subtitle (both can be English or German).
+
+% Select the thesis type: bachelor / master / doctor / phd-school.
+% Bachelor:
+% \setthesis{bachelor}
+%
+% Master:
+\setthesis{master}
+\setmasterdegree{dipl.} % dipl. / rer.nat. / rer.soc.oec. / master
+%
+% Doctor:
+%\setthesis{doctor}
+%\setdoctordegree{rer.soc.oec.}% rer.nat. / techn. / rer.soc.oec.
+%
+% Doctor at the PhD School
+%\setthesis{phd-school} % Deactivate non-English title pages (see below)
+
+% For bachelor and master:
+\setcurriculum{Logic and Computation}{Logic and Computation} % Sets the English and German name of the curriculum.
+
+% For dissertations at the PhD School:
+% \setfirstreviewerdata{Affiliation, Country}
+% \setsecondreviewerdata{Affiliation, Country}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{lemma}{Lemma}
+
+\begin{document}
+
+\frontmatter % Switches to roman numbering.
+% The structure of the thesis has to conform to the guidelines at
+%  https://informatics.tuwien.ac.at/study-services
+
+\addtitlepage{naustrian} % German title page (not for dissertations at the PhD School).
+\addtitlepage{english} % English title page.
+\addstatementpage
+
+\begin{danksagung*}
+\todo{Ihr Text hier.}
+\end{danksagung*}
+
+\begin{acknowledgements*}
+\todo{Enter your text here.}
+\end{acknowledgements*}
+
+\begin{kurzfassung}
+\todo{Ihr Text hier.}
+\end{kurzfassung}
+
+\begin{abstract}
+\todo{Enter your text here.}
+\end{abstract}
+
+% Select the language of the thesis, e.g., english or naustrian.
+\selectlanguage{english}
+
+% Add a table of contents (toc).
+\tableofcontents % Starred version, i.e., \tableofcontents*, removes the self-entry.
+
+% Switch to arabic numbering and start the enumeration of chapters in the table of content.
+\mainmatter
+
+\chapter{Introduction}
+
+\section{Motivation}
+In many Combinatorial Optimization Problems (COPs), problem instances exhibit clearly defined internal structures that can be expressed as graphs. Here, a graph is a tuple $G = (V, E)$, where $V$ is the set of vertices and the set of edges $E \subseteq V \times V$ defines the relationships among vertices. While there are other methods to deal with inputs of variable size (Fully Convolutional Networks, Recurrent Neural Networks), Graph Neural Networks (GNNs) are Neural Networks tailored specifically to learn from structured input in the form of graphs, making them a valuable tool for Machine Learning (ML) tasks on data with graph-like structure.   
+
+In recent years, GNNs have gained popularity in their application in the context of COPs. However, current end-to-end ML approaches are in most cases not competitive to state-of-the-art (meta-)heuristic solution approaches, and their application is limited to small instances, where exact algorithms are available. Nonetheless, GNNs show promise in their use in COPs, and there have been many successful applications over the last years, e.g. 
+% \cite{NEURIPS2021_0db2e204}, where a GNN is used to find maximal Independent Sets by imitating a time-expensive Monte-Carlo Tree Search, or
+\cite{Oberweger2022}, where a Large Neighborhood Search is enhanced by a GNN that guides a destroy-operator, or \cite{NEURIPS2021_0db2e204}, where a GNN is used to find maximal Independent Sets by imitating a time-expensive Monte-Carlo Tree Search, producing solutions that reach a solution quality of $99.5\%$ while being three orders of magnitude faster. 
+
+The main motivation of this thesis is to further study the application of GNNs in the context of metaheuristics for COPs defined on graphs. We address the problems of current end-to-end approaches by using a GNN only as a component of a metaheuristic search procedure that should enhance the search for high quality solutions either by speeding up the search or by improving the quality of its final solutions. More specifically, we consider several relaxations of a COP defined on graphs, the Maximum Clique Problem (MCP), that seem to be well-suited for our purpose. 
+
+\section{Considered Problems}
+The MCP is the problem of finding a fully connected subgraph - a \textit{clique} - of maximum size in a given graph. It is a fundamental problem in computer science, as its decision variant is one of Karp's 21 NP-complete problems \cite{Karp1972}. The MCP has several practical applications, e.g. in bioinformatics \cite{Dognin2010} and social network analysis \cite{Pattillo_network_analysis_2013}. However, for some real-world applications that require identifying dense subgraphs, the MCP is too strict a model. This leads to the introduction of several clique relaxations such as - among others - the Maximum Quasi-Clique Problem (MQCP) (introduced in \cite{Abello2002}, Definition \ref{def:mqcp}), the Maximum $k$-defective Clique Problem (MDCP) (introduced in \cite{Yu2006}, Definition \ref{def:mdcp}), and the Maximum $k$-plex Problem (MPP) (introduced in \cite{Seidman1978}, Definition \ref{def:mpp}). 
+As all of these problems are NP-hard optimization problems, it is practically often infeasible to obtain exact solutions for large instances. However, many real-world applications often require solutions for large graphs. Therefore, efficient heuristic methods are needed that produce high quality solutions in an acceptable amount of time. While the MCP has been studied well over the last decades, heuristic methods for MQCP, MDCP, and MPP are less abundant. It is therefore another motivation of this thesis to enrich the arsenal of heuristic methods for these relaxations of the MCP. 
+
+\section{Outline of the Thesis}
+
+\chapter{Relaxations of the Maximum Clique Problem}
+
+\section{The Maximum Quasi-Clique Problem}
+
+\begin{definition}[Maximum Quasi-Clique Problem]
+	\label{def:mqcp}
+	Given a graph $G = (V,E)$ and $\gamma \in (0,1]$, the Maximum $\gamma$-Quasi-Clique Problem (MQCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
+	such that the induced subgraph $G[S]$ has an edge density of at least $\gamma$, or, in other words, $G[S]$ contains at least $\gamma \binom{|S|}{2}$ edges. 
+\end{definition}
+
+\section{The Maximum $k$-defective Clique Problem}
+
+\begin{definition}[Maximum $k$-defective-Clique Problem]
+	\label{def:mdcp}
+	Given a graph $G = (V,E)$ and integer $k$, the Maximum $k$-defective Clique Problem (MDCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
+	such that the induced subgraph $G[S]$ contains at least $\binom{|S|}{2} - k$ edges. 
+\end{definition}
+
+\section{The Maximum $k$-plex Problem}
+
+\begin{definition}[Maximum $k$-plex Problem]
+	\label{def:mpp}
+	Given a graph $G = (V,E)$ and integer $k$, the Maximum $k$-plex Problem (MPP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
+	such that each $v \in S$ is adjacent to at least $|S| - k$ vertices in $S$. 
+\end{definition}
+
+\chapter{Related Work}
+
+\section{Machine Learning in COPs}
+
+\section{Graph Neural Networks in COPs}
+
+\section{Solution Approaches for the MQCP}
+\subsection{Exact Approaches}\label{milp-mqcp}
+Pattillo et al. \cite{pattillo_maximum_2013} propose a Mixed Integer Linear Programming formulation with a number of variables quadratic in the size of the vertex set $V$. 
+It is derived from the following quadratic formulation, where $x_i \in \{0,1\}$ are binary decision variables representing the solution set $S \subseteq V$, and $a_{ij}$ represent elements of the adjacency matrix with $a_{ij}$ equal to one if $\{i,j\} \in E$ and zero otherwise: 
+\begin{align}
+    \max \sum_{i=1}^{n} x_i & \\
+    \text{s.t. } \sum_{i=1}^n \sum_{j=i+1}^n a_{ij} x_i x_j & \geq \gamma \sum_{i=1}^n \sum_{j=i+1}^n x_i x_j
+\end{align}
+The authors linearize the above quadratic formulation by introducing variables $w_{ij}$ defined as $w_{ij} = x_i x_j$: 
+
+\begin{align}
+    \max & \sum_{i=1}^n x_i \\
+    \text{s.t. } & \sum_{i=1}^n \sum_{j=i+1}^n (\gamma - a_{ij}) w_{ij} \leq 0  
+\end{align}
+\begin{align}
+    w_{ij} &\leq x_i, & & w_{ij} \leq x_j, & & w_{ij} \geq x_i + x_j - 1, & & j > i=1, \dots , n \\
+    w_{ij} &\geq 0,   & & x_i \in \{0,1\}, & & j > i = 1, \dots, n        & & 
+\end{align}
+
+\subsection{Heuristic Approaches}
+
+\chapter{Methodology}
+
+\chapter{Local Search Algorithm}
+
+\section{Neighborhood Structure}
+
+The neighborhood of a candidate solution $S$ is defined by a move operator that swaps a node $u \in S$ with a node $v \in V \setminus S$. The set of neighboring solutions of $S$ with $|S| = k$ that can be obtained by a single swap move is therefore defined as $\Omega_1 = \{ S \setminus \{u\} \cup \{v\} \mid u \in S, v \in V \setminus S \}$ and has size $|\Omega_1| = k \cdot (|V|-k)$, which is in $O(|V|^2)$. Similarly, we define $\Omega_d$ for $d=1,2,3,\dots$ as the set of neighboring solutions that can be obtained by swapping $d$ nodes from $S$ with $d$ nodes from $V \setminus S$, obtaining a neighborhood of size $|\Omega_d| = \binom{k}{d} \cdot \binom{|V|-k}{d}$, which is in $O(|V|^{2d})$. 
+
+The quality of a candidate solution is dependent of the considered problem. For the MQCP and the MDCP a candidate solution $S$ is of higher quality than a neighboring solution $S^\prime$ if $G[S]$ contains more edges than $G[S']$. Thus, we define the objective function $f \colon 2^V \rightarrow \mathbb{N}$ for the local search for MQCP and MDCP as the function that maps a subset of vertices $S \subseteq V$ to the number of edges in the induced subgraph $G[S]$. Therefore, $S$ is better than $S^\prime$ if and only if $f(S) > f(S^\prime)$. 
+
+\section{Identifying the best Neighboring Solution}
+
+In order to obtain target values for training the GNN, we need to be able to identify the best neighboring solutions in a given neighborhood relative to a candidate solution $S$. 
+
+\subsection{MQCP and MDCP}
+
+To identify the best neighboring solution for a candidate solution $S$ in the neighborhood $\bigcup_{i=1}^d \Omega_i$, we propose two different methods. First, we propose a MILP formulation that is suited for small instances. It is based on the formulation in \ref{milp-mqcp}, but we change it to find the neighboring solution $S'$ that can be obtained after at most $d$ swaps and maximizes the amount of edges in $G[S']$: 
+\begin{align}
+    \max & \sum_{i=1}^n \sum_{j=i+1}^n a_{ij} w_{ij} \\
+    \text{s.t. } & \sum_{i \in V} x_i = k \\
+     & \sum_{i \in S} x_i \geq k - d    
+\end{align}
+\begin{align}
+    w_{ij} &\leq x_i, & & w_{ij} \leq x_j, & & w_{ij} \geq x_i + x_j - 1, & & j > i=1, \dots , n \\
+    w_{ij} &\geq 0,   & & x_i \in \{0,1\}, & & j > i = 1, \dots, n        & & 
+\end{align}
+
+Furthermore, we propose a second method that approximates the best neighboring solution, trading solution quality with efficiency in order to make training possible on larger instances. 
+\todo{BeamSearch} 
+
+\section{GNN Architecture}
+
+\chapter{Evaluation}
+
+\chapter{Conclusions}
+
+\backmatter
+
+% Use an optional list of figures.
+\listoffigures % Starred version, i.e., \listoffigures*, removes the toc entry.
+
+% Use an optional list of tables.
+\cleardoublepage % Start list of tables on the next empty right hand page.
+\listoftables % Starred version, i.e., \listoftables*, removes the toc entry.
+
+% Use an optional list of alogrithms.
+\listofalgorithms
+\addcontentsline{toc}{chapter}{List of Algorithms}
+
+% Add an index.
+\printindex
+
+% Add a glossary.
+\printglossaries
+
+% Add a bibliography.
+\bibliographystyle{alpha}
+\bibliography{thesis}
+
+\end{document}

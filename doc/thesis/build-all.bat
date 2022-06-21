@@ -2,7 +2,7 @@ rem Copyright (C) 2014-2020 by Thomas Auzinger <thomas@auzinger.name>
 
 @echo off
 set CLASS=vutinfth
-set SOURCE=example
+set SOURCE=thesis
 @echo on
 
 rem Build vutinfth documentation
