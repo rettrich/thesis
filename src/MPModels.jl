@@ -22,9 +22,16 @@ function cplex_model(; verbosity::Int=0, eps_int::Real=1e-6, timelimit::Real=Inf
     return model
 end
 
+const GRB_ENV = Ref{Gurobi.Env}()
+function __init__()
+    GRB_ENV[] = Gurobi.Env()
+    return
+end
+
 function gurobi_model(; verbosity::Int=0, eps_int::Real=1e-6, timelimit::Real=Inf)
-    model = Model(Gurobi.Optimizer)
+    model = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
     set_optimizer_attribute(model, "OutputFlag", verbosity)
+    set_optimizer_attribute(model, "LogToConsole", verbosity)
     set_optimizer_attribute(model, "IntFeasTol", eps_int)
     if timelimit < Inf
         set_time_limit_sec(model, timelimit)
@@ -63,9 +70,11 @@ end
 #####################################################################################################
 
 """
-    get_MQCP_model(g, γ)
+
+    get_MQCP_model(g, γ; opt, verbosity, eps_int, timelimit)
+
 Create a JuMP MILP model for the Maximum γ-Quasi Clique Problem for given graph `g` and `γ` ∈ (0,1].
-Model from On the Maximum Quasi-Clique Problem, Pattillo et al. 2013, variables and constraints quadratic in 
+Model from 'On the Maximum Quasi-Clique Problem', Pattillo et al. 2013, variables and constraints quadratic in 
 size of vertices in graph `g`. 
 
 -`g`: Input graph
@@ -74,6 +83,7 @@ size of vertices in graph `g`.
 -`opt`: Set optimizer ∈ ["CPLEX", "Gurobi"]
 -`eps_int`: Machine epsilon for integer accuracy
 -`timelimit`: Timelimit for solver
+
 """
 function get_MQCP_model(g::SimpleGraph, γ::Real;
                         opt::String="Gurobi", 
@@ -102,6 +112,7 @@ end
 
 """
     get_MQCP_neighborhood_model(g, γ, candidate_solution, d)
+
 Create a JuMP MILP model for the Maximum γ-Quasi Clique Problem for given graph `g` and `γ` ∈ (0,1] and 
 a candidate solution, where the solution can only change up to `d` nodes from the candidate solution. 
 
@@ -113,8 +124,9 @@ a candidate solution, where the solution can only change up to `d` nodes from th
 -`verbosity`: Verbosity of solver output
 -`eps_int`: Machine epsilon for integer accuracy
 -`timelimit`: Timelimit for solver
+
 """
-function get_MQCP_neighborhood_model(g::SimpleGraph, γ::Real, candidate_solution::Vector{Int}, d::Int; 
+function get_MQCP_neighborhood_model(g::SimpleGraph, candidate_solution::Vector{Int}, d::Int; 
                                      opt::String="Gurobi", verbosity::Int=0, eps_int::Real=1e-6, timelimit::Real=Inf)
     
     n = nv(g)
