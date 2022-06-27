@@ -12,9 +12,9 @@ export recursive_search, get_solution, beam_search
 
 Node in the beam search tree. 
 
-`obj_val`: Objective value of the solution that corresponds to this node.
-`in`: Set of nodes that must be added to the original candidate solution to obtain the solution corresponding to this node
-`out`: Set of nodes that must be removed from the original candidate solution to obtain the solution corresponding to this node
+- `obj_val`: Objective value of the solution that corresponds to this node.
+- `in`: Set of nodes that must be added to the original candidate solution to obtain the solution corresponding to this node
+- `out`: Set of nodes that must be removed from the original candidate solution to obtain the solution corresponding to this node
 """
 struct Node
     obj_val::Int

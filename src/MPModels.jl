@@ -77,12 +77,12 @@ Create a JuMP MILP model for the Maximum γ-Quasi Clique Problem for given graph
 Model from 'On the Maximum Quasi-Clique Problem', Pattillo et al. 2013, variables and constraints quadratic in 
 size of vertices in graph `g`. 
 
--`g`: Input graph
--`γ`: Problem parameter for the Maximum γ-Quasi Clique Problem
--`verbosity`: Verbosity of solver output
--`opt`: Set optimizer ∈ ["CPLEX", "Gurobi"]
--`eps_int`: Machine epsilon for integer accuracy
--`timelimit`: Timelimit for solver
+- `g`: Input graph
+- `γ`: Problem parameter for the Maximum γ-Quasi Clique Problem
+- `verbosity`: Verbosity of solver output
+- `opt`: Set optimizer ∈ ["CPLEX", "Gurobi"]
+- `eps_int`: Machine epsilon for integer accuracy
+- `timelimit`: Timelimit for solver
 
 """
 function get_MQCP_model(g::SimpleGraph, γ::Real;
@@ -116,14 +116,14 @@ end
 Create a JuMP MILP model for the Maximum γ-Quasi Clique Problem for given graph `g` and `γ` ∈ (0,1] and 
 a candidate solution, where the solution can only change up to `d` nodes from the candidate solution. 
 
--`g`: Input graph
--`γ`: Problem parameter for the Maximum γ-Quasi Clique Problem
--`candidate_solution`: A vector of node indices of the current candidate solution
--`d`: The depth of the look-ahead search. The model defines the best solution that can be found 
+- `g`: Input graph
+- `γ`: Problem parameter for the Maximum γ-Quasi Clique Problem
+- `candidate_solution`: A vector of node indices of the current candidate solution
+- `d`: The depth of the look-ahead search. The model defines the best solution that can be found 
     by swapping at most `d` nodes from the `candidate_solution`.
--`verbosity`: Verbosity of solver output
--`eps_int`: Machine epsilon for integer accuracy
--`timelimit`: Timelimit for solver
+- `verbosity`: Verbosity of solver output: 0 for no output
+- `eps_int`: Machine epsilon for integer accuracy
+- `timelimit`: Timelimit for solver
 
 """
 function get_MQCP_neighborhood_model(g::SimpleGraph, candidate_solution::Vector{Int}, d::Int; 
@@ -172,8 +172,8 @@ end
     get_MDCP_model(g, k)
 Create a JuMP MILP model for the Maximum k-defective Clique Problem for given graph `g` and integer `k`
 
--`g`: Input graph
--`k`: Problem parameter for the Maximum k-defective Clique Problem
+- `g`: Input graph
+- `k`: Problem parameter for the Maximum k-defective Clique Problem
 """
 function get_MDCP_model(g::SimpleGraph, k::Int)
     error("not implemented")
@@ -187,8 +187,8 @@ end
     get_MPP_model(g, k)
 Create a JuMP MILP model for the Maximum k-plex Problem for given graph `g` and integer `k`
 
--`g`: Input graph
--`k`: Problem parameter for the Maximum k-plex Clique Problem
+- `g`: Input graph
+- `k`: Problem parameter for the Maximum k-plex Clique Problem
 """
 function get_MPP_model(g::SimpleGraph, k::Int)
     error("not implemented")
@@ -200,7 +200,7 @@ end
     solve_model!(model, g)
 Solve JuMP MILP model and return the set of nodes in solution
 
--`model`: JuMP MILP model
+- `model`: JuMP MILP model
 """
 function solve_model!(model::Model, g::SimpleGraph) :: Union{Nothing, Vector{Int}}
     optimize!(model)

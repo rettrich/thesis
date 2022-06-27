@@ -10,16 +10,6 @@ export local_search_with_EX
 ############################   Construction Heuristics   ####################################
 #############################################################################################
 
-function calculate_d_S(g, candidate_solution)
-    d_S = Int[0 for _ in 1:nv(g)]
-    for u in candidate_solution
-        for v in neighbors(g, u)
-            d_S[v] += 1
-        end
-    end
-    return d_S
-end
-
 function grasp(g, k; α=0.25)
     V = Set(vertices(g))
     min_val = Δ(g) - α*(Δ(g) - δ(g))
@@ -87,5 +77,14 @@ function local_search_with_EX(g, γ; d=10, α=10, β=100)
     return best
 end
 
+function calculate_d_S(g, candidate_solution)
+    d_S = Int[0 for _ in 1:nv(g)]
+    for u in candidate_solution
+        for v in neighbors(g, u)
+            d_S[v] += 1
+        end
+    end
+    return d_S
+end
 
 end

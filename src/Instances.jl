@@ -8,7 +8,7 @@ using StatsBase
     load_instance(file)
 Load graph instance from file as `SimpleGraph`
 
--`file`: Path to the instance file
+- `file`: Path to the instance file
 """
 function load_instance(file)
     g = SimpleGraph()
@@ -26,7 +26,7 @@ end
     load_instances(dir)
 Load all graph instances in directory `dir` as `Dict` of `SimpleGraph`s
 
--`dir`: Directory to instance files
+- `dir`: Directory to instance files
 """
 function load_instances(dir)
     graphs = Dict()
