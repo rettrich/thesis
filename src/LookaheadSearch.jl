@@ -38,30 +38,28 @@ Base.hash(a::Node, h::UInt) = hash(a.in, hash(a.out, hash(:Node, h)))
 Performs a beam search to find a neighboring solution that (approximately) maximizes the objective value. 
 `d` is the depth of the beam search (number of node swaps).
 
--`g`: `SimpleGraph`, input graph
--`candidate_solution`: Current candidate solution from which the search is started
--`d`: Number of swaps that are considered - depth of the beam search tree
--`α`: A node is expanded into at most `α`² child nodes: The worst α nodes in the candidate_solution 
+- `g`: `SimpleGraph`, input graph
+- `candidate_solution`: Current candidate solution from which the search is started
+- `d`: Number of swaps that are considered - depth of the beam search tree
+- `α`: A node is expanded into at most `α`² child nodes: The worst α nodes in the candidate_solution 
         and the best α nodes outside the candidate solution are considered for swapping
--`β`: Beam width. On each level of the beam search tree, only the best β nodes are kept.
+- `β`: Beam width. On each level of the beam search tree, only the best β nodes are kept.
 
 """
 function beam_search(g::SimpleGraph, candidate_solution::Set{Int}, d::Int; α::Int=10, β::Int=10)
-    candidate_solution = copy(candidate_solution)
-    V_S = Set(setdiff(vertices(g), candidate_solution))
-    d_S = calculate_d_S(g, candidate_solution)
-    obj = calculate_obj(g, candidate_solution, d_S)
-    root = Node(obj, Set(), Set())
-    max_node = root
+    candidate_solution = copy(candidate_solution) # set of nodes in candidate solution
+    V_S = Set(setdiff(vertices(g), candidate_solution)) # remaining vertices in V(G)
+    d_S = calculate_d_S(g, candidate_solution) # number of neighbors in candidate solution for each node
+    obj = calculate_obj(g, candidate_solution, d_S) # objective value of candidate solution
 
-    # to prevent duplicate solutions during search
+    # to prevent duplicate solutions during search, store each node (defined by node.in and node.out) in hash map 
     visited_solutions = Set{Node}()
-    children = expand(g, candidate_solution, V_S, root, visited_solutions)
 
-    beam = partialsort(children, 1:min(β, length(children)) ; rev=true)
-    max_node = beam[1]
+    root = Node(obj, Set(), Set()) # root of BS tree
+    max_node = root
+    beam = [root]
 
-    while !isempty(beam) && d > 1
+    while !isempty(beam) && d > 0
         d -= 1
         children = Node[]
         for node in beam
@@ -107,7 +105,24 @@ function update_candidate_solution!(candidate_solution::Set{Int}, V_S::Set{Int},
     end
 end
 
-function expand(g::SimpleGraph, candidate_solution::Set{Int}, V_S::Set{Int}, node::Node, visited_solutions::Set{Node}; α=10) :: Vector{Node}
+"""
+    expand(g, candidate_solution, V_S, node, visited_solutions; α)
+
+Expand a node in the beam search into its children solutions that can be obtained by swapping 
+a node in the solution that corresponds to the node with a node outside of the solution. 
+
+- `g`: Graph instance
+- `candidate_solution`: Candidate solution of root in BS tree
+- `V_S`: Nodes outside the candidate solution of root in BS tree
+- `node`: Current node, contains information to modify candidate solution to the solution 
+    corresponding to the current `node`
+- `visited_solutions`: Hash table (Set) containing all visited nodes so no duplicates are considered
+- `α`: Considere only up to α² swaps: Swap α worst nodes in current candidate solution with α 
+    best nodes outside
+"""
+function expand(g::SimpleGraph, candidate_solution::Set{Int}, 
+                V_S::Set{Int}, node::Node, visited_solutions::Set{Node}; 
+                α::Int=10) :: Vector{Node}
     # step into candidate solution
     update_candidate_solution!(candidate_solution, V_S, node)
     d_S = calculate_d_S(g, candidate_solution)
