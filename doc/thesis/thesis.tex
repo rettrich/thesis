@@ -15,6 +15,7 @@
 \usepackage[inline]{enumitem} % User control over the layout of lists (itemize, enumerate, description).
 \usepackage{multirow}   % Allows table elements to span several rows.
 \usepackage{booktabs}   % Improves the typesettings of tables.
+\usepackage{caption}
 \usepackage{subcaption} % Allows the use of subfigures and enables their referencing.
 \usepackage[ruled,linesnumbered,algochapter]{algorithm2e} % Enables the writing of pseudo code.
 \usepackage[usenames,dvipsnames,table]{xcolor} % Allows the definition and use of colors. This package has to be included before tikz.
@@ -151,6 +152,36 @@ As all of these problems are NP-hard optimization problems, it is practically of
 
 \chapter{Relaxations of the Maximum Clique Problem}
 
+\section{Notation}
+
+Throughout this thesis, we use standard graph theory notation. 
+We consider $G = (V, E)$ to be a graph with node or vertex set $V$ and edge set $E \subseteq \{\{u,v\} \mid u,v \in V\}$. We use the terms node, nodes and vertex, vertices interchangeably when denoting elements of $V$. 
+A graph $G$ is \emph{simple}, if it contains no self-loops (e.g. $\{v,v\} \in E$) or multiple edges between two vertices. In this thesis, we only consider unweighted, undirected, simple graphs, as all the considered problems are defined on such graphs. 
+A graph $G' = (V', E')$ is a subgraph of $G = (V,E)$ iff $V' \subseteq V$, $E' \subseteq E$, and $\{u,v\} \in E' \colon u,v \in V'$. Let $S \subseteq V$ be a set of vertices in $G$. The subgraph induced by $S$ in $G$, denoted as $G[S]$, is a graph with vertex set $S$ and edge set $E(S) = \{ \{u,v\} \mid \{u,v\} \in E, u,v \in S \}$. 
+A \emph{clique} is a set of vertices $S \subseteq V$ such that $G[S]$ is fully connected, i.e. $|E(S)| = \frac{|S| \cdot (|S|-1)}{2}$. A fully connected graph on $n$ nodes is denoted as $K_n$.
+The density $dens(G)$ of a graph $G = (V,E)$ is defined as the ratio of the number of edges $|E|$ to the number of edges in a fully-connected graph with $|V|$ nodes $\binom{|V|}{2}$. The density of a graph is therefore a rational number between zero and one. 
+
+
+\section{The Maximum Clique Problem}
+
+The Maximum Clique Problem (MCP, Definition \ref{def:mcp}) is a fundamental problem in graph theory and computer science. Its decision variant was one of first problems that were shown to be NP-Complete \cite{Karp1972}, from which NP-hardness can be derived for the maximization variant. The MCP is a well-studied problem and has many real-world applications, e.g. in social network analysis, bioinformatics, and telecommunication \todo{include citations}. 
+Figure \ref{fig:maxclique} depicts a maximum clique in a graph. 
+\begin{figure}
+    \centering
+    \includegraphics[width=0.3\textwidth]{graphics/graph1-clique.eps}
+    \caption{A maximum clique.}
+    \label{fig:maxclique}
+\end{figure}
+For some real-world applications however, the MCP is too strict a model, as some applications require identifying large, dense subgraphs, but not necessarily fully connected subgraphs. This leads to the introduction of several relaxations of the maximum clique problem. \todo{list relevant relaxations}
+
+\begin{definition}[Maximum Clique Problem]
+	\label{def:mcp}
+	Given a graph $G = (V,E)$, the Maximum Clique Problem (MCP) is the problem of finding clique of maximum size in $G$. 
+\end{definition}
+
+\subsection{Properties of the MCP}
+\todo{not approximable}
+
 \section{The Maximum Quasi-Clique Problem}
 
 \begin{definition}[Maximum Quasi-Clique Problem]
@@ -159,15 +190,43 @@ As all of these problems are NP-hard optimization problems, it is practically of
 	such that the induced subgraph $G[S]$ has an edge density of at least $\gamma$, or, in other words, $G[S]$ contains at least $\gamma \binom{|S|}{2}$ edges. 
 \end{definition}
 
-\section{The Maximum $k$-defective Clique Problem}
+\subsection{Properties of the MQCP}
+
+
+\subsection{Preprocessing of MQCP Instances}
+
+In \cite{Abello2002}, the authors introduce the notion of $\gamma k$\emph{-peelable} vertices in the context of preprocessing. A vertex $v$ is $\gamma k$\emph{-peelable} if $v$ and all its neighbors have degree smaller than $\gamma k$. If a lower bound $k$ for the size of a maximum $\gamma$-quasi clique is known, the authors propose to remove all edges incident to $\gamma k$\emph{-peelable} vertices from $G$ in preprocessing. This preprocessing rule might be used to speed up the search process by sparsifying the graph, but we note that this preprocessing rule does not preserve the existence of optimal solutions. We prove this claim by giving a counterexample in Figure \ref{fig:preprocessing-mqcp-counterexample}, where the optimal solution cannot be obtained after applying said preprocessing rule. 
+
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{.5\textwidth}
+      \centering
+      \includegraphics[width=.9\linewidth]{graphics/preprocessing-mqcp-counterexample-1.eps}
+      \caption{The original graph instance.}
+      \label{fig:preprocessing-mqcp-sub1}
+    \end{subfigure}%
+    \begin{subfigure}{.5\textwidth}
+      \centering
+      \includegraphics[width=.9\linewidth]{graphics/preprocessing-mqcp-counterexample-2.eps}
+      \caption{The graph instance after preprocessing.}
+      \label{fig:preprocessing-mqcp-sub2}
+    \end{subfigure}
+    \caption{Consider the given graph $G$ given in Subfigure \ref{fig:preprocessing-mqcp-sub1}. The considered MQCP instance is defined by $G$ and $\gamma=0.5$ consisting of a $K_3$ and a $K_7$ connected by an edge. Since $G$ has a density $dens(G) = \frac{25}{45} \approx 0.56$, the maximum $0.5$-quasi clique in $G$ is $V$. Assume a lower bound of $k=6$ is known, therefore the two nodes on the left are $k\gamma$\emph{-peelable} and preprocessing would remove all edges incident to these vertices, as can be seen in Subfigure \ref{fig:preprocessing-mqcp-sub2}. Therefore, the density of this preprocessed graph would be reduced to $\frac{22}{45} \approx 0.49$ and the optimal solution $V$ would not be preserved.}
+    \label{fig:preprocessing-mqcp-counterexample}
+\end{figure}
+
+
+\section{The Maximum k-defective Clique Problem}
 
 \begin{definition}[Maximum $k$-defective-Clique Problem]
 	\label{def:mdcp}
-	Given a graph $G = (V,E)$ and integer $k$, the Maximum $k$-defective Clique Problem (MDCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
+	Given a graph \\ 
+    $G = (V,E)$ and integer $k$, the Maximum $k$-defective Clique Problem (MDCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
 	such that the induced subgraph $G[S]$ contains at least $\binom{|S|}{2} - k$ edges. 
 \end{definition}
 
-\section{The Maximum $k$-plex Problem}
+\section{The Maximum k-plex Problem}
 
 \begin{definition}[Maximum $k$-plex Problem]
 	\label{def:mpp}
@@ -177,9 +236,9 @@ As all of these problems are NP-hard optimization problems, it is practically of
 
 \chapter{Related Work}
 
-\section{Machine Learning in COPs}
+\section{Machine Learning in Combinatorial Optimization Problems}
 
-\section{Graph Neural Networks in COPs}
+\section{Graph Neural Networks in Combinatorial Optimization Problems}
 
 \section{Solution Approaches for the MQCP}
 \subsection{Exact Approaches}\label{milp-mqcp}
@@ -202,17 +261,116 @@ The authors linearize the above quadratic formulation by introducing variables $
 
 \subsection{Heuristic Approaches}
 
+\subsubsection{Construction Heuristics}
+
+\subsubsection{Population Based Heuristics}
+
+\subsubsection{Local Search Based Metaheuristics}
+
 \chapter{Methodology}
 
-\chapter{Local Search Algorithm}
+\chapter{Local Search with Graph Neural Networks}
 
-\section{Neighborhood Structure}
+In this chapter we present the main contribution of this thesis in detail: a local search algorithm using Graph Neural Networks. 
+At first, we introduce the general structure of the algorithm without using GNNs in Section \ref{sec:algorithm-structure}. Section presents two types of construction heuristics we use in our algorithm. The first one is used to efficiently obtain a feasible initial solution of high quality that can be used as a lower bound, whereas the second one does not necessarily yield feasible solutions, but is used to explore new regions of the search space not yet visited. In Section \ref{sec:neighborhood-structure} we define the main move operator used in the local search procedure that defines the neighbor-relation between solutions. Section \ref{sec:gnn-local-search} presents our idea of utilizing a GNN to the previously described local search algorithm. In Section \ref{sec:gnn-training} we show how training data is generated and how target values are obtained. Finally, our proposed GNN architecture is presented in \ref{sec:gnn-architecture}.
+
+\section{Algorithm Structure} \label{sec:algorithm-structure}
+
+The pseudocode of the general structure of the local search algorithm is shown in Algorithm \ref{alg:structure}.
+$InitialSolution$ constructs a feasible initial solution. Its main purpose is to obtain a high quality lower bound to obtain a good starting value for $k$. The procedure is described in detail in Section \ref{sec:construction-heuristics}. In line \ref{alg:structure-freq} a long-term memory $Freq$ is initialized, where $Freq[i]$ stores how many times each node is operated on for $i=1,\dots,n$. This memory is kept when the loop in line \ref{alg:structure-while-start}-\ref{alg:structure-while-end} is repeated, but no feasible solution could be found. In $ConstructionHeuristic$, $Freq$ is used to produce a candidate solution that favors nodes that have not been considered yet. This way, new regions of the search space are explored. The candidate solution obtained in line \ref{alg:structure-construction} is then improved by the local search procedure. If the resulting solution $S$ is feasible, a simple search is performed in $Extend$ to check if the solution can be extended to a feasible solution of greater size as shown in Algorithm \ref{alg:extend}.
+Furthermore, $k$ is increased, $Freq$ is reset, and the best-so-far found solution $S^*$ is updated. 
+If the solution obtained by the local search procedure is not feasible, the while-loop is repeated until the stop criterion is met, e.g. the time limit is reached. 
+
+\todo{add local search procedure}
+
+\begin{algorithm}
+    \DontPrintSemicolon
+    \KwIn{Graph $G$, Target Density $\gamma$}
+    \KwOut{Approximate maximum $\gamma$-quasi clique in $G$}
+    $S^* \gets InitialSolution(G, \gamma)$ \;
+    $k \gets |S^*|$ \;
+    $Freq \gets [0, \dots, 0]$ \label{alg:structure-freq} \tcp*{$n$-element Array, initialized with 0} 
+
+    \While{stop condition not met}{ \label{alg:structure-while-start}
+        $S \gets ConstructionHeuristic(G, Freq, k)$ \; \label{alg:structure-construction}
+        $S \gets LocalSearch(G, Freq, \gamma, S)$ \;
+        \If{$S$ is feasible}{
+            $S \gets Extend(G, S, \gamma)$ \;
+            $S^* \gets S$ \;
+            $k \gets |S| + 1$ \;
+            $Freq \gets [0, \dots, 0]$ \; 
+        }\label{alg:structure-while-end}
+    }
+    \Return{$S^*$}
+    \caption{Structure of the Local Search Algorithm}
+    \label{alg:structure}
+\end{algorithm}
+
+\begin{algorithm}
+    \DontPrintSemicolon
+    \KwIn{Graph $G$, Feasible solution $S$, Target Density $\gamma$}
+    \KwOut{Feasible solution $S^\prime$ of size at least $|S|$}
+    $S^\prime \gets S$ \;
+    \While{$true$}{\label{alg:extend-while-start}
+        \For{$u \in V \setminus S^\prime$}{
+            \If{$S^\prime \cup \{u\}$ is a $\gamma$-Quasi Clique}{
+                $S^\prime \gets S^\prime \cup \{u\}$ \;
+                \textbf{continue} while-loop in line \ref{alg:extend-while-start} \;
+            }
+        }
+        \textbf{break} out of while-loop
+    }
+    \Return{$S^\prime$}
+    \caption{Extend a feasible solution}
+    \label{alg:extend}
+\end{algorithm}
+
+\section{Construction Heuristics}\label{sec:construction-heuristics}
+
+We propose two different construction heuristics. The first one is based on Beam Search and returns a feasible solution that can be used as a lower bound for the size of a maximum $\gamma$-quasi clique in the input graph. The pseudocode is shown in Algorithm
+%\ref{alg:initial-construction}. 
+
+The second construction heuristic has a different goal: It aims to return a set of nodes $S$ of fixed size $|S| = k$ that lead to new local optima when used as a starting point for the local search procedure. The candidate solution returned by this construction heuristic is therefore not necessarily feasible. 
+It is based on a GRASP approach, but includes a parameter $p \in \{0,1\}$ which controls the balance between choosing nodes that have not been explored yet and nodes that increase the objective value of the current candidate solution. This approach of balancing exploration and objective value is inspired by \cite{chen_nuqclq_2021}, where the authors use a similar approach. We combine this idea with using a GRASP-like approach. The procedure is shown in Algorithm \ref{alg:exploration-construction}. At first, a starting node is selected by choosing a node with the lowest $Freq$-value, breaking ties randomly. In each iteration of the main while loop in line \ref{alg:exploration-construction-while-start}-\ref{alg:exploration-construction-while-end}, with probability $p$ a node with the lowest $Freq$-value in $N_G(S)$ is added to the current candidate solution $S$. If $N_G(S)$ is empty, an arbitrary node with the lowest $Freq$ value from $V\setminus S$ is selected instead. With probability $1-p$ we perform an iteration of a GRASP-like construction: The restricted candidate list $RCL$ is built by adding all nodes from $V \setminus S$ that fulfill the condition $d_S(u) \geq d_{\max} - \alpha(d_{\max} - d_{\min})$, where $d_S(u)$ denotes the number of neighbors in $S$ for a node $u \in V \setminus S$, and $d_{\max}, d_{\min}$ are the maximum and minimum values for $d_S(u)$ for nodes in $V \setminus S$. Here, the parameter $\alpha$ controls the balance between greediness and randomness in a GRASP-like manner: $\alpha=0$ corresponds to a greedy strategy, whereas $\alpha=1$ corresponds to a purely random strategy.  
+
+\begin{algorithm}
+    \DontPrintSemicolon
+    \KwIn{Graph $G$, $n$-element array $Freq$, Target size $k$, GRASP parameter $\alpha$, Exploration parameter $p$}
+    \KwOut{Candidate set $S$}
+    $u \gets $ node in $G$ with lowest $Freq$-value, break ties randomly \;
+    $S \gets \{u\}$ \;
+    \While{$|S| < k$}{\label{alg:exploration-construction-while-start}
+        \uIf{$rand() < p$}{
+            \uIf{$N_G(S)$ not empty}{
+                $u \gets$ Pick random neighbor in $N_G(S)$ with lowest $Freq$-value\;
+            }
+            \Else{
+                $u \gets$ Pick random node in $V \setminus S$ with lowest $Freq$-value
+            }
+            $S \gets S \cup \{u\}$ \;
+        }
+        \Else{
+            $d_{\min} = \min_{u \in V \setminus S} d_S(u)$ \;
+            $d_{\max} = \max_{u \in V \setminus S} d_S(u)$ \;
+            $RCL \gets \{ u \mid u \in V\setminus S, d_S(u) \geq d_{\max} - \alpha(d_{\max} - d_{\min}) \}$ \;
+            $u \gets $ Pick random node from $RCL$ \;
+            $S \gets S \cup \{u\}$ \;
+        }
+    }\label{alg:exploration-construction-while-end}
+    \Return{$S$}
+    \caption{Construction procedure with focus on exploration}
+    \label{alg:exploration-construction}
+\end{algorithm}
+
+\section{Neighborhood Structure} \label{sec:neighborhood-structure}
 
 The neighborhood of a candidate solution $S$ is defined by a move operator that swaps a node $u \in S$ with a node $v \in V \setminus S$. The set of neighboring solutions of $S$ with $|S| = k$ that can be obtained by a single swap move is therefore defined as $\Omega_1 = \{ S \setminus \{u\} \cup \{v\} \mid u \in S, v \in V \setminus S \}$ and has size $|\Omega_1| = k \cdot (|V|-k)$, which is in $O(|V|^2)$. Similarly, we define $\Omega_d$ for $d=1,2,3,\dots$ as the set of neighboring solutions that can be obtained by swapping $d$ nodes from $S$ with $d$ nodes from $V \setminus S$, obtaining a neighborhood of size $|\Omega_d| = \binom{k}{d} \cdot \binom{|V|-k}{d}$, which is in $O(|V|^{2d})$. 
 
 The quality of a candidate solution is dependent of the considered problem. For the MQCP and the MDCP a candidate solution $S$ is of higher quality than a neighboring solution $S^\prime$ if $G[S]$ contains more edges than $G[S']$. Thus, we define the objective function $f \colon 2^V \rightarrow \mathbb{N}$ for the local search for MQCP and MDCP as the function that maps a subset of vertices $S \subseteq V$ to the number of edges in the induced subgraph $G[S]$. Therefore, $S$ is better than $S^\prime$ if and only if $f(S) > f(S^\prime)$. 
 
-\section{Identifying the best Neighboring Solution}
+\section{Using a GNN in Local Search}\label{sec:gnn-local-search}
+
+\section{Training the GNN}\label{sec:gnn-training}
 
 In order to obtain target values for training the GNN, we need to be able to identify the best neighboring solutions in a given neighborhood relative to a candidate solution $S$. 
 
@@ -232,7 +390,9 @@ To identify the best neighboring solution for a candidate solution $S$ in the ne
 Furthermore, we propose a second method that approximates the best neighboring solution, trading solution quality with efficiency in order to make training possible on larger instances. 
 \todo{BeamSearch} 
 
-\section{GNN Architecture}
+\section{GNN Architecture}\label{sec:gnn-architecture}
+
+
 
 \chapter{Evaluation}
 

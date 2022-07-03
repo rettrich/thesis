@@ -19,24 +19,35 @@
 \contentsline {section}{\numberline {1.2}Considered Problems}{2}{section.1.2}%
 \contentsline {section}{\numberline {1.3}Outline of the Thesis}{2}{section.1.3}%
 \contentsline {chapter}{\chapternumberline {2}Relaxations of the Maximum Clique Problem}{3}{chapter.2}%
-\contentsline {section}{\numberline {2.1}The Maximum Quasi-Clique Problem}{3}{section.2.1}%
-\contentsline {section}{\numberline {2.2}The Maximum $k$-defective Clique Problem}{3}{section.2.2}%
-\contentsline {section}{\numberline {2.3}The Maximum $k$-plex Problem}{3}{section.2.3}%
-\contentsline {chapter}{\chapternumberline {3}Related Work}{5}{chapter.3}%
-\contentsline {section}{\numberline {3.1}Machine Learning in COPs}{5}{section.3.1}%
-\contentsline {section}{\numberline {3.2}Graph Neural Networks in COPs}{5}{section.3.2}%
-\contentsline {section}{\numberline {3.3}Solution Approaches for the MQCP}{5}{section.3.3}%
-\contentsline {subsection}{\numberline {3.3.1}Exact Approaches}{5}{subsection.3.3.1}%
-\contentsline {subsection}{\numberline {3.3.2}Heuristic Approaches}{6}{subsection.3.3.2}%
-\contentsline {chapter}{\chapternumberline {4}Methodology}{7}{chapter.4}%
-\contentsline {chapter}{\chapternumberline {5}Local Search Algorithm}{9}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Neighborhood Structure}{9}{section.5.1}%
-\contentsline {section}{\numberline {5.2}Identifying the best Neighboring Solution}{9}{section.5.2}%
-\contentsline {subsection}{\numberline {5.2.1}MQCP and MDCP}{9}{subsection.5.2.1}%
-\contentsline {section}{\numberline {5.3}GNN Architecture}{10}{section.5.3}%
-\contentsline {chapter}{\chapternumberline {6}Evaluation}{11}{chapter.6}%
-\contentsline {chapter}{\chapternumberline {7}Conclusions}{13}{chapter.7}%
-\contentsline {chapter}{List of Figures}{15}{section*.12}%
-\contentsline {chapter}{List of Tables}{17}{section*.13}%
-\contentsline {chapter}{List of Algorithms}{19}{chapter*.14}%
-\contentsline {chapter}{Bibliography}{21}{chapter*.15}%
+\contentsline {section}{\numberline {2.1}Notation}{3}{section.2.1}%
+\contentsline {section}{\numberline {2.2}The Maximum Clique Problem}{3}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Properties of the MCP}{4}{subsection.2.2.1}%
+\contentsline {section}{\numberline {2.3}The Maximum Quasi-Clique Problem}{4}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}Properties of the MQCP}{4}{subsection.2.3.1}%
+\contentsline {subsection}{\numberline {2.3.2}Preprocessing of MQCP Instances}{4}{subsection.2.3.2}%
+\contentsline {section}{\numberline {2.4}The Maximum k-defective Clique Problem}{5}{section.2.4}%
+\contentsline {section}{\numberline {2.5}The Maximum k-plex Problem}{5}{section.2.5}%
+\contentsline {chapter}{\chapternumberline {3}Related Work}{7}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Machine Learning in Combinatorial Optimization Problems}{7}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Graph Neural Networks in Combinatorial Optimization Problems}{7}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Solution Approaches for the MQCP}{7}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Exact Approaches}{7}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Heuristic Approaches}{8}{subsection.3.3.2}%
+\contentsline {subsubsection}{Construction Heuristics}{8}{section*.16}%
+\contentsline {subsubsection}{Population Based Heuristics}{8}{section*.17}%
+\contentsline {subsubsection}{Local Search Based Metaheuristics}{8}{section*.18}%
+\contentsline {chapter}{\chapternumberline {4}Methodology}{9}{chapter.4}%
+\contentsline {chapter}{\chapternumberline {5}Local Search with Graph Neural Networks}{11}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Algorithm Structure}{11}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Construction Heuristics}{13}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Neighborhood Structure}{13}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Using a GNN in Local Search}{14}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Training the GNN}{14}{section.5.5}%
+\contentsline {subsection}{\numberline {5.5.1}MQCP and MDCP}{14}{subsection.5.5.1}%
+\contentsline {section}{\numberline {5.6}GNN Architecture}{15}{section.5.6}%
+\contentsline {chapter}{\chapternumberline {6}Evaluation}{17}{chapter.6}%
+\contentsline {chapter}{\chapternumberline {7}Conclusions}{19}{chapter.7}%
+\contentsline {chapter}{List of Figures}{21}{section*.24}%
+\contentsline {chapter}{List of Tables}{23}{section*.25}%
+\contentsline {chapter}{List of Algorithms}{25}{chapter*.26}%
+\contentsline {chapter}{Bibliography}{27}{chapter*.27}%

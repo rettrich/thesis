@@ -15,6 +15,8 @@
 \babel@toc {english}{}\relax 
 \addvspace {10pt}
 \addvspace {10pt}
+\contentsline {figure}{\numberline {2.1}{\ignorespaces A maximum clique.\relax }}{4}{figure.caption.12}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces Consider the given graph $G$ given in Subfigure \ref {fig:preprocessing-mqcp-sub1}. The considered MQCP instance is defined by $G$ and $\gamma =0.5$ consisting of a $K_3$ and a $K_7$ connected by an edge. Since $G$ has a density $dens(G) = \frac {25}{45} \approx 0.56$, the maximum $0.5$-quasi clique in $G$ is $V$. Assume a lower bound of $k=6$ is known, therefore the two nodes on the left are $k\gamma $\emph {-peelable} and preprocessing would remove all edges incident to these vertices, as can be seen in Subfigure \ref {fig:preprocessing-mqcp-sub2}. Therefore, the density of this preprocessed graph would be reduced to $\frac {22}{45} \approx 0.49$ and the optimal solution $V$ would not be preserved.\relax }}{5}{figure.caption.15}%
 \addvspace {10pt}
 \addvspace {10pt}
 \addvspace {10pt}
