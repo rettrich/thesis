@@ -534,6 +534,12 @@ Additionally, we propose a second method that approximates the best neighboring 
 
 \section{GNN Architecture}\label{sec:gnn-architecture}
 
+\subsection{Node Features}
+Idea: For each node, do BFS with depth $d$ to calculate node features: Feature vector $x_i$ for node $v_i$ has at position $j=1,\dots,d$ the number of distinct nodes with distance $j$ from $v_i$. 
+
+\subsection{Encoder}
+
+\subsection{Decoder}
 
 
 \chapter{Evaluation}

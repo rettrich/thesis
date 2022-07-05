@@ -52,6 +52,9 @@
 \contentsline {section}{\numberline {5.5}Training the GNN}{16}{section.5.5}%
 \contentsline {subsection}{\numberline {5.5.1}MQCP and MDCP}{16}{subsection.5.5.1}%
 \contentsline {section}{\numberline {5.6}GNN Architecture}{18}{section.5.6}%
+\contentsline {subsection}{\numberline {5.6.1}Node Features}{18}{subsection.5.6.1}%
+\contentsline {subsection}{\numberline {5.6.2}Encoder}{18}{subsection.5.6.2}%
+\contentsline {subsection}{\numberline {5.6.3}Decoder}{18}{subsection.5.6.3}%
 \contentsline {chapter}{\chapternumberline {6}Evaluation}{21}{chapter.6}%
 \contentsline {chapter}{\chapternumberline {7}Conclusions}{23}{chapter.7}%
 \contentsline {chapter}{List of Figures}{25}{section*.27}%
