@@ -37,6 +37,13 @@
 \contentsline {subsubsection}{Population Based Heuristics}{8}{section*.17}%
 \contentsline {subsubsection}{Local Search Based Metaheuristics}{8}{section*.18}%
 \contentsline {chapter}{\chapternumberline {4}Methodology}{9}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Machine Learning}{9}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Neural Networks}{9}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Graph Neural Networks}{9}{subsection.4.1.2}%
+\contentsline {section}{\numberline {4.2}Local Search}{9}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Tabu Search}{9}{subsection.4.2.1}%
+\contentsline {section}{\numberline {4.3}Beam Search}{9}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Linear Programming}{9}{section.4.4}%
 \contentsline {chapter}{\chapternumberline {5}Local Search with Graph Neural Networks}{11}{chapter.5}%
 \contentsline {section}{\numberline {5.1}Algorithm Structure}{11}{section.5.1}%
 \contentsline {section}{\numberline {5.2}Construction Heuristics}{13}{section.5.2}%

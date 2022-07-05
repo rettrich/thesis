@@ -269,6 +269,21 @@ The authors linearize the above quadratic formulation by introducing variables $
 
 \chapter{Methodology}
 
+\section{Machine Learning}
+
+\subsection{Neural Networks}
+
+\subsection{Graph Neural Networks}
+
+\section{Local Search}
+
+\subsection{Tabu Search}
+
+\section{Beam Search}
+
+\section{Linear Programming}
+
+
 \chapter{Local Search with Graph Neural Networks}
 
 In this chapter we present the main contribution of this thesis in detail: a local search algorithm using Graph Neural Networks. 
@@ -492,7 +507,7 @@ Additionally, we propose a second method that approximates the best neighboring 
     $beam \gets \{root\}$ \;
     \While{$beam$ not empty and $d > 0$}{
         $d \gets d-1$ \;
-        $children \gets \emptyset$
+        $children \gets \emptyset$\;
         \For{$node \in beam$}{
             $S' \gets $ solution corresponding to $node$ \;
             $A \gets $ select $\alpha$ vertices in $S'$ with lowest $d_{S'}$-values \;
