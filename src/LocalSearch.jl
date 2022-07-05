@@ -6,34 +6,7 @@ using thesis.LookaheadSearch
 
 export local_search_with_EX
 
-#############################################################################################
-############################   Construction Heuristics   ####################################
-#############################################################################################
-
-function grasp(g, k; α=0.25)
-    V = Set(vertices(g))
-    min_val = Δ(g) - α*(Δ(g) - δ(g))
-    restricted_candidate_set = filter(v -> degree(g,v) >= min_val, V)
-
-    candidate_solution = Set([sample(collect(restricted_candidate_set))])
-
-    while length(candidate_solution) < k
-        d_S = calculate_d_S(g, candidate_solution)
-        V_S = setdiff(V, candidate_solution)
-        d_S_V_S = [d_S[i] for i in V_S]
-        max_d_S_V_S = maximum(d_S_V_S)
-        min_val = max_d_S_V_S - α*(max_d_S_V_S - minimum(d_S_V_S))
-        restricted_candidate_set = filter(v -> d_S[v] >= min_val, V_S)
-        new_vertex = sample(collect(restricted_candidate_set))
-        push!(candidate_solution, new_vertex)
-    end
-
-    return candidate_solution
-end
-
-#############################################################################################
-############################    Local Search Variants    ####################################
-#############################################################################################
+include("ConstructionHeuristics.jl")
 
 
 function local_search_with_EX(g, γ; d=10, α=10, β=100)
