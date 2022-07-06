@@ -2,11 +2,11 @@ using StatsBase
 
 abstract type GuidanceFunction end
 
-(::GuidanceFunction)(g::SimpleGraph, S::Vector{Int}, γ::Real)::Int = error("Abstract implementation called")
+(::GuidanceFunction)(g::SimpleGraph, S::Vector{Int}, γ::Real)::Real = error("Abstract implementation called")
 
 struct GreedyCompletionHeuristic <: GuidanceFunction end
 
-function (::GreedyCompletionHeuristic)(g::SimpleGraph, S::Vector{Int}, γ::Real)::Int
+function (::GreedyCompletionHeuristic)(g::SimpleGraph, S::Vector{Int}, γ::Real)::Real
     S′ = copy(S)
     k = length(S′)
     d_S = calculate_d_S(g, S′)
@@ -30,40 +30,53 @@ function (::GreedyCompletionHeuristic)(g::SimpleGraph, S::Vector{Int}, γ::Real)
         end
     end
 
-    @debug "Found solution: $(S′)"
+    #approx_density = 0.999 * density(induced_subgraph(g, S′)[1])
 
-    return length(S′)
+    return length(S′)# + approx_density
 end
 
 struct SumOfNeighborsHeuristic <: GuidanceFunction 
     d::Int
+    weight_num_edges::Real
 end
 
-function (heu::SumOfNeighborsHeuristic)(g::SimpleGraph, S::Vector{Int}, γ::Real)::Int
+function (heu::SumOfNeighborsHeuristic)(g::SimpleGraph, S::Vector{Int}, γ::Real)::Real
     V_S = setdiff(vertices(g), S)
     d_S = calculate_d_S(g, S)
     d_S_filtered = [d_S[i] for i in V_S]
-    
-    return sum(partialsort(d_S_filtered, 1:min(heu.d, length(d_S_filtered)); rev=true))
+
+    num_edges = calculate_num_edges(g, S)
+    sum_of_neighbors = sum(partialsort(d_S_filtered, 1:min(heu.d, length(d_S_filtered)); rev=true))
+
+    return round(Int, heu.weight_num_edges * num_edges + (1 - heu.weight_num_edges) * sum_of_neighbors)
 end
 
-struct Node
+mutable struct Node
     num_edges::Int # number of edges in subgraph induced by S 
-    g_val::Int # heuristic value determined by guidance function
+    g_val::Real # heuristic value determined by guidance function
     S::Set{Int}
 end
 
-function beam_search_construction(g::SimpleGraph, γ::Real, guidance_function::GuidanceFunction)
+function beam_search_construction(g::SimpleGraph, γ::Real, guidance_function::GuidanceFunction; β=100, expansion_limit=Inf)
     root = Node(0, 0, Set())
     max_node = root
-    beam = [node]
+    beam = [root]
+    level::Int = 0
 
     while !isempty(beam)
+        level = level + 1
+        @debug "level", level
+        
         children = []
         visited_solutions = Set{Set{Int}}()
 
+        # ignore expansion limit only for first node
         for node in beam
-            children = vcat(children, expand(g, node, γ, visited_solutions))
+            if level == 1
+                children = vcat(children, expand(g, node, γ, visited_solutions))
+            else
+                children = vcat(children, expand(g, node, γ, visited_solutions; expansion_limit))
+            end
         end
         if !isempty(children)
             max_node = sample(children)
@@ -72,7 +85,7 @@ function beam_search_construction(g::SimpleGraph, γ::Real, guidance_function::G
         filter!(node -> !is_terminal(g, γ, collect(node.S)), children) # might not be necessary
 
         for node in children
-            node.g = guidance_function(g, collect(node.S), γ)
+            node.g_val = guidance_function(g, collect(node.S), γ)
         end
 
         beam = partialsort(children, 1:min(β, length(children)); by=(node -> node.g_val), rev=true)
@@ -82,7 +95,7 @@ function beam_search_construction(g::SimpleGraph, γ::Real, guidance_function::G
 end
 
 # expand node into feasible successors
-function expand(g::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set{Int}})::Vector{Node}
+function expand(g::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set{Int}}; expansion_limit=Inf)::Vector{Node}
     d_S = calculate_d_S(g, collect(node.S))
     k = length(node.S)
     min_edges_needed = Int(ceil(γ * (k*(k+1)/2))) - node.num_edges
@@ -91,12 +104,15 @@ function expand(g::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set
     children = Vector{Node}()
     
     for v in d_S_sorted_perm
-        if d_S[v] > min_edges_needed
+        if d_S[v] >= min_edges_needed
             S′ = Set([node.S..., v])
             if S′ ∉ visited_solutions
                 push!(visited_solutions, S′)
                 push!(children, Node(node.num_edges + d_S[v], 0, S′))
-            end
+                if length(children) > expansion_limit
+                    break
+                end
+            end 
         else
             break
         end

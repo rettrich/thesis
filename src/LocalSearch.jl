@@ -6,7 +6,7 @@ using thesis.LookaheadSearch
 
 export local_search_with_EX, construction_heuristic, beam_search_construction, 
     GuidanceFunction, GreedyCompletionHeuristic, SumOfNeighborsHeuristic, 
-    calculate_d_S, calculate_num_edges
+    calculate_d_S, calculate_num_edges, is_terminal
 
 include("ConstructionHeuristics.jl")
 
