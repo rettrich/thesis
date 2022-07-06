@@ -4,7 +4,9 @@ using StatsBase
 using Graphs
 using thesis.LookaheadSearch
 
-export local_search_with_EX
+export local_search_with_EX, construction_heuristic, beam_search_construction, 
+    GuidanceFunction, GreedyCompletionHeuristic, SumOfNeighborsHeuristic, 
+    calculate_d_S, calculate_num_edges
 
 include("ConstructionHeuristics.jl")
 
@@ -50,9 +52,18 @@ function local_search_with_EX(g, γ; d=10, α=10, β=100)
     return best
 end
 
-function calculate_d_S(g, candidate_solution)
+"""
+    calculate_d_S(g, candidate_solution)
+
+Returns a vector d_S in the size of the vertex set of `vertices(g)`, where `d_S[i]` denotes the number of 
+adjacent vertices in `S` for vertex `i` in `g`. 
+    
+- `g`: Input Graph
+- `S`: Vector of vertices in `g`
+"""
+function calculate_d_S(g::SimpleGraph, S::Vector{Int})
     d_S = Int[0 for _ in 1:nv(g)]
-    for u in candidate_solution
+    for u in S
         for v in neighbors(g, u)
             d_S[v] += 1
         end

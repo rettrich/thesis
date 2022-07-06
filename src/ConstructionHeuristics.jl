@@ -2,48 +2,49 @@ using StatsBase
 
 abstract type GuidanceFunction end
 
-(::GuidanceFunction)(g::SimpleGraph, candidate_solution::Vector{Int}, γ::Real)::Int = error("Abstract implementation called")
+(::GuidanceFunction)(g::SimpleGraph, S::Vector{Int}, γ::Real)::Int = error("Abstract implementation called")
 
 struct GreedyCompletionHeuristic <: GuidanceFunction end
 
-function (::GreedyCompletionHeuristic)(g::SimpleGraph, candidate_solution::Vector{Int}, γ::Real)::Int
-    S' = copy(candidate_solution)
-    k = length(S')
-    d_S = calculate_d_S(g, S')
-    num_edges = calculate_num_edges(g, S')
+function (::GreedyCompletionHeuristic)(g::SimpleGraph, S::Vector{Int}, γ::Real)::Int
+    S′ = copy(S)
+    k = length(S′)
+    d_S = calculate_d_S(g, S′)
+    num_edges = calculate_num_edges(g, S′)
 
     while true
-        k = length(S')
+        k = length(S′)
         k == nv(g) && break
-        min_edges_needed = Int(ceil(γ * (k*(k+1)/2))) # edges needed for feasibility in clique of size k+1
+        min_edges_needed = γ * (k*(k+1)/2) # edges needed for feasibility in clique of size k+1
 
-        d_S_sorted_perm = filter(v -> v ∉ S', sortperm(d_S; rev=true))
-        
+        d_S_sorted_perm = filter(v -> v ∉ S′, sortperm(d_S; rev=true))
+
         if d_S[d_S_sorted_perm[1]] + num_edges < min_edges_needed
             break
         else
-            push!(S', d_S_sorted_perm[1])
-            obj_val = num_edges + d_S[d_S_sorted_perm[1]]
+            push!(S′, d_S_sorted_perm[1])
+            num_edges = num_edges + d_S[d_S_sorted_perm[1]]
             for v in neighbors(g, d_S_sorted_perm[1])
-                d_S[v] += d_S[v] + 1
+                d_S[v] += 1
             end
         end
     end
 
-    return length(S')
+    @debug "Found solution: $(S′)"
+
+    return length(S′)
 end
 
 struct SumOfNeighborsHeuristic <: GuidanceFunction 
     d::Int
-
-    function SumOfNeighborsHeuristic(d::Int)
-        new(d)        
-    end
 end
 
-function (::SumOfNeighborsHeuristic)(g::SimpleGraph, candidate_solution::Vector{Int}, γ::Real)::Int
-    d_S = calculate_d_S(g, candidate_solution)
-    sum(partialsort(d_S, 1:min(d, length(d_S)); rev=true))
+function (heu::SumOfNeighborsHeuristic)(g::SimpleGraph, S::Vector{Int}, γ::Real)::Int
+    V_S = setdiff(vertices(g), S)
+    d_S = calculate_d_S(g, S)
+    d_S_filtered = [d_S[i] for i in V_S]
+    
+    return sum(partialsort(d_S_filtered, 1:min(heu.d, length(d_S_filtered)); rev=true))
 end
 
 struct Node
@@ -91,10 +92,10 @@ function expand(g::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set
     
     for v in d_S_sorted_perm
         if d_S[v] > min_edges_needed
-            S' = Set([node.S..., v])
-            if S' ∉ visited_solutions
-                push!(visited_solutions, S')
-                push!(children, Node(node.num_edges + d_S[v], 0, S'))
+            S′ = Set([node.S..., v])
+            if S′ ∉ visited_solutions
+                push!(visited_solutions, S′)
+                push!(children, Node(node.num_edges + d_S[v], 0, S′))
             end
         else
             break
@@ -103,8 +104,32 @@ function expand(g::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set
     return children    
 end
 
-function is_terminal(g, γ, solution)
-    return true
+
+"""
+    is_terminal(g, γ, S)
+
+Returns true if candidate solution `S` can be extended to a γ-quasi clique of size |`S`|+1, and 
+false otherwise.
+
+- `g`: Input Graph
+- `γ`: Target density that defines feasibility of a quasi-clique
+- `S`: List of distinct nodes in `g`, candidate solution
+
+"""
+function is_terminal(g::SimpleGraph, γ::Real, S::Vector{Int})
+    V_S = setdiff(vertices(g), S)
+    d_S = calculate_d_S(g, S)
+    num_edges = calculate_num_edges(g, S)
+    d_S_filtered = [d_S[i] for i in V_S]
+    k = length(S)
+    edges_needed = γ*(k*(k+1)/2) # minimum number of edges needed in solution of size |S|+1 
+
+    # if clique cannot be extended by a single node, it is terminal -> return true
+    if maximum(d_S_filtered) + num_edges < edges_needed 
+        return true
+    else
+        return false
+    end
 end
 
 """
@@ -120,24 +145,25 @@ and with probability 1-p a vertex is added in a GRASP-like manner.
 - `α`: GRASP parameter; α=0 performs a greedy construction, α=1 performs a randomized construction
 - `p`: Controls the balance between GRASP construction and preferring vertices with low frequency values. 
     `p`=0 ignores frequency values, while `p`=1 only uses frequency values.
+
 """
 function construction_heuristic(g::SimpleGraph, k::Int, freq=[0 for i=1:nv(g)]::Vector{Int}; α=0.2::Real, p=0.2::Real)
     freq_sorted = sortperm(freq)
     init_vertex = freq_sorted[1]
-    candidate_solution = [init_vertex]
+    S = [init_vertex]
 
-    while length(candidate_solution) < k
+    while length(S) < k
         if rand() < p
-            N_G_S = open_set_neighborhood(g, candidate_solution)
+            N_G_S = open_set_neighborhood(g, S)
             if !isempty(open_set_neighborhood)
                 u = filter(v -> v ∈ N_G_S, freq_sorted)[1]
             else
-                V_S = setdiff(vertices(g), candidate_solution)
+                V_S = setdiff(vertices(g), S)
                 u = filter(v -> v ∈ V_S, freq_sorted)[1]
             end
         else
-            d_S = calculate_d_S(g, candidate_solution)
-            V_S = setdiff(vertices(g), candidate_solution) # V ∖ candidate_solution
+            d_S = calculate_d_S(g, S)
+            V_S = setdiff(vertices(g), S) # V ∖ candidate_solution
             d_S_V_S = [d_S[i] for i in V_S] # only d_S values for V_S
             d_max = maximum(d_S_V_S)
             d_min = minimum(d_S_V_S)
@@ -145,10 +171,10 @@ function construction_heuristic(g::SimpleGraph, k::Int, freq=[0 for i=1:nv(g)]::
             restricted_candidate_list = filter(v -> d_S[v] >= min_val, V_S)
             u = sample(restricted_candidate_list)
         end
-        push!(candidate_solution, u)
+        push!(S, u)
     end
 
-    return candidate_solution
+    return S
 end
 
 """
@@ -158,6 +184,7 @@ Return the union of neighborhoods of vertices in `vertex_list` excluding vertice
 
 - `g`: Input Graph
 - `vertex_list`: Vector of vertices from `g`
+
 """
 open_set_neighborhood(g::SimpleGraph, vertex_list::Vector{Int})::Vector{Int} = 
     setdiff(reduce(vcat, neighbors(g, v) for v in vertex_list), vertex_list)
@@ -168,9 +195,10 @@ open_set_neighborhood(g::SimpleGraph, vertex_set::Set{Int})::Vector{Int} = open_
 """
     calculate_num_edges(g, candidate_solution)
 
-Returns the number of edges in the subgraph induced by `candidate_solution` in `g`
+Returns the number of edges in the subgraph induced by candidate solution `S` in `g`
 
 - `g`: Input Graph
-- `candidate_solution`: List of nodes in candidate solution
+- `S`: List of nodes representing the candidate solution
+
 """
-calculate_num_edges(g::SimpleGraph, candidate_solution::Vector{Int})::Int = ne(induced_subgraph(g, candidate_solution)[1])
+calculate_num_edges(g::SimpleGraph, S::Vector{Int})::Int = ne(induced_subgraph(g, S)[1])
