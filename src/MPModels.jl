@@ -121,7 +121,7 @@ a candidate solution, where the solution can only change up to `d` nodes from th
 - `candidate_solution`: A vector of node indices of the current candidate solution
 - `d`: The depth of the look-ahead search. The model defines the best solution that can be found 
     by swapping at most `d` nodes from the `candidate_solution`.
-- `verbosity`: Verbosity of solver output: 0 for no output
+- `verbosity`: Verbosity of solver output: 0 for no output, solver dependent
 - `eps_int`: Machine epsilon for integer accuracy
 - `timelimit`: Timelimit for solver
 
