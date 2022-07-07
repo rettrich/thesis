@@ -1,31 +1,69 @@
-using StatsBase
+"""
+    Node
 
+A node in the beam search tree for `beam_search_construction`.
+
+- `S`: A feasible γ-clique representing this node
+- `d_S`: Vector in the size of vertex set of the graph, d_S[v] holds number of neighbors of v in S
+- `num_edges`: Number of edges in subgraph induced by S
+- `g_val`: Heuristic value determined by guidance function 
+"""
+mutable struct Node
+    S::Set{Int} # 
+    d_S::Vector{Int} # d_S[v] holds number of neighbors of v in S
+    num_edges::Int # number of edges in subgraph induced by S 
+    g_val::Real # heuristic value determined by guidance function
+end
+
+"""
+    GuidanceFunction
+
+A type for guidance functions for the beam search used in `beam_search_construction`
+
+"""
 abstract type GuidanceFunction end
 
-(::GuidanceFunction)(g::SimpleGraph, S::Vector{Int}, γ::Real)::Real = error("Abstract implementation called")
+"""
+    (::GuidanceFunction)(g::SimpleGraph, node::Node, γ::Real)
 
+This function must be implemented by every subtype of `GuidanceFunction`
+
+- `g`: Input graph
+- `node`: `Node` in the beam search tree
+- `γ`: Target density
+
+"""
+(::GuidanceFunction)(g::SimpleGraph, node::Node, γ::Real)::Real = error("Abstract implementation called")
+
+"""
+    GreedyCompletionHeuristic
+
+Returns the size of a solution that is completed greedily by always picking the node outside the 
+current solution that maximizes density.  
+"""
 struct GreedyCompletionHeuristic <: GuidanceFunction end
 
-function (::GreedyCompletionHeuristic)(g::SimpleGraph, S::Vector{Int}, γ::Real)::Real
-    S′ = copy(S)
+function (::GreedyCompletionHeuristic)(g::SimpleGraph, node::Node, γ::Real)::Real
+    S′ = copy(node.S)
     k = length(S′)
-    d_S = calculate_d_S(g, S′)
-    num_edges = calculate_num_edges(g, S′)
+    d_S = copy(node.d_S)
+    num_edges = node.num_edges
 
     while true
         k = length(S′)
         k == nv(g) && break
         min_edges_needed = γ * (k*(k+1)/2) # edges needed for feasibility in clique of size k+1
 
-        d_S_sorted_perm = filter(v -> v ∉ S′, sortperm(d_S; rev=true))
+        V_S = filter(v -> v ∉ S′, vertices(g))
+        v_max = V_S[argmax([d_S[i] for i in V_S])] # vertex in V ∖ S that maximizes d_S
 
-        if d_S[d_S_sorted_perm[1]] + num_edges < min_edges_needed
+        if d_S[v_max] + num_edges < min_edges_needed
             break
         else
-            push!(S′, d_S_sorted_perm[1])
-            num_edges = num_edges + d_S[d_S_sorted_perm[1]]
-            for v in neighbors(g, d_S_sorted_perm[1])
-                d_S[v] += 1
+            push!(S′, v_max)
+            num_edges = num_edges + d_S[v_max]
+            for u in neighbors(g, v_max)
+                d_S[u] += 1
             end
         end
     end
@@ -35,30 +73,48 @@ function (::GreedyCompletionHeuristic)(g::SimpleGraph, S::Vector{Int}, γ::Real)
     return length(S′)# + approx_density
 end
 
+"""
+    SumOfNeighborsHeuristic
+
+Evaluates a node by the `d` highest values of vertices in V ∖ S in d_S 
+(d_S[i] holds the number of neighbors in candidate solution S for vertex i). 
+Additionally takes into account the density of a candidate solution.
+
+- `d`: Number of nodes to be considered
+- `weight_num_edges`: ∈[0,1] Density is weighted by this amount, while the sum of neighbors is 
+    weighted by 1-`weight_num_edges`
+"""
 struct SumOfNeighborsHeuristic <: GuidanceFunction 
     d::Int
     weight_num_edges::Real
 end
 
-function (heu::SumOfNeighborsHeuristic)(g::SimpleGraph, S::Vector{Int}, γ::Real)::Real
-    V_S = setdiff(vertices(g), S)
-    d_S = calculate_d_S(g, S)
-    d_S_filtered = [d_S[i] for i in V_S]
+function (heu::SumOfNeighborsHeuristic)(g::SimpleGraph, node::Node, γ::Real)::Real
+    V_S = filter(v -> v ∉ node.S, vertices(g))
+    d_S_filtered = [node.d_S[i] for i in V_S]
 
-    num_edges = calculate_num_edges(g, S)
+    num_edges = node.num_edges
     sum_of_neighbors = sum(partialsort(d_S_filtered, 1:min(heu.d, length(d_S_filtered)); rev=true))
 
-    return round(Int, heu.weight_num_edges * num_edges + (1 - heu.weight_num_edges) * sum_of_neighbors)
+    return heu.weight_num_edges * num_edges + (1 - heu.weight_num_edges) * sum_of_neighbors
 end
 
-mutable struct Node
-    num_edges::Int # number of edges in subgraph induced by S 
-    g_val::Real # heuristic value determined by guidance function
-    S::Set{Int}
-end
+"""
+    beam_search_construction(g, γ, guidance_function; β, expansion_limit)
 
-function beam_search_construction(g::SimpleGraph, γ::Real, guidance_function::GuidanceFunction; β=100, expansion_limit=Inf)
-    root = Node(0, 0, Set())
+Beam search construction that returns a feasible `γ`-quasi clique in `g`. 
+Each node of the beam search tree is expanded into at most `expansion_limit` nodes, 
+and the beamwidth is defined by `β`
+
+- `g`: Input graph
+- `γ`: Target density
+- `guidance_function`: Guidance function used to evaluate nodes in the beam search tree
+- `β`: Beam width, at most β nodes on each level of the beam search tree are pursued further
+- `expansion_limit`: A node in the beam search tree is expanded into at most `expansion_limit` successor nodes
+
+"""
+function beam_search_construction(g::SimpleGraph, γ::Real, guidance_function::GuidanceFunction; β=10, expansion_limit=Inf)
+    root = Node(Set(), fill(0, nv(g)), 0, 0, )
     max_node = root
     beam = [root]
     level::Int = 0
@@ -82,10 +138,10 @@ function beam_search_construction(g::SimpleGraph, γ::Real, guidance_function::G
             max_node = sample(children)
         end
 
-        filter!(node -> !is_terminal(g, γ, collect(node.S)), children) # might not be necessary
+        filter!(node -> !is_terminal(g, γ, node), children)
 
         for node in children
-            node.g_val = guidance_function(g, collect(node.S), γ)
+            node.g_val = guidance_function(g, node, γ)
         end
 
         beam = partialsort(children, 1:min(β, length(children)); by=(node -> node.g_val), rev=true)
@@ -96,7 +152,7 @@ end
 
 # expand node into feasible successors
 function expand(g::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set{Int}}; expansion_limit=Inf)::Vector{Node}
-    d_S = calculate_d_S(g, collect(node.S))
+    d_S = node.d_S
     k = length(node.S)
     min_edges_needed = Int(ceil(γ * (k*(k+1)/2))) - node.num_edges
     d_S_sorted_perm = filter(v -> v ∉ node.S, sortperm(d_S; rev=true))
@@ -108,7 +164,7 @@ function expand(g::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set
             S′ = Set([node.S..., v])
             if S′ ∉ visited_solutions
                 push!(visited_solutions, S′)
-                push!(children, Node(node.num_edges + d_S[v], 0, S′))
+                push!(children, Node(S′, update_d_S(g, d_S, v), node.num_edges + d_S[v], 0))
                 if length(children) > expansion_limit
                     break
                 end
@@ -120,6 +176,15 @@ function expand(g::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set
     return children    
 end
 
+function update_d_S(g, d_S, v; rev=false)
+    d_S = copy(d_S)
+    sign = rev ? -1 : 1
+    for u in neighbors(g, v)
+        d_S[u] = d_S[u] + sign
+    end
+    return d_S
+end
+
 
 """
     is_terminal(g, γ, S)
@@ -129,19 +194,17 @@ false otherwise.
 
 - `g`: Input Graph
 - `γ`: Target density that defines feasibility of a quasi-clique
-- `S`: List of distinct nodes in `g`, candidate solution
+- `node`: Node in the beam search tree
 
 """
-function is_terminal(g::SimpleGraph, γ::Real, S::Vector{Int})
-    V_S = setdiff(vertices(g), S)
-    d_S = calculate_d_S(g, S)
-    num_edges = calculate_num_edges(g, S)
-    d_S_filtered = [d_S[i] for i in V_S]
-    k = length(S)
+function is_terminal(g::SimpleGraph, γ::Real, node::Node)
+    V_S = setdiff(vertices(g), node.S)
+    d_S_filtered = [node.d_S[i] for i in V_S]
+    k = length(node.S)
     edges_needed = γ*(k*(k+1)/2) # minimum number of edges needed in solution of size |S|+1 
 
     # if clique cannot be extended by a single node, it is terminal -> return true
-    if maximum(d_S_filtered) + num_edges < edges_needed 
+    if maximum(d_S_filtered) + node.num_edges < edges_needed
         return true
     else
         return false
@@ -167,18 +230,18 @@ function construction_heuristic(g::SimpleGraph, k::Int, freq=[0 for i=1:nv(g)]::
     freq_sorted = sortperm(freq)
     init_vertex = freq_sorted[1]
     S = [init_vertex]
+    d_S = calculate_d_S(g, S)
 
     while length(S) < k
         if rand() < p
             N_G_S = open_set_neighborhood(g, S)
-            if !isempty(open_set_neighborhood)
+            if !isempty(N_G_S)
                 u = filter(v -> v ∈ N_G_S, freq_sorted)[1]
             else
                 V_S = setdiff(vertices(g), S)
                 u = filter(v -> v ∈ V_S, freq_sorted)[1]
             end
         else
-            d_S = calculate_d_S(g, S)
             V_S = setdiff(vertices(g), S) # V ∖ candidate_solution
             d_S_V_S = [d_S[i] for i in V_S] # only d_S values for V_S
             d_max = maximum(d_S_V_S)
@@ -188,6 +251,9 @@ function construction_heuristic(g::SimpleGraph, k::Int, freq=[0 for i=1:nv(g)]::
             u = sample(restricted_candidate_list)
         end
         push!(S, u)
+        for v in neighbors(g, u)
+            d_S[v] += 1
+        end
     end
 
     return S
