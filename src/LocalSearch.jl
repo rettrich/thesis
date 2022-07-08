@@ -6,9 +6,230 @@ using thesis.LookaheadSearch
 
 export local_search_with_EX, construction_heuristic, beam_search_construction, 
     GuidanceFunction, GreedyCompletionHeuristic, SumOfNeighborsHeuristic, 
-    calculate_d_S, calculate_num_edges, is_terminal
+    calculate_d_S, calculate_num_edges, run
 
 include("ConstructionHeuristics.jl")
+
+"""
+    BeamSearchConstructionSettings
+
+Settings for beam search construction heuristic (Algorithm 5.3 in thesis)
+
+- `β`: Beamwidth
+- `expansion_limit`: Every node in the beam search tree is expanded into at most `expansion_limit` nodes
+
+"""
+struct BeamSearchConstructionSettings
+    β::Int # beamwidth
+    expansion_limit::Int
+    guidance_function::GuidanceFunction
+end
+
+"""
+   ExplorationConstructionSettings
+   
+Settings for construction heuristic that aims to explore the search space (Algorithm 5.4)
+"""
+struct ExplorationConstructionSettings
+    p::Real
+    α::Real
+end
+
+struct LocalSearchSettings
+    initial_construction_settings::BeamSearchConstructionSettings
+    construction_heuristic_settings::ExplorationConstructionSettings
+    timelimit::Int
+    short_term_memory::ShortTermMemory
+end
+
+"""
+    ShortTermMemory
+
+A short term memory mechanism (e.g. tabu list) to prevent cycling through the 
+same solutions during a local search procedure. 
+Each implementation has to implement the methods reset!, remove_blocked!, move!
+
+"""
+abstract type ShortTermMemory end
+
+"""
+    reset!(short_term_memory)
+
+Resets the short term memory. Memory about blocked vertices is reset
+
+- `short_term_memory`: Short term memory to be reset
+
+"""
+reset!(stm::ShortTermMemory) = 
+    error("ShortTermMemory: Abstract reset! called")
+
+"""
+    remove_blocked!(short_term_memory, vertex_list)
+
+Removes all currently blocked vertices from `vertex_list`.
+
+- `short_term_memory`: The short term memory data structure from which information 
+    about blocked vertices is retrieved
+- `vertex_list`: An array of vertices in the graph that `short_term_memory` was initialized with
+
+"""
+remove_blocked!(stm::ShortTermMemory, vertex_list::Vector{Int}) = 
+    error("ShortTermMemory: Abstract remove_blocked! called")
+
+"""
+    move!(short_term_memory, u, v)
+
+This method should be called when a vertex `u` ∈ S is swapped with a vertex `v` ∈ V ∖ S. 
+The `short_term_memory` then stores information about this swap and blocks 
+vertices `u` or `v` according to the concrete implementation. 
+"""
+move!(stm::ShortTermMemory, u::Int, v::Int) = 
+    error("ShortTermMemory: Abstract move! called")
+
+"""
+    TabuList
+
+Keeps a tabu list of vertices that are blocked from being swapped. 
+
+- `n`: Size of the tabu list
+- `block_length`: Each time a vertex is added to the `tabu_list`, it is blocked 
+    for `block_length` iterations
+- `tabu_list`: `tabu_list[i]` corresponds to vertex `i`. Vertex `i` is blocked until iteration 
+    `tabu_list[i]`
+. `iteration`: Iteration counter, is increased each time `move!` is called on a `TabuList` instance
+"""
+mutable struct TabuList <: ShortTermMemory 
+    n::Int
+    block_length::Int
+    tabu_list::Vector{Int}
+    iteration::Int
+
+    function TabuList(n::Int, block_length::Int)
+        new(n, block_length, fill(0, n), 0)
+    end
+end
+
+function reset!(stm::TabuList)
+    stm.tabu_list = fill(0, stm.n)
+    stm.iteration = 0
+end
+
+function remove_blocked!(stm::TabuList, vertex_list::Vector{Int})
+    filter!(v -> stm.tabu_list[v] <= stm.iteration , vertex_list)
+end
+
+function move!(stm::TabuList, u::Int, v::Int)
+    stm.tabu_list[u] = stm.iteration + stm.block_length
+    stm.tabu_list[v] = stm.iteration + stm.block_length
+    stm.iteration += 1
+end
+
+"""
+    ConfigurationChecking
+
+ConfigurationChecking according to BoundedCC as described in Chen et al. 2021, 
+NuQClq: An Effective Local Search Algorithm for Maximum Quasi-Clique Problem. 
+Initially, each for each vertex v set `conf_change[v]` and `threshold[v]` to 1. 
+Each time a vertex v is added to the solution, increase `conf_change[u]` by 1 for all neighbors of v, 
+and increase `threshold[v]` by 1. If `threshold[v]` > `ub_threshold`, then `threshold[v]` is reset to 1.
+Each time a vertex v is moved outside of the solution, `conf_change[v]` is reset to 0. 
+A vertex v is blocked if `conf_change[v]` < `threshold[v]`. 
+
+- `g`: Input graph
+- `ub_threshold`: Upper bound for threshold. When `threshold[v]` > `ub_threshold`, set `threshold[1]` to 1. 
+- `threshold`: Contains threshold values for all vertices in `g`. 
+- `conf_change`: Contains current configuration for all vertices in `g`.
+
+"""
+mutable struct ConfigurationChecking <: ShortTermMemory 
+    g::SimpleGraph
+    ub_threshold::Int
+    threshold::Vector{Int}
+    conf_change::Vector{Int}
+
+    function TabuList(g::SimpleGraph, ub_threshold::Int)
+        new(g, ub_threshold, fill(1, nv(g)), fill(1, nv(g)))
+    end
+end
+
+function reset!(stm::ConfigurationChecking)
+    stm.threshold = fill(1, n)
+    stm.conf_change = fill(1, n)
+end
+
+function remove_blocked!(stm::ConfigurationChecking, vertex_list::Vector{Int})
+    filter!(v -> stm.conf_change[v] >= stm.threshold[v], vertex_list)
+end
+
+function move!(stm::ConfigurationChecking, u::Int, v::Int)
+    # u is moved from S outside of solution
+    stm.conf_change[u] = 0
+
+    # v is moved from V ∖ S into S
+    for w in neighbors(stm.g, v)
+        conf_change[w] += 1
+    end
+    stm.threshold[v] += 1
+    stm.threshold[v] > stm.ub_threshold && (stm.threshold = 1)
+end
+
+
+function run(settings::LocalSearchSettings, g::SimpleGraph, γ::Real)
+    # initial construction
+    S′ = beam_search_construction(g, γ, 
+                                 settings.initial_construction_settings.guidance_function; 
+                                 settings.initial_construction_settings.β,
+                                 settings.initial_construction_settings.expansion_limit)
+    k = length(S′)+1
+    freq = fill(0, nv(g))
+
+    while time() < settings.timelimit
+        S = construction_heuristic(g, k, freq; 
+                                   settings.construction_heuristic_settings.p,
+                                   settings.construction_heuristic_settings.α)
+        S = local_search_procedure(g, γ, freq)
+
+        if is_feasible_MQC(g, S, γ)
+            S = extend_solution(g, S, γ)
+            S′ = S
+            k = length(S′)+1
+            freq = fill(0, nv(g))
+        end
+    end
+    return S′
+end
+
+# TODO: Extend to bfs variant
+function extend_solution(g::SimpleGraph, S::Vector{Int}, γ::Real)::Vector{Int}
+    S = copy(S)
+    V_S = Set(setdiff(vertices(g), S))
+    d_S = calculate_d_S(g, S)
+    num_edges = calculate_num_edges(g, S)
+    k = length(S)
+
+    while true
+        min_edges_needed = ceil(Int, γ * k * (k+1) / 2)
+        for v in V_S
+            if num_edges + d_S[v] >= min_edges_needed
+                delete!(V_S, v)
+                push!(S, v)
+                num_edges = num_edges + d_S[v]
+                for u in neighbors(g, v)
+                    d_S[u] += 1
+                end
+                k += 1
+                break
+            end
+        end
+        break
+    end
+    return S
+end
+
+function local_search_procedure(g::SimpleGraph, γ::Real, freq::Vector{Int}, 
+                                short_term_memory::ShortTermMemory)::Vector{Int}
+    error("Not implemented")
+end
 
 
 function local_search_with_EX(g, γ; d=10, α=10, β=100)
@@ -69,6 +290,10 @@ function calculate_d_S(g::SimpleGraph, S::Vector{Int})
         end
     end
     return d_S
+end
+
+function is_feasible_MQC(g, S, γ)
+    return density(induced_subgraph(g, S)[1]) >= γ 
 end
 
 end
