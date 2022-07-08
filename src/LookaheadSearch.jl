@@ -10,7 +10,7 @@ export recursive_search, get_solution, beam_search
 """
     Node
 
-Node in the beam search tree. 
+Node in the beam search tree of look-ahead search
 
 - `obj_val`: Objective value of the solution that corresponds to this node.
 - `in`: Set of nodes that must be added to the original candidate solution to obtain the solution corresponding to this node
