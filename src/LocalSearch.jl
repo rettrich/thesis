@@ -39,7 +39,9 @@ struct LocalSearchSettings
     initial_construction_settings::BeamSearchConstructionSettings
     construction_heuristic_settings::ExplorationConstructionSettings
     timelimit::Int
-    short_term_memory::ShortTermMemory
+    max_iter::Int
+    next_improvement::Bool
+    stm::ShortTermMemory
 end
 
 """
@@ -64,16 +66,15 @@ reset!(stm::ShortTermMemory) =
     error("ShortTermMemory: Abstract reset! called")
 
 """
-    remove_blocked!(short_term_memory, vertex_list)
+    get_blocked!(short_term_memory, vertex_list)
 
-Removes all currently blocked vertices from `vertex_list`.
+Returns all currently blocked vertices as a vector.
 
 - `short_term_memory`: The short term memory data structure from which information 
     about blocked vertices is retrieved
-- `vertex_list`: An array of vertices in the graph that `short_term_memory` was initialized with
 
 """
-remove_blocked!(stm::ShortTermMemory, vertex_list::Vector{Int}) = 
+get_blocked(stm::ShortTermMemory) = 
     error("ShortTermMemory: Abstract remove_blocked! called")
 
 """
@@ -91,7 +92,7 @@ move!(stm::ShortTermMemory, u::Int, v::Int) =
 
 Keeps a tabu list of vertices that are blocked from being swapped. 
 
-- `n`: Size of the tabu list
+- `g`: Input graph
 - `block_length`: Each time a vertex is added to the `tabu_list`, it is blocked 
     for `block_length` iterations
 - `tabu_list`: `tabu_list[i]` corresponds to vertex `i`. Vertex `i` is blocked until iteration 
@@ -99,7 +100,7 @@ Keeps a tabu list of vertices that are blocked from being swapped.
 . `iteration`: Iteration counter, is increased each time `move!` is called on a `TabuList` instance
 """
 mutable struct TabuList <: ShortTermMemory 
-    n::Int
+    g::SimpleGraph
     block_length::Int
     tabu_list::Vector{Int}
     iteration::Int
@@ -114,8 +115,8 @@ function reset!(stm::TabuList)
     stm.iteration = 0
 end
 
-function remove_blocked!(stm::TabuList, vertex_list::Vector{Int})
-    filter!(v -> stm.tabu_list[v] <= stm.iteration , vertex_list)
+function get_blocked(stm::TabuList)
+    filter(v -> stm.tabu_list[v] > stm.iteration , vertices(stm.g))
 end
 
 function move!(stm::TabuList, u::Int, v::Int)
@@ -157,8 +158,8 @@ function reset!(stm::ConfigurationChecking)
     stm.conf_change = fill(1, n)
 end
 
-function remove_blocked!(stm::ConfigurationChecking, vertex_list::Vector{Int})
-    filter!(v -> stm.conf_change[v] >= stm.threshold[v], vertex_list)
+function get_blocked(stm::ConfigurationChecking)
+    filter(v -> stm.conf_change[v] < stm.threshold[v], vertices(stm.g))
 end
 
 function move!(stm::ConfigurationChecking, u::Int, v::Int)
@@ -187,7 +188,7 @@ function run(settings::LocalSearchSettings, g::SimpleGraph, γ::Real)
         S = construction_heuristic(g, k, freq; 
                                    settings.construction_heuristic_settings.p,
                                    settings.construction_heuristic_settings.α)
-        S = local_search_procedure(g, γ, freq)
+        S = local_search_procedure(g, S, γ, freq, settings.stm)
 
         if is_feasible_MQC(g, S, γ)
             S = extend_solution(g, S, γ)
@@ -226,9 +227,106 @@ function extend_solution(g::SimpleGraph, S::Vector{Int}, γ::Real)::Vector{Int}
     return S
 end
 
-function local_search_procedure(g::SimpleGraph, γ::Real, freq::Vector{Int}, 
-                                short_term_memory::ShortTermMemory)::Vector{Int}
-    error("Not implemented")
+function local_search_procedure(g::SimpleGraph, S::Vector{Int}, γ::Real, freq::Vector{Int}, 
+                                short_term_memory::ShortTermMemory; timelimit::Int, max_iter::Int, first_improvement::Bool)::Vector{Int}
+    k = length(S)
+    best_obj = calculate_num_edges(g, S)
+    d_S = calculate_d_S(g, S)
+    S = Set(S)
+    S′ = copy(S)
+    V_S = Set(filter(v -> v ∉ S, vertices(g)))
+    current_obj = best_obj
+    min_edges_needed = γ * k * (k-1) / 2
+
+    iter_since_last_improvement = 0
+    timelimit = time() + timelimit
+    
+    reset!(short_term_memory)
+
+    while time() < timelimit && iter_since_last_improvement < max_iter
+        blocked = get_blocked(short_term_memory)
+        X_unblocked = filter(u -> u ∉ blocked, S)
+        Y_unblocked = filter(v -> v ∉ blocked, V_S)
+        d_min = minimum([d_S[i] for i in X_unblocked])
+        d_max = maximum([d_S[i] for i in Y_unblocked])
+        X_restricted = filter(u -> (d_S[u] <= d_min+1), X_unblocked)
+        Y_restricted = filter(v -> (d_S[v] >= d_max-1), Y_unblocked)
+
+        if !isempty(X_restricted) && !isempty(Y_restricted)
+            u, v, Δuv = search_neighborhood(g, d_S, X_restricted, Y_restricted; first_improvement)
+            # if move is not improving, maybe use arbitrary move
+        else 
+            u = sample(first_non_empty(X_restricted, X_unblocked, S))
+            v = sample(first_non_empty(Y_restricted, Y_unblocked, V_S))
+            Δuv = gain(g, d_S, u, v)
+        end
+
+        # update S, V∖S
+        push!(S, v)
+        delete!(S, u)
+        push!(V_S, u)
+        delete!(V_S, v)
+
+        # update short term memory
+        move!(short_term_memory, u, v)
+        
+        # update long term memory
+        freq[u] += 1
+        freq[v] += 1
+        
+        # update current candidate solution and corresponding data
+        current_obj += Δuv
+        update_d_S!(g, d_S, u, v)
+        
+        if current_obj > best_obj
+            S′ = S
+            best_obj = current_obj
+            iter_since_last_improvement = 0
+        else
+            iter_since_last_improvement += 1
+        end
+
+        if best_obj >= min_edges_needed
+            return collect(S′)
+        end 
+    end
+    return collect(S′)
+end
+
+function gain(g, d_S, u, v) 
+    return d_S[v] - d_S[u] - Int(has_edge(g, u ,v))
+end
+
+function update_d_S!(g, d_S, u, v)
+    for w in neighbors(g, u)
+        d_S[w] -= 1
+    end
+    for w in neighbors(g, v)
+        d_S[w] += 1
+    end
+end
+
+function search_neighborhood(g, d_S, X, Y; next_improvement=true)
+    best = 0, 0, -Inf
+    for u ∈ X, v ∈ Y
+        Δuv = gain(g, d_S, u, v)
+        if Δuv > best[3]
+            best = u, v, Δuv
+        end
+        if next_improvement && Δuv > 0
+            return best...
+        end
+    end
+    return best...
+end
+
+function first_non_empty(itrs...)
+    for i in itrs
+        if !isempty(i)
+            return i
+        end
+    end
+    error("all empty")
 end
 
 
