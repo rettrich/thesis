@@ -47,25 +47,25 @@ move!(stm::ShortTermMemory, u::Int, v::Int) =
 Keeps a tabu list of vertices that are blocked from being swapped. 
 
 - `g`: Input graph
-- `block_length`: Each time a vertex is added to the `tabu_list`, it is blocked 
-    for `block_length` iterations
+- `tabu_tenure`: Each time a vertex is added to the `tabu_list`, it is blocked 
+    for `tabu_tenure` iterations
 - `tabu_list`: `tabu_list[i]` corresponds to vertex `i`. Vertex `i` is blocked until iteration 
     `tabu_list[i]`
 . `iteration`: Iteration counter, is increased each time `move!` is called on a `TabuList` instance
 """
 mutable struct TabuList <: ShortTermMemory 
     g::SimpleGraph
-    block_length::Int
+    tabu_tenure::Int
     tabu_list::Vector{Int}
     iteration::Int
 
-    function TabuList(n::Int, block_length::Int)
-        new(n, block_length, fill(0, n), 0)
+    function TabuList(g::SimpleGraph; tabu_tenure::Int = 10)
+        new(g, tabu_tenure, fill(0, nv(g)), 0)
     end
 end
 
 function reset!(stm::TabuList)
-    stm.tabu_list = fill(0, stm.n)
+    stm.tabu_list = fill(0, nv(stm.g))
     stm.iteration = 0
 end
 
@@ -74,8 +74,8 @@ function get_blocked(stm::TabuList)::Vector{Int}
 end
 
 function move!(stm::TabuList, u::Int, v::Int)
-    stm.tabu_list[u] = stm.iteration + stm.block_length
-    stm.tabu_list[v] = stm.iteration + stm.block_length
+    stm.tabu_list[u] = stm.iteration + stm.tabu_tenure
+    stm.tabu_list[v] = stm.iteration + stm.tabu_tenure
     stm.iteration += 1
 end
 
@@ -102,14 +102,14 @@ mutable struct ConfigurationChecking <: ShortTermMemory
     threshold::Vector{Int}
     conf_change::Vector{Int}
 
-    function TabuList(g::SimpleGraph, ub_threshold::Int)
+    function ConfigurationChecking(g::SimpleGraph; ub_threshold::Int = 7)
         new(g, ub_threshold, fill(1, nv(g)), fill(1, nv(g)))
     end
 end
 
 function reset!(stm::ConfigurationChecking)
-    stm.threshold = fill(1, n)
-    stm.conf_change = fill(1, n)
+    stm.threshold = fill(1, nv(stm.g))
+    stm.conf_change = fill(1, nv(stm.g))
     nothing
 end
 
@@ -123,9 +123,9 @@ function move!(stm::ConfigurationChecking, u::Int, v::Int)
 
     # v is moved from V ∖ S into S
     for w in neighbors(stm.g, v)
-        conf_change[w] += 1
+        stm.conf_change[w] += 1
     end
     stm.threshold[v] += 1
-    stm.threshold[v] > stm.ub_threshold && (stm.threshold = 1)
+    stm.threshold[v] > stm.ub_threshold && (stm.threshold[v] = 1)
     nothing
 end
