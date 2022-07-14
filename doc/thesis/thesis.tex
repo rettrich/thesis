@@ -24,6 +24,11 @@
 \usepackage{hyperref}  % Enables cross linking in the electronic document version. This package has to be included second to last.
 \usepackage[acronym,toc]{glossaries} % Enables the generation of glossaries and lists fo acronyms. This package has to be included last.
 
+\usepackage[draft,nomargin,inline]{fixme}
+\fxsetface{inline}{\itshape}
+\fxsetface{env}{\itshape}
+\fxusetheme{color}
+
 % Define convenience functions to use the author name and the thesis title in the PDF document properties.
 \newcommand{\authorname}{Rupert Ettrich} % The author name without titles.
 \newcommand{\thesistitle}{Using Graph Neural Networks in Local Search for Relaxations of the Maximum Clique Problem} % The title of the thesis. The English version should be used, if it exists.
@@ -50,7 +55,7 @@
 
 % Set persons with 4 arguments:
 %  {title before name}{name}{title after name}{gender}
-%  where both titles are optional (i.e. can be given as empty brackets {}).
+%  where both titles are optional (i.e., can be given as empty brackets {}).
 \setauthor{}{\authorname}{BA BSc}{male}
 \setadvisor{Ao.Univ.Prof. Dipl.-Ing. Dr.techn.}{Günther Raidl}{}{male}
 
@@ -145,7 +150,7 @@ In recent years, GNNs have gained popularity in their application in the context
 The main motivation of this thesis is to further study the application of GNNs in the context of metaheuristics for COPs defined on graphs. We address the problems of current end-to-end approaches by using a GNN only as a component of a metaheuristic search procedure that should enhance the search for high quality solutions either by speeding up the search or by improving the quality of its final solutions. More specifically, we consider several relaxations of a COP defined on graphs, the Maximum Clique Problem (MCP), that seem to be well-suited for our purpose. 
 
 \section{Considered Problems}
-The MCP is the problem of finding a fully connected subgraph - a \textit{clique} - of maximum size in a given graph. It is a fundamental problem in computer science, as its decision variant is one of Karp's 21 NP-complete problems \cite{Karp1972}. The MCP has several practical applications, e.g. in bioinformatics \cite{Dognin2010} and social network analysis \cite{Pattillo_network_analysis_2013}. However, for some real-world applications that require identifying dense subgraphs, the MCP is too strict a model. This leads to the introduction of several clique relaxations such as - among others - the Maximum Quasi-Clique Problem (MQCP) (introduced in \cite{Abello2002}, Definition \ref{def:mqcp}), the Maximum $k$-defective Clique Problem (MDCP) (introduced in \cite{Yu2006}, Definition \ref{def:mdcp}), and the Maximum $k$-plex Problem (MPP) (introduced in \cite{Seidman1978}, Definition \ref{def:mpp}). 
+The MCP is the problem of finding a fully connected subgraph -- a \textit{clique} -- of maximum size in a given graph. It is a fundamental problem in computer science, as its decision variant is one of Karp's 21 NP-complete problems \cite{Karp1972}. The MCP has several practical applications, e.g.,  in bioinformatics \cite{Dognin2010} and social network analysis \cite{Pattillo_network_analysis_2013}. However, for some real-world applications that require identifying dense subgraphs, the MCP is too strict a model. This leads to the introduction of several clique relaxations such as -- among others -- the Maximum Quasi-Clique Problem (MQCP) (introduced in \cite{Abello2002}, Definition \ref{def:mqcp}), the Maximum $k$-defective Clique Problem (MDCP) (introduced in \cite{Yu2006}, Definition \ref{def:mdcp}), and the Maximum $k$-plex Problem (MPP) (introduced in \cite{Seidman1978}, Definition \ref{def:mpp}). 
 As all of these problems are NP-hard optimization problems, it is practically often infeasible to obtain exact solutions for large instances. However, many real-world applications often require solutions for large graphs. Therefore, efficient heuristic methods are needed that produce high quality solutions in an acceptable amount of time. While the MCP has been studied well over the last decades, heuristic methods for MQCP, MDCP, and MPP are less abundant. It is therefore another motivation of this thesis to enrich the arsenal of heuristic methods for these relaxations of the MCP. 
 
 \section{Outline of the Thesis}
@@ -156,15 +161,15 @@ As all of these problems are NP-hard optimization problems, it is practically of
 
 Throughout this thesis, we use standard graph theory notation. 
 We consider $G = (V, E)$ to be a graph with node or vertex set $V$ and edge set $E \subseteq \{\{u,v\} \mid u,v \in V\}$. We use the terms node, nodes and vertex, vertices interchangeably when denoting elements of $V$. 
-A graph $G$ is \emph{simple}, if it contains no self-loops (e.g. $\{v,v\} \in E$) or multiple edges between two vertices. In this thesis, we only consider unweighted, undirected, simple graphs, as all the considered problems are defined on such graphs. 
+A graph $G$ is \emph{simple}, if it contains no self-loops (e.g.,  $\{v,v\} \in E$) or multiple edges between two vertices. In this thesis, we only consider unweighted, undirected, simple graphs, as all the considered problems are defined on such graphs. 
 A graph $G' = (V', E')$ is a subgraph of $G = (V,E)$ iff $V' \subseteq V$, $E' \subseteq E$, and $\{u,v\} \in E' \colon u,v \in V'$. Let $S \subseteq V$ be a set of vertices in $G$. The subgraph induced by $S$ in $G$, denoted as $G[S]$, is a graph with vertex set $S$ and edge set $E(S) = \{ \{u,v\} \mid \{u,v\} \in E, u,v \in S \}$. 
-A \emph{clique} is a set of vertices $S \subseteq V$ such that $G[S]$ is fully connected, i.e. $|E(S)| = \frac{|S| \cdot (|S|-1)}{2}$. A fully connected graph on $n$ nodes is denoted as $K_n$.
+A \emph{clique} is a set of vertices $S \subseteq V$ such that $G[S]$ is fully connected, i.e., $|E(S)| = \frac{|S| \cdot (|S|-1)}{2}$. A fully connected graph on $n$ nodes is denoted as $K_n$.
 The density $dens(G)$ of a graph $G = (V,E)$ is defined as the ratio of the number of edges $|E|$ to the number of edges in a fully-connected graph with $|V|$ nodes $\binom{|V|}{2}$. The density of a graph is therefore a rational number between zero and one. 
 
 
 \section{The Maximum Clique Problem}
 
-The Maximum Clique Problem (MCP, Definition \ref{def:mcp}) is a fundamental problem in graph theory and computer science. Its decision variant was one of first problems that were shown to be NP-Complete \cite{Karp1972}, from which NP-hardness can be derived for the maximization variant. The MCP is a well-studied problem and has many real-world applications, e.g. in social network analysis, bioinformatics, and telecommunication \todo{include citations}. 
+The Maximum Clique Problem (MCP, Definition \ref{def:mcp}) is a fundamental problem in graph theory and computer science. Its decision variant was one of first problems that were shown to be NP-Complete \cite{Karp1972}, from which NP-hardness can be derived for the maximization variant. The MCP is a well-studied problem and has many real-world applications, e.g.,  in social network analysis, bioinformatics, and telecommunication \todo{include citations}. 
 Figure \ref{fig:maxclique} depicts a maximum clique in a graph. 
 \begin{figure}
     \centering
@@ -195,7 +200,7 @@ For some real-world applications however, the MCP is too strict a model, as some
 
 \subsection{Preprocessing of MQCP Instances}
 
-In \cite{Abello2002}, the authors introduce the notion of $\gamma k$\emph{-peelable} vertices in the context of preprocessing. A vertex $v$ is $\gamma k$\emph{-peelable} if $v$ and all its neighbors have degree smaller than $\gamma k$. If a lower bound $k$ for the size of a maximum $\gamma$-quasi clique is known, the authors propose to remove all edges incident to $\gamma k$\emph{-peelable} vertices from $G$ in preprocessing. This preprocessing rule might be used to speed up the search process by sparsifying the graph, but we note that this preprocessing rule does not preserve the existence of optimal solutions. We prove this claim by giving a counterexample in Figure \ref{fig:preprocessing-mqcp-counterexample}, where the optimal solution cannot be obtained after applying said preprocessing rule. 
+In \cite{Abello2002}, the authors introduce the notion of $\gamma k$\emph{-peelable} vertices in the context of preprocessing. A vertex $v$ is $\gamma k$\emph{-peelable} if $v$ and all its neighbors have degree smaller than $\gamma k$. If a lower bound $k$ for the size of a maximum $\gamma$-quasi clique is known, the authors propose to remove all edges incident to $\gamma k$\emph{-peelable} vertices from $G$ in preprocessing. This preprocessing rule might be used to speed up the search process by sparsifying the graph, but we note that this preprocessing rule does not necessarily preserve the existence of optimal solutions. We prove this claim by giving a counterexample in Figure \ref{fig:preprocessing-mqcp-counterexample}, where the optimal solution cannot be obtained after applying said preprocessing rule. 
 
 
 \begin{figure}
@@ -212,7 +217,7 @@ In \cite{Abello2002}, the authors introduce the notion of $\gamma k$\emph{-peela
       \caption{The graph instance after preprocessing.}
       \label{fig:preprocessing-mqcp-sub2}
     \end{subfigure}
-    \caption{Consider the given graph $G$ given in Subfigure \ref{fig:preprocessing-mqcp-sub1}. The considered MQCP instance is defined by $G$ and $\gamma=0.5$ consisting of a $K_3$ and a $K_7$ connected by an edge. Since $G$ has a density $dens(G) = \frac{25}{45} \approx 0.56$, the maximum $0.5$-quasi clique in $G$ is $V$. Assume a lower bound of $k=6$ is known, therefore the two nodes on the left are $k\gamma$\emph{-peelable} and preprocessing would remove all edges incident to these vertices, as can be seen in Subfigure \ref{fig:preprocessing-mqcp-sub2}. Therefore, the density of this preprocessed graph would be reduced to $\frac{22}{45} \approx 0.49$ and the optimal solution $V$ would not be preserved.}
+    \caption{Consider the graph $G$ given in Subfigure \ref{fig:preprocessing-mqcp-sub1}. The considered MQCP instance is defined by $G$ consisting of a $K_3$ and a $K_7$ connected by an edge and $\gamma=0.5$. Since $G$ has a density $dens(G) = \frac{25}{45} \approx 0.56$, the maximum $0.5$-quasi clique in $G$ is $V$. Assume a lower bound of $k=6$ is known, therefore the two nodes on the left are $k\gamma$\emph{-peelable} and preprocessing would remove all edges incident to these vertices, as can be seen in Subfigure \ref{fig:preprocessing-mqcp-sub2}. Therefore, the density of this preprocessed graph would be reduced to $\frac{22}{45} \approx 0.49$ and the optimal solution $V$ would not be preserved.}
     \label{fig:preprocessing-mqcp-counterexample}
 \end{figure}
 
@@ -242,8 +247,10 @@ In \cite{Abello2002}, the authors introduce the notion of $\gamma k$\emph{-peela
 
 \section{Solution Approaches for the MQCP}
 \subsection{Exact Approaches}\label{milp-mqcp}
-Pattillo et al. \cite{pattillo_maximum_2013} propose a Mixed Integer Linear Programming formulation with a number of variables quadratic in the size of the vertex set $V$. 
+Pattillo et al. \cite{pattillo_maximum_2013} propose a Mixed Integer Linear Programming formulation with a number of variables that is quadratic in the size of the vertex set $V$. 
 It is derived from the following quadratic formulation, where $x_i \in \{0,1\}$ are binary decision variables representing the solution set $S \subseteq V$, and $a_{ij}$ represent elements of the adjacency matrix with $a_{ij}$ equal to one if $\{i,j\} \in E$ and zero otherwise: 
+
+\fxnote{GR: MILPs schreibt man normalerweise so auf, dass die Zielfunktion und alle Funktionen linksbündig stehen, alle Quantoren rechtsbündig. Inequalities nicht in eine Zeile zusammenfassen (außer Domainangaben wie 0 <= x <= 10.)}
 \begin{align}
     \max \sum_{i=1}^{n} x_i & \\
     \text{s.t. } \sum_{i=1}^n \sum_{j=i+1}^n a_{ij} x_i x_j & \geq \gamma \sum_{i=1}^n \sum_{j=i+1}^n x_i x_j
@@ -286,15 +293,18 @@ The authors linearize the above quadratic formulation by introducing variables $
 
 \chapter{Local Search with Graph Neural Networks}
 
+\fxnote{GR: Wie glaube ich schon kurz besprochen würde ich das ganze Verfahren nicht als Local Search bezeichnen, mit den ganzen enthaltenen Techniken ist es schon ``mehr'', d.h. eine Metaheuristik, evtl. eine Tabusuche etc.? Jedenfalls sollte man sich aber auch möglichst an die Literatur in den Bezeichnungen anlehnen. Das gilt dann auch für den Gesamttitel der Arbeit. }
 In this chapter we present the main contribution of this thesis in detail: a local search algorithm using Graph Neural Networks. 
-At first, we introduce the general structure of the algorithm without using GNNs in Section \ref{sec:algorithm-structure}. Section presents two types of construction heuristics we use in our algorithm. The first one is used to efficiently obtain a feasible initial solution of high quality that can be used as a lower bound, whereas the second one does not necessarily yield feasible solutions, but is used to explore new regions of the search space not yet visited. In Section \ref{sec:neighborhood-structure} we define the main move operator used in the local search procedure and define the corresponding neighborhood structures. Furthermore, we show in detail the local search procedure of our algorithm that utilizes said neighborhood structures. Section \ref{sec:gnn-local-search} presents our idea of utilizing a GNN to the previously described local search algorithm. In Section \ref{sec:gnn-training} we show how training data is generated and how target values are obtained. Finally, our proposed GNN architecture is presented in \ref{sec:gnn-architecture}.
+At first, we introduce the general structure of the algorithm without using GNNs in Section \ref{sec:algorithm-structure}. We present two types of construction heuristics that we use in our algorithm. The first one is used to efficiently obtain a feasible initial solution of high quality that can be used as a lower bound, whereas the second one does not necessarily yield a feasible solution, but is used to explore new regions of the search space not yet visited. In Section \ref{sec:neighborhood-structure} we define the main move operator used in the local search procedure and define the corresponding neighborhood structures. Furthermore, we show in detail the local search procedure of our algorithm that utilizes said neighborhood structures. Section \ref{sec:gnn-local-search} presents our idea of utilizing a GNN to the previously described local search algorithm. In Section \ref{sec:gnn-training} we show how training data is generated and how target values are obtained. Finally, our proposed GNN architecture is presented in \ref{sec:gnn-architecture}.
 
 \section{Algorithm Structure} \label{sec:algorithm-structure}
 
+\fxnote{GR: Referenzen, auf welche Arbeit(en) der Algorithmus aufbaut!}
 The pseudocode of the general structure of the local search algorithm is shown in Algorithm \ref{alg:structure}.
-$InitialSolution$ constructs a feasible initial solution. Its main purpose is to obtain a high quality lower bound to obtain a good starting value for $k$. The procedure is described in detail in Section \ref{sec:construction-heuristics}. In line \ref{alg:structure-freq} a long-term memory $Freq$ is initialized, where $Freq[i]$ stores how many times each node is operated on for $i=1,\dots,n$. This memory is kept when the loop in line \ref{alg:structure-while-start}-\ref{alg:structure-while-end} is repeated, but no feasible solution could be found. In $ConstructionHeuristic$, $Freq$ is used to produce a candidate solution that favors nodes that have not been considered yet. This way, new regions of the search space are explored. The candidate solution obtained in line \ref{alg:structure-construction} is then improved by the local search procedure, which is described in detail in Section \ref{sec:neighborhood-structure} along with the definition of neighborhood structures. If the resulting solution $S$ is feasible, a simple search is performed in $Extend$ to check if the solution can be extended to a feasible solution of greater size as shown in Algorithm \ref{alg:extend}.
+$InitialSolution$ constructs a feasible initial solution. Its main purpose is to obtain a high quality lower bound to obtain a good starting value for $k$. The procedure is described in detail in Section \ref{sec:construction-heuristics}.
+\fxnote{GR: $Freq$ ist generll als $\mathit{Freq}$ zu schreiben, gilt auch für ConstructionHeuristic, Extended etc.} In line \ref{alg:structure-freq} a long-term memory $Freq$ is initialized, where $Freq[i]$ stores how many times each node is operated on for $i=1,\dots,n$. This memory is kept when the loop in lines \ref{alg:structure-while-start}--\ref{alg:structure-while-end} is repeated, but no feasible solution could be found. In $ConstructionHeuristic$, $Freq$ is used to produce a candidate solution that favors nodes that have not been considered yet. This way, new regions of the search space are explored. The candidate solution obtained in line \ref{alg:structure-construction} is then improved by the local search procedure, which is described in detail in Section \ref{sec:neighborhood-structure} along with the definition of the neighborhood structures. If the resulting solution $S$ is feasible, a simple search is performed in $Extend$ to check if the solution can be extended to a feasible solution of greater size as shown in Algorithm \ref{alg:extend}.
 Furthermore, $k$ is increased, $Freq$ is reset, and the best-so-far found solution $S^*$ is updated. 
-If the solution obtained by the local search procedure is not feasible, the while-loop is repeated until the stop criterion is met, e.g. the time limit is reached. 
+If the solution obtained by the local search procedure is not feasible, the while-loop is repeated until the stopping criterion is met, e.g.,  the time limit is reached. 
 
 \begin{algorithm}
     \DontPrintSemicolon
@@ -340,14 +350,21 @@ If the solution obtained by the local search procedure is not feasible, the whil
 
 \section{Construction Heuristics}\label{sec:construction-heuristics}
 
-We propose two different construction heuristics. The first one is based on Beam Search and returns a feasible solution that can be used as a lower bound for the size of a maximum $\gamma$-quasi clique in the input graph. The pseudocode is shown in Algorithm \ref{alg:initial-construction}. We use a simple data structure for nodes of the beam search tree with fields $node.S$ containing a feasible $\gamma$-quasi clique that this node corresponds to, and $node.g$, which is the value of the node according to the used guidance function. The root node of the beam search tree is defined by an empty candidate set. The main loop in line \ref{alg:exploration-construction-while-start}-\ref{alg:exploration-construction-while-end} expands all nodes in the current beam into all feasible successor nodes. Since a node represents a feasible $\gamma$-quasi clique, successor nodes are generated by checking for all $u \in V \setminus node.S$ whether $node.S \cup \{u\}$ is still a feasible $\gamma$-quasi clique. These successor nodes are then added to a list $children$. All nodes in $children$ are evaluated by a guidance function $g$, and the $\beta$ nodes with highest $g$-values form a new beam while the remaining nodes are discarded. Since all the solutions corresponding to nodes on a level of the search tree have the same cardinality, a random node is selected to update the best-so-far solution $S^*$ on each level. Finally, the maximum cardinality solution is returned. 
+\fxnote{GR: Ein Beam Search ist keine Konstruktionsheuristik! Bitte diese Begriffe wirklich trennen.}
 
-We propose to different guidance functions for this beam search construction heuristic: 
+\fxnote{GR: Auch hier sollten ggfs.\ aus der Literatur übernommene Ideen/Konzepte mit entsprechenden Referenzen belegt werden.}
+We propose two different construction heuristics. The first one is based on Beam Search and returns a feasible solution that can be used as a lower bound for the size of a maximum $\gamma$-quasi clique in the input graph. The pseudocode is shown in Algorithm~\ref{alg:initial-construction}. We use a simple data structure for nodes of the beam search tree with fields $node.S$ containing a feasible $\gamma$-quasi clique that this node represents, and $node.g$, which is the value of the node according to the used guidance function. The root node of the beam search tree is defined by an empty candidate set and $node.g=0$. The main loop in line \ref{alg:exploration-construction-while-start}-\ref{alg:exploration-construction-while-end} expands all nodes in the current beam into all feasible successor nodes. Since a node represents a feasible $\gamma$-quasi clique, successor nodes are generated by checking for all $u \in V \setminus node.S$ whether $node.S \cup \{u\}$ is still a feasible $\gamma$-quasi clique. These successor nodes are then added to a list $children$. All nodes in $children$ are evaluated by a guidance function $g$, and the $\beta$ nodes with highest $g$-values form a new beam while the remaining nodes are discarded. 
+\fxnote{GR: Die Guidance Function entspricht ja nicht dem $g$-Wert der Knoten, daher sollte diese anders benannt werden. Üblich ist $f(u)=g(u)+h(u)$, wo $g(u)=node.g$ der Value von $u$ ist und $h(u)$ der value-to-go, d.h., i.A. ein geschätzter Wert um wieviel der aktuelle Wert im besten Fall noch gesteigert werden kann.}
+Since all the solutions corresponding to nodes on a level of the search tree have the same cardinality, a random node is selected to possibly update the best-so-far solution $S^*$ on each level.
+Finally, the maximum cardinality solution is returned. 
+
+We propose two different guidance functions for this beam search construction heuristic: 
 \begin{itemize}
     \item The first one returns the solution size that is obtained by a simple greedy construction: Given a node with candidate set $S$, greedily add the node $v = \arg \max_{u \in V \setminus S} d_S(u)$ if $S \cup \{v\}$ is still a feasible $\gamma$-quasi clique, where $d_S(u) = |\{v \mid v \in S, \{u,v\} \in E \}|$. Ties are broken randomly. The size of the solution obtained this way is then the return value of the guidance function. This guidance function has a time complexity of $O(kn)$ per iteration, where $k$ is the solution size obtained by the greedy construction and $n$ is the number of nodes in $G$. 
-    \item The second guidance function evaluates a node with candidate set $S$ by calculating the sum of the $d$ nodes in $V \setminus S$ with the highest values for $d_S(u)$. This guidance function is designed to be more efficient than the previous one. 
+    \item The second guidance function evaluates a node with candidate set $S$ by calculating the sum of the $d$ nodes in $V \setminus S$ with the highest values for $d_S(u)$. \fxnote{GR: Was ist $d$ und $d_S$? Hier gibt es auch einen Nameclash.} This guidance function is designed to be more time-efficient than the previous one. 
 \end{itemize}
 
+\fxnote{GR: Came up to here!!!}
 
 \begin{algorithm}
     \DontPrintSemicolon
@@ -411,7 +428,7 @@ The neighborhood of a candidate solution $S$ is defined by a move operator that 
 
 The quality of a candidate solution is dependent of the considered problem. For the MQCP and the MDCP a candidate solution $S$ is of higher quality than a neighboring solution $S^\prime$ if $G[S]$ contains more edges than $G[S']$. Thus, we define the objective function $f \colon 2^V \rightarrow \mathbb{N}$ for the local search for MQCP and MDCP as the function that maps a subset of vertices $S \subseteq V$ to the number of edges in the induced subgraph $G[S]$. Therefore, $S$ is better than $S^\prime$ if and only if $f(S) > f(S^\prime)$. 
 
-Similar algorithms that use local search in order to improve a candidate solution (e.g. \cite{chen_nuqclq_2021}, \cite{djeddi_extension_2019}, \cite{zhou_opposition-based_2020}) only search the neighborhood $\Omega_1$ for improving solutions. As the size of this neighborhood is already quadratic in $|V|$, the authors of the mentioned algorithms restrict the neighborhood to promising moves. A scoring function is used to find promising nodes in $V \setminus S$ and in $S$ that can be used for swaps. This scoring function is in most cases defined as $d_S(u) = |\{v \mid v \in S, \{u,v\} \in E \}|$. This way, the increase (or decrease) in the objective function by swapping a node $u \in S$ with a node $v \in V \setminus S$ can simply be calculated by $\Delta_{uv} = d_S(v) - d_S(u) - e_{uv}$, where $e_{uv} = 1$ if $\{u,v\} \in E$ and $e_{uv} = 0$ otherwise. 
+Similar algorithms that use local search in order to improve a candidate solution (e.g.,  \cite{chen_nuqclq_2021}, \cite{djeddi_extension_2019}, \cite{zhou_opposition-based_2020}) only search the neighborhood $\Omega_1$ for improving solutions. As the size of this neighborhood is already quadratic in $|V|$, the authors of the mentioned algorithms restrict the neighborhood to promising moves. A scoring function is used to find promising nodes in $V \setminus S$ and in $S$ that can be used for swaps. This scoring function is in most cases defined as $d_S(u) = |\{v \mid v \in S, \{u,v\} \in E \}|$. This way, the increase (or decrease) in the objective function by swapping a node $u \in S$ with a node $v \in V \setminus S$ can simply be calculated by $\Delta_{uv} = d_S(v) - d_S(u) - e_{uv}$, where $e_{uv} = 1$ if $\{u,v\} \in E$ and $e_{uv} = 0$ otherwise. 
 The scoring function $d_S$ is thus used to restrict the neighborhood $\Omega_1$. 
 Let $d_{\min} = \min_{u \in S} d_S(u)$ and $d_{\max} = \max_{v \in V \setminus S} d_S(v)$. Furthermore, let $X = \{ u \mid u \in S, d_S(u) \leq d_{\min} + 1 \}$ and $Y = \{ v \mid v \in V \setminus S, d_S(v) \geq d_{\max} - 1 \}$. The neighborhood $\Omega_1$ of a candidate solution $S$ is then restricted to only those neighboring solutions that can be obtained by swapping a node $u \in X$ with a node $v \in Y$, as all node swaps that maximize $\Delta_{uv}$ are contained in this restricted neighborhood. 
 
