@@ -9,6 +9,7 @@ export local_search_with_EX, construction_heuristic, beam_search_construction,
     calculate_d_S, calculate_num_edges, run
 
 include("ConstructionHeuristics.jl")
+include("ShortTermMemory.jl")
 
 """
     BeamSearchConstructionSettings
@@ -45,137 +46,12 @@ struct LocalSearchSettings
 end
 
 """
-    ShortTermMemory
+    run_MQCP(settings, g, γ)
 
-A short term memory mechanism (e.g. tabu list) to prevent cycling through the 
-same solutions during a local search procedure. 
-Each implementation has to implement the methods reset!, remove_blocked!, move!
-
+Runs the local search algorithm for the MQCP for the instance defined by graph `g` and target 
+density `γ` with settings defined in `settings` 
 """
-abstract type ShortTermMemory end
-
-"""
-    reset!(short_term_memory)
-
-Resets the short term memory. Memory about blocked vertices is reset
-
-- `short_term_memory`: Short term memory to be reset
-
-"""
-reset!(stm::ShortTermMemory) = 
-    error("ShortTermMemory: Abstract reset! called")
-
-"""
-    get_blocked!(short_term_memory, vertex_list)
-
-Returns all currently blocked vertices as a vector.
-
-- `short_term_memory`: The short term memory data structure from which information 
-    about blocked vertices is retrieved
-
-"""
-get_blocked(stm::ShortTermMemory) = 
-    error("ShortTermMemory: Abstract remove_blocked! called")
-
-"""
-    move!(short_term_memory, u, v)
-
-This method should be called when a vertex `u` ∈ S is swapped with a vertex `v` ∈ V ∖ S. 
-The `short_term_memory` then stores information about this swap and blocks 
-vertices `u` or `v` according to the concrete implementation. 
-"""
-move!(stm::ShortTermMemory, u::Int, v::Int) = 
-    error("ShortTermMemory: Abstract move! called")
-
-"""
-    TabuList
-
-Keeps a tabu list of vertices that are blocked from being swapped. 
-
-- `g`: Input graph
-- `block_length`: Each time a vertex is added to the `tabu_list`, it is blocked 
-    for `block_length` iterations
-- `tabu_list`: `tabu_list[i]` corresponds to vertex `i`. Vertex `i` is blocked until iteration 
-    `tabu_list[i]`
-. `iteration`: Iteration counter, is increased each time `move!` is called on a `TabuList` instance
-"""
-mutable struct TabuList <: ShortTermMemory 
-    g::SimpleGraph
-    block_length::Int
-    tabu_list::Vector{Int}
-    iteration::Int
-
-    function TabuList(n::Int, block_length::Int)
-        new(n, block_length, fill(0, n), 0)
-    end
-end
-
-function reset!(stm::TabuList)
-    stm.tabu_list = fill(0, stm.n)
-    stm.iteration = 0
-end
-
-function get_blocked(stm::TabuList)
-    filter(v -> stm.tabu_list[v] > stm.iteration , vertices(stm.g))
-end
-
-function move!(stm::TabuList, u::Int, v::Int)
-    stm.tabu_list[u] = stm.iteration + stm.block_length
-    stm.tabu_list[v] = stm.iteration + stm.block_length
-    stm.iteration += 1
-end
-
-"""
-    ConfigurationChecking
-
-ConfigurationChecking according to BoundedCC as described in Chen et al. 2021, 
-NuQClq: An Effective Local Search Algorithm for Maximum Quasi-Clique Problem. 
-Initially, each for each vertex v set `conf_change[v]` and `threshold[v]` to 1. 
-Each time a vertex v is added to the solution, increase `conf_change[u]` by 1 for all neighbors of v, 
-and increase `threshold[v]` by 1. If `threshold[v]` > `ub_threshold`, then `threshold[v]` is reset to 1.
-Each time a vertex v is moved outside of the solution, `conf_change[v]` is reset to 0. 
-A vertex v is blocked if `conf_change[v]` < `threshold[v]`. 
-
-- `g`: Input graph
-- `ub_threshold`: Upper bound for threshold. When `threshold[v]` > `ub_threshold`, set `threshold[1]` to 1. 
-- `threshold`: Contains threshold values for all vertices in `g`. 
-- `conf_change`: Contains current configuration for all vertices in `g`.
-
-"""
-mutable struct ConfigurationChecking <: ShortTermMemory 
-    g::SimpleGraph
-    ub_threshold::Int
-    threshold::Vector{Int}
-    conf_change::Vector{Int}
-
-    function TabuList(g::SimpleGraph, ub_threshold::Int)
-        new(g, ub_threshold, fill(1, nv(g)), fill(1, nv(g)))
-    end
-end
-
-function reset!(stm::ConfigurationChecking)
-    stm.threshold = fill(1, n)
-    stm.conf_change = fill(1, n)
-end
-
-function get_blocked(stm::ConfigurationChecking)
-    filter(v -> stm.conf_change[v] < stm.threshold[v], vertices(stm.g))
-end
-
-function move!(stm::ConfigurationChecking, u::Int, v::Int)
-    # u is moved from S outside of solution
-    stm.conf_change[u] = 0
-
-    # v is moved from V ∖ S into S
-    for w in neighbors(stm.g, v)
-        conf_change[w] += 1
-    end
-    stm.threshold[v] += 1
-    stm.threshold[v] > stm.ub_threshold && (stm.threshold = 1)
-end
-
-
-function run(settings::LocalSearchSettings, g::SimpleGraph, γ::Real)
+function run_MQCP(g::SimpleGraph, γ::Real; settings::LocalSearchSettings)
     # initial construction
     S′ = beam_search_construction(g, γ, 
                                  settings.initial_construction_settings.guidance_function; 
@@ -188,7 +64,8 @@ function run(settings::LocalSearchSettings, g::SimpleGraph, γ::Real)
         S = construction_heuristic(g, k, freq; 
                                    settings.construction_heuristic_settings.p,
                                    settings.construction_heuristic_settings.α)
-        S = local_search_procedure(g, S, γ, freq, settings.stm)
+        S, freq = local_search_procedure(g, S, γ, freq, settings.stm;
+                                   settings.timelimit, settings.max_iter, settings.first_improvement)
 
         if is_feasible_MQC(g, S, γ)
             S = extend_solution(g, S, γ)
@@ -200,7 +77,18 @@ function run(settings::LocalSearchSettings, g::SimpleGraph, γ::Real)
     return S′
 end
 
-# TODO: Extend to bfs variant
+# TODO: Extend to bfs variant?
+"""
+    extend_solution(g, S, γ)
+
+Greedily extends solution `S` by adding the vertex outside `S` with maximum number of neighbors in `S` 
+if this produces a valid γ-quasi clique. 
+
+- `g`: Input graph
+- `S`: Feasible γ-quasi clique to extend
+- `γ`: Target density
+
+"""
 function extend_solution(g::SimpleGraph, S::Vector{Int}, γ::Real)::Vector{Int}
     S = copy(S)
     V_S = Set(setdiff(vertices(g), S))
@@ -227,8 +115,28 @@ function extend_solution(g::SimpleGraph, S::Vector{Int}, γ::Real)::Vector{Int}
     return S
 end
 
+"""
+    local_search_procedure(g, S, γ, freq, short_term_memory; timelimit, max_iter, first_improvement)
+
+Local search procedure for MQCP. Corresponds to Algorithm 5.5 in thesis. 
+Returns the best found solution and the updated frequency list that tracks how many times each vertex was moved. 
+
+- `g`: Input graph
+- `S`: Candidate solution
+- `γ`: Target density
+- `freq`: Frequency list, keeps track of how many times each vertex is moved
+- `short_term_memory`: Short term memory mechanism that blocks vertices from being moved in and out 
+    of the solution too often for a short time. 
+- `timelimit`: Cutoff time for search
+- `max_iter`: Stop search after `max_iter` iterations of no improvement
+- `first_improvement`: Strategy used for searching the neighborhood: If `first_improvement` is `true`, then 
+        the first improving neighboring solution will be selected, otherwise the neighborhood is always searched to 
+        completion and best improvement is used. 
+
+"""
 function local_search_procedure(g::SimpleGraph, S::Vector{Int}, γ::Real, freq::Vector{Int}, 
-                                short_term_memory::ShortTermMemory; timelimit::Int, max_iter::Int, first_improvement::Bool)::Vector{Int}
+                                short_term_memory::ShortTermMemory; 
+                                timelimit::Int, max_iter::Int, first_improvement::Bool)::Tuple{Vector{Int}, Vector{Int}}
     k = length(S)
     best_obj = calculate_num_edges(g, S)
     d_S = calculate_d_S(g, S)
@@ -254,7 +162,7 @@ function local_search_procedure(g::SimpleGraph, S::Vector{Int}, γ::Real, freq::
 
         if !isempty(X_restricted) && !isempty(Y_restricted)
             u, v, Δuv = search_neighborhood(g, d_S, X_restricted, Y_restricted; first_improvement)
-            # if move is not improving, maybe use arbitrary move
+            # TODO: if move is not improving, maybe use arbitrary move?
         else 
             u = sample(first_non_empty(X_restricted, X_unblocked, S))
             v = sample(first_non_empty(Y_restricted, Y_unblocked, V_S))
@@ -290,14 +198,14 @@ function local_search_procedure(g::SimpleGraph, S::Vector{Int}, γ::Real, freq::
             return collect(S′)
         end 
     end
-    return collect(S′)
+    return collect(S′), freq
 end
 
-function gain(g, d_S, u, v) 
+function gain(g::SimpleGraph, d_S::Vector{Int}, u::Int, v::Int) 
     return d_S[v] - d_S[u] - Int(has_edge(g, u ,v))
 end
 
-function update_d_S!(g, d_S, u, v)
+function update_d_S!(g::SimpleGraph, d_S::Vector{Int}, u::Int, v::Int)
     for w in neighbors(g, u)
         d_S[w] -= 1
     end
@@ -314,12 +222,18 @@ function search_neighborhood(g, d_S, X, Y; next_improvement=true)
             best = u, v, Δuv
         end
         if next_improvement && Δuv > 0
-            return best...
+            return best
         end
     end
-    return best...
+    return best
 end
 
+"""
+    first_non_empty(itrs...)
+
+Returns first non-empty iterator in `itrs` or an error, if all are empty. 
+
+"""
 function first_non_empty(itrs...)
     for i in itrs
         if !isempty(i)
