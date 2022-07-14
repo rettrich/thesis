@@ -46,11 +46,11 @@ function parse_commandline()
             help = "Search is restarted after max_iter iterations without finding an improving solution"
             arg_type = Int
             default = 5000
-        "next_improvement"
+        "--next_improvement"
             help = "If true: Search neighborhoods with next improvement strategy, otherwise use best improvement"
             arg_type = Bool
             default = true
-        "debug"
+        "--debug"
             help = "Enables debug output"
             arg_type = Bool
             default = false
