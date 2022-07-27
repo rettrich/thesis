@@ -155,21 +155,33 @@ As all of these problems are NP-hard optimization problems, it is practically of
 
 \section{Outline of the Thesis}
 
-\chapter{Relaxations of the Maximum Clique Problem}
+\chapter{Considered Problems and Definitions}
 
-\section{Notation}
+In this chapter we want to provide all necessary definitions and notations used throughout this thesis. Section \ref{sec:notation} lists commonly used graph theoretic notations and definitions. Sections \ref{sec:mcp} -- \ref{sec:mpp} show definitions for the problems considered in this thesis, starting with the Maximum Clique Problem, from which all considered problems are derived. Additionally, we list notable properties of the considered problems that are relevant for developing well-performing algorithms for these problems. 
+
+\section{Notation}\label{sec:notation}
 
 Throughout this thesis, we use standard graph theory notation. 
-We consider $G = (V, E)$ to be a graph with node or vertex set $V$ and edge set $E \subseteq \{\{u,v\} \mid u,v \in V\}$. We use the terms node, nodes and vertex, vertices interchangeably when denoting elements of $V$. 
+We consider $G = (V, E)$ to be a graph with node or vertex set $V$ and edge set $E \subseteq \{\{u,v\} \mid u,v \in V\}$. We use the terms node, nodes and vertex, vertices interchangeably when denoting elements of $V$. If not stated otherwise, $n = |V|$ denotes the number of vertices in $G$, whereas $m = |E|$ denotes the number of edges. 
 A graph $G$ is \emph{simple}, if it contains no self-loops (e.g.,  $\{v,v\} \in E$) or multiple edges between two vertices. In this thesis, we only consider unweighted, undirected, simple graphs, as all the considered problems are defined on such graphs. 
 A graph $G' = (V', E')$ is a subgraph of $G = (V,E)$ iff $V' \subseteq V$, $E' \subseteq E$, and $\{u,v\} \in E' \colon u,v \in V'$. Let $S \subseteq V$ be a set of vertices in $G$. The subgraph induced by $S$ in $G$, denoted as $G[S]$, is a graph with vertex set $S$ and edge set $E(S) = \{ \{u,v\} \mid \{u,v\} \in E, u,v \in S \}$. 
-A \emph{clique} is a set of vertices $S \subseteq V$ such that $G[S]$ is fully connected, i.e., $|E(S)| = \frac{|S| \cdot (|S|-1)}{2}$. A fully connected graph on $n$ nodes is denoted as $K_n$.
-The density $dens(G)$ of a graph $G = (V,E)$ is defined as the ratio of the number of edges $|E|$ to the number of edges in a fully-connected graph with $|V|$ nodes $\binom{|V|}{2}$. The density of a graph is therefore a rational number between zero and one. 
+The \emph{diameter} of a graph $G$ is the length of the longest shortest path between any two vertices in $G$. 
+
+A \emph{clique} is a set of vertices $S \subseteq V$ such that $G[S]$ is fully connected, i.e., $|E(S)| = \frac{|S| \cdot (|S|-1)}{2}$. A fully connected graph on $n$ nodes is denoted as $K_n$. A clique of size $k$ is denoted as a $k$-clique, and this convention is also applied to clique relaxation models: A $\gamma$-quasi clique of size $k$ is denoted as a $k$-$\gamma$-quasi clique, an $s$-defective clique of size $k$ is denoted as a $k$-$s$-defective clique, etc. 
+
+The density $\mathit{dens}(G)$ of a graph $G = (V,E)$ is defined as the ratio of the number of edges $|E|$ to the number of edges in a fully-connected graph with $|V|$ nodes $\binom{|V|}{2}$. 
+The density of a graph is therefore a rational number between zero and one. 
+
+The open neighborhood of a vertex $v$ in a graph $G = (V,E)$, denoted as $N_G(v) = \{ w \mid v \in V, \{v,w\} \in E\}$ is the set of nodes that are adjacent to $v$, whereas the closed neighborhood of $v$, denoted as $N_G[v] = N_G(v) \cup \{v\}$ is the set of nodes that are adjacent to $v$, and $v$ itself. 
+If the graph $G$ is clear from context, we use $N(v)$ or $N[v]$ to denote the open and closed neighborhoods of $v$, respectively. 
+The neighborhood of a set of nodes is defined similarly: For $S \subseteq V$, let $N_G(S) = \bigcup_{v \in S} N_G(v) \setminus S$ be the open neighborhood of $S$ in $G$, and let $N_G[S] = N_G(S) \cup S$ be the closed neighborhood of $S$ in $G$. 
+
+The degree of a vertex $v$ in a simple graph $G = (V,E)$ is defined as $\mathit{deg}(v) = |N_G(v)|$, which is the number of adjacent nodes for a vertex $v \in V$. Generalizing the concept of vertex degrees, for $S \subseteq V$, let $d_S(v) = |\{w \mid \{v,w\} \in E, w \in S\}|$ be the number of nodes in $S$ that are adjacent to $v \in V$. As can be seen, $\mathit{deg}(v) = d_V(v) $ for all $v \in V$. 
 
 
-\section{The Maximum Clique Problem}
+\section{The Maximum Clique Problem}\label{sec:mcp}
 
-The Maximum Clique Problem (MCP, Definition \ref{def:mcp}) is a fundamental problem in graph theory and computer science. Its decision variant was one of first problems that were shown to be NP-Complete \cite{Karp1972}, from which NP-hardness can be derived for the maximization variant. The MCP is a well-studied problem and has many real-world applications, e.g.,  in social network analysis, bioinformatics, and telecommunication \todo{include citations}. 
+The Maximum Clique Problem (MCP, Definition \ref{def:mcp}) is a fundamental problem in graph theory and computer science. Its decision variant was one of first problems that were shown to be NP-Complete \cite{Karp1972}, from which NP-hardness can be derived for the maximization variant. The MCP is a well-studied problem and has many real-world applications, e.g., in network analysis \cite{Fortunato09}, \cite{Palla2005}, bioinformatics \cite{Depolli2013}, \cite{BUTENKO20061}, circuit design \cite{LeckyMA89}, and telecommunication \cite{DouikSAA14}. 
 Figure \ref{fig:maxclique} depicts a maximum clique in a graph. 
 \begin{figure}
     \centering
@@ -177,17 +189,28 @@ Figure \ref{fig:maxclique} depicts a maximum clique in a graph.
     \caption{A maximum clique.}
     \label{fig:maxclique}
 \end{figure}
-For some real-world applications however, the MCP is too strict a model, as some applications require identifying large, dense subgraphs, but not necessarily fully connected subgraphs. This leads to the introduction of several relaxations of the maximum clique problem. \todo{list relevant relaxations}
 
 \begin{definition}[Maximum Clique Problem]
 	\label{def:mcp}
 	Given a graph $G = (V,E)$, the Maximum Clique Problem (MCP) is the problem of finding clique of maximum size in $G$. 
 \end{definition}
 
-\subsection{Properties of the MCP}
-\todo{not approximable}
+\subsection{Relaxations of the MCP}
 
-\section{The Maximum Quasi-Clique Problem}
+For some real-world applications, the MCP is too strict a model, as some applications require identifying large, dense subgraphs, but not necessarily fully connected subgraphs. 
+Furthermore, it might be the case that acquiring real-world data is an error-prone process, thus requiring relaxations of the clique model tailored to the specific application. 
+For these reasons, several relaxations of the maximum clique problem have been introduced: The Maximum $\gamma$-Quasi-Clique Problem \cite{Abello2002} and the Maximum $s$-Defective Clique Problem \cite{Yu2006} are density based and edge based relaxations, respectively, where a solution $S$ is a set of vertices with density of at least $\gamma$, or has at most $s$ edges missing in $G[S]$. 
+The Maximum $s$-plex Problem is a degree based relaxation \cite{Seidman1978}, where each vertex in a solution $S$ is required to have at least $|S| - s$ neighbors in $S$, and the Maximum $s$-club Problem \cite{Mokken1979} is a path-based relaxation, where the induced subgraph $G[S]$ must have a diameter of at most $s$. Other relaxations include $s$-blocks, $s$-bundles and $s$-cores \cite{Gschwind2015}, among others. 
+
+\subsection{Properties of the MCP}
+
+In graph theory, a property $P$ of a graph $G$ is \textit{hereditary} if $P$ also holds for all induced subgraphs of $G$ \cite{pattillo_maximum_2013}. It is easy to see that the property of a graph being a clique is hereditary, as each subset of a clique is a clique itself. Heredity is an important concept in the context of graph theory, as it allows the development of algorithms that exploit the structure of solutions exhibited by heredity, e.g. \cite{Trukhanov2013} and \cite{GSCHWIND2018131}.  
+
+Furthermore, there exist negative results about the hardness of approximating the maximum clique in a graph in polynomial time: In \cite{Hastad1999} and \cite{Zuckerman2007} the authors show that there exists no fully polynomial time approximation scheme for the MCP, unless $\mathit{P} = \mathit{NP}$, meaning that for a real number $\varepsilon > 0$ there exists no polynomial time algorithm that approximates the maximum clique in a graph with a factor of at least $O(n^{1-\varepsilon})$, where $n$ is the number of vertices in the input graph. More importantly, these hardness results are trivially also valid for relaxations of the MCP. Considering the hardness of approximability of the MCP and its relaxations, it is evident that heuristic approaches are of great importance when tackling large real-world instances that cannot be solved optimally in practice. 
+
+\section{The Maximum Quasi-Clique Problem}\label{sec:mqcp}
+
+The Maximum Quasi-Clique Problem (Definition \ref{def:mqcp}) is a density based relaxation of the MCP, which was first introduced by Abello et al. \cite{Abello2002}. Pattillo et al. show that for any $\gamma$ with $0 < \gamma < 1$, the problem is NP-complete in its decision variant \cite{pattillo_maximum_2013}. 
 
 \begin{definition}[Maximum Quasi-Clique Problem]
 	\label{def:mqcp}
@@ -196,7 +219,7 @@ For some real-world applications however, the MCP is too strict a model, as some
 \end{definition}
 
 \subsection{Properties of the MQCP}
-
+In contrast to cliques, the property of being a quasi-clique is not hereditary. Algorithms which build upon heredity can therefore not easily be adapted to the MQCP. However, as noted in \cite{pattillo_maximum_2013}, quasi-cliques display a property which the authors call \textit{quasi-heredity}. A property $P$ of a graph $G = (V, E)$ is \textit{quasi-hereditary}, if there exists some $v \in V$ such that $G[V \setminus \{v\}]$ also has property $P$. Furthermore, the authors show that quasi-cliques are quasi-hereditary. Therefore, for a $\gamma$-quasi-clique of size $k$ there exists a series of $\gamma$-quasi cliques of size $1,2, \dots, k$ such that each $\gamma$-quasi clique is a strict subset of the next one. Most of the leading heuristic algorithms for the MQCP (e.g. \cite{djeddi_extension_2019}, \cite{zhou_opposition-based_2020}, \cite{chen_nuqclq_2021}) build upon this important property by searching for a sequence of $\gamma$-quasi cliques of increasing size in order to approximate the maximum $\gamma$-quasi clique in a graph. 
 
 \subsection{Preprocessing of MQCP Instances}
 
@@ -221,23 +244,35 @@ In \cite{Abello2002}, the authors introduce the notion of $\gamma k$\emph{-peela
     \label{fig:preprocessing-mqcp-counterexample}
 \end{figure}
 
+\section{The Maximum Defective Clique Problem}\label{sec:mdcp}
 
-\section{The Maximum k-defective Clique Problem}
+The Maximum Defective Clique Problem (\ref{def:mdcp}) was first introduced in \cite{Yu2006} in the context of predicting protein-protein interactions. 
 
-\begin{definition}[Maximum $k$-defective-Clique Problem]
+\begin{definition}[Maximum $s$-defective-Clique Problem]
 	\label{def:mdcp}
 	Given a graph \\ 
-    $G = (V,E)$ and integer $k$, the Maximum $k$-defective Clique Problem (MDCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
-	such that the induced subgraph $G[S]$ contains at least $\binom{|S|}{2} - k$ edges. 
+    $G = (V,E)$ and integer $s$, the Maximum $s$-defective Clique Problem (MDCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
+	such that the induced subgraph $G[S]$ contains at least $\binom{|S|}{2} - s$ edges. 
 \end{definition}
 
-\section{The Maximum k-plex Problem}
+\subsection{Properties of the MDCP}
+
+Although the MQCP and the MDCP are similar relaxations of the MCP, there are some key differences between the problems. It can easily be seen that the property of being a $s$-defective clique is hereditary: If $S$ is an $s$-defective clique with at most $s$ edges missing in $G[S]$, the removal of a vertex $v \in S$ cannot ``introduce'' any new missing edges.  
+However, for a fixed size $k$, the two problems become interreducible: 
+Finding a $k$-$s$-defective clique is equivalent to finding a $k$-$\gamma$-quasi clique with $\gamma = \frac{\binom{k}{2} - s}{\binom{k}{2}} $, and finding a $k$-$\gamma$-quasi clique is equivalent to finding a $k$-$s$-defective clique, where $s = \binom{k}{2} - \lceil \gamma \binom{k}{2} \rceil$. 
+When approximating the maximum $s$-defective clique in a graph $G$ by a series of $s$-defective cliques of increasing size, the problem can therefore be reduced to finding a series of $\gamma$-quasi cliques and vice-versa.
+
+
+\section{The Maximum k-plex Problem}\label{sec:mpp}
+
+\todo{maximum k-plex problem}
 
 \begin{definition}[Maximum $k$-plex Problem]
 	\label{def:mpp}
 	Given a graph $G = (V,E)$ and integer $k$, the Maximum $k$-plex Problem (MPP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
 	such that each $v \in S$ is adjacent to at least $|S| - k$ vertices in $S$. 
 \end{definition}
+
 
 \chapter{Related Work}
 
@@ -265,6 +300,8 @@ The authors linearize the above quadratic formulation by introducing variables $
     w_{ij} &\leq x_i, & & w_{ij} \leq x_j, & & w_{ij} \geq x_i + x_j - 1, & & j > i=1, \dots , n \\
     w_{ij} &\geq 0,   & & x_i \in \{0,1\}, & & j > i = 1, \dots, n        & & 
 \end{align}
+
+\todo{try other MILP formulations: especially F3, F4 from \cite{VeremyevPBP16} seem interesting}
 
 \subsection{Heuristic Approaches}
 
@@ -299,26 +336,30 @@ At first, we introduce the general structure of the algorithm without using GNNs
 
 \section{Algorithm Structure} \label{sec:algorithm-structure}
 
-\fxnote{GR: Referenzen, auf welche Arbeit(en) der Algorithmus aufbaut!}
-The pseudocode of the general structure of the local search algorithm is shown in Algorithm \ref{alg:structure}.
-$InitialSolution$ constructs a feasible initial solution. Its main purpose is to obtain a high quality lower bound to obtain a good starting value for $k$. The procedure is described in detail in Section \ref{sec:construction-heuristics}.
-\fxnote{GR: $Freq$ ist generll als $\mathit{Freq}$ zu schreiben, gilt auch für ConstructionHeuristic, Extended etc.} In line \ref{alg:structure-freq} a long-term memory $Freq$ is initialized, where $Freq[i]$ stores how many times each node is operated on for $i=1,\dots,n$. This memory is kept when the loop in lines \ref{alg:structure-while-start}--\ref{alg:structure-while-end} is repeated, but no feasible solution could be found. In $ConstructionHeuristic$, $Freq$ is used to produce a candidate solution that favors nodes that have not been considered yet. This way, new regions of the search space are explored. The candidate solution obtained in line \ref{alg:structure-construction} is then improved by the local search procedure, which is described in detail in Section \ref{sec:neighborhood-structure} along with the definition of the neighborhood structures. If the resulting solution $S$ is feasible, a simple search is performed in $Extend$ to check if the solution can be extended to a feasible solution of greater size as shown in Algorithm \ref{alg:extend}.
-Furthermore, $k$ is increased, $Freq$ is reset, and the best-so-far found solution $S^*$ is updated. 
-If the solution obtained by the local search procedure is not feasible, the while-loop is repeated until the stopping criterion is met, e.g.,  the time limit is reached. 
+As noted by Friden et al. \cite{Friden1989}, a solution for the MCP can be obtained by finding a series of $k$-cliques for increasing values of $k$. Based on this observation, Wu et al. \cite{WuH13} develop an adaptive multistart tabu search algorithm for the MCP that in each iteration searches for a clique of size $k$ using a tabu search procedure. If such a clique can be found, $k$ is increased and the algorithm is restarted. The largest clique found this way is returned as the solution. Djeddi et al. \cite{djeddi_extension_2019} show that this idea can be extended to the MQCP by following the same principle: The maximum $\gamma$-quasi clique in a graph is approximated by finding a series of $k$-$\gamma$-quasi cliques, where the tabu search is restarted with increased $k$ each time a $k$-$\gamma$-quasi clique is found. This idea is applied successfully also in other state-of-the art algorithms for the MQCP, namely \cite{zhou_opposition-based_2020} and \cite{chen_nuqclq_2021}, which is why we want to base the general structure of our algorithm on this idea as well. 
+
+The pseudocode of the general structure of our local search algorithm is shown in Algorithm \ref{alg:structure}.
+$\mathit{InitialSolution}$ constructs a feasible initial solution. Its main purpose is to obtain a high quality lower bound to obtain a good starting value for $k$. The procedure is described in detail in Section \ref{sec:construction-heuristics}.
+
+In line \ref{alg:structure-freq} a long-term memory $\mathit{Freq}$ is initialized, where $\mathit{Freq[i]}$ stores how many times each node is operated on for $i=1,\dots,n$. This memory is kept when the loop in lines \ref{alg:structure-while-start}--\ref{alg:structure-while-end} is repeated, but no feasible solution could be found. In $\mathit{ConstructionHeuristic}$, $\mathit{Freq}$ is used to produce a candidate solution that favors nodes that have not been considered yet. This way, new regions of the search space are explored. The idea of using this long-term memory $\mathit{Freq}$ in the construction heuristic to cover a larger area of the search space comes from \cite{chen_nuqclq_2021}. We change their construction heuristic slightly by combining it with a GRASP procedure as described in Section \ref{sec:construction-heuristics}. 
+
+Once a candidate solution is obtained by a construction heuristic, it is then improved by the local search procedure in line \ref{alg:structure-construction}, which is described in detail in Section \ref{sec:neighborhood-structure} along with the definition of the neighborhood structures. If the resulting solution $S$ is feasible, a simple search is performed in $\mathit{Extend}$ to check if the solution can be extended to a feasible solution of greater size as shown in Algorithm \ref{alg:extend}.
+Furthermore, $k$ is increased, $\mathit{Freq}$ is reset, and the best-so-far found solution $S^*$ is updated. 
+If the solution obtained by the local search procedure is not feasible, the while-loop is repeated until the stopping criterion is met, e.g., the time limit is reached. 
 
 \begin{algorithm}
     \DontPrintSemicolon
     \KwIn{Graph $G$, Target Density $\gamma$}
     \KwOut{Approximate maximum $\gamma$-quasi clique in $G$}
-    $S^* \gets InitialSolution(G, \gamma)$ \;
+    $S^* \gets \mathit{InitialSolution}(G, \gamma)$ \;
     $k \gets |S^*|$ \;
-    $Freq \gets [0, \dots, 0]$ \label{alg:structure-freq} \tcp*{$n$-element Array, initialized with 0} 
+    $\mathit{Freq} \gets [0, \dots, 0]$ \label{alg:structure-freq} \tcp*{$n$-element Array, initialized with 0} 
 
     \While{stop condition not met}{ \label{alg:structure-while-start}
-        $S \gets ConstructionHeuristic(G, Freq, k)$ \; \label{alg:structure-construction}
-        $S \gets LocalSearch(G, Freq, \gamma, S)$ \;
+        $S \gets \mathit{ConstructionHeuristic}(G, \mathit{Freq}, k)$ \; \label{alg:structure-construction}
+        $S \gets \mathit{LocalSearch}(G, Freq, \gamma, S)$ \;
         \If{$S$ is feasible}{
-            $S \gets Extend(G, S, \gamma)$ \;
+            $S \gets \mathit{Extend}(G, S, \gamma)$ \;
             $S^* \gets S$ \;
             $k \gets |S| + 1$ \;
             $Freq \gets [0, \dots, 0]$ \; 
