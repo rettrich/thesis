@@ -22,14 +22,14 @@ function cplex_model(; verbosity::Int=0, eps_int::Real=1e-6, timelimit::Real=Inf
     return model
 end
 
-const GRB_ENV = Ref{Gurobi.Env}()
-function __init__()
-    GRB_ENV[] = Gurobi.Env()
-    return
-end
+# const GRB_ENV = Ref{Gurobi.Env}()
+# function __init__()
+#     GRB_ENV[] = Gurobi.Env()
+#     return
+# end
 
 function gurobi_model(; verbosity::Int=0, eps_int::Real=1e-6, timelimit::Real=Inf)
-    model = Model(() -> Gurobi.Optimizer(GRB_ENV[]))
+    model = Model(Gurobi.Optimizer)
     set_optimizer_attribute(model, "OutputFlag", verbosity)
     set_optimizer_attribute(model, "LogToConsole", verbosity)
     set_optimizer_attribute(model, "IntFeasTol", eps_int)
