@@ -328,7 +328,7 @@ The authors linearize the above quadratic formulation by introducing variables $
 \section{Linear Programming}
 
 
-\chapter{A Local Search Based Metaheuristic for Maximum Clique Relaxations}
+\chapter{A Local Search Based Metaheuristic for Maximum Clique Relaxations}\label{chp:local-search-algorithm}
 
 \todo{exakter Name der Metaheuristik tbd}
 
@@ -447,14 +447,13 @@ We propose two different guidance functions for this beam search:
 
 \section{Construction Heuristic}\label{sec:construction-heuristic}
 
-\fxnote{GR: Ein Beam Search ist keine Konstruktionsheuristik! Bitte diese Begriffe wirklich trennen.}
-
 \fxnote{GR: Auch hier sollten ggfs.\ aus der Literatur übernommene Ideen/Konzepte mit entsprechenden Referenzen belegt werden.}
 
-The second construction heuristic has a different goal: It aims to return a set of nodes $S$ of fixed size $|S| = k$ that is promising to lead to new local optima when used as a starting point for the local search procedure. The candidate solution returned by this construction heuristic is not necessarily feasible. 
-It is based on a GRASP-like randomized construction, but includes a parameter $p \in \{0,1\}$ which controls the balance between choosing nodes that have not been explored yet and nodes that increase the objective value of the current candidate solution. This approach of balancing exploration and objective value is inspired by \cite{chen_nuqclq_2021}, where the authors use a similar strategy during construction. We combine this idea with using a GRASP-like approach. The procedure is shown in Algorithm \ref{alg:exploration-construction}. At first, a starting node is selected by choosing a node with the lowest $Freq$-value, breaking ties randomly. In each iteration of the main while loop in line \ref{alg:exploration-construction-while-start}-\ref{alg:exploration-construction-while-end}, with probability $p$ a node with the lowest $Freq$-value in $N_G(S)$ is added to the current candidate solution $S$. If $N_G(S)$ is empty, an arbitrary node with the lowest $Freq$ value from $V\setminus S$ is selected instead. 
-\fxnote{GR: Was ist $N_G$(S)? Ist nicht definiert.}
-With probability $1-p$ we perform an iteration of a GRASP-like randomized construction: The restricted candidate list $RCL$ is built by adding all nodes from $V \setminus S$ that fulfill the condition $d_S(u) \geq d_{\max} - \alpha(d_{\max} - d_{\min})$, where $d_S(u)$ denotes the number of neighbors in $S$ for a node $u \in V \setminus S$, and $d_{\max}, d_{\min}$ are the maximum and minimum values $d_S(u)$ over all nodes $u\in V \setminus S$. Here, the parameter $\alpha$ controls the balance between greediness and randomness in a GRASP-like manner: $\alpha=0$ corresponds to a greedy strategy, whereas $\alpha=1$ corresponds to a purely random strategy.  
+The construction heuristic in line \ref{alg:structure-construction} in Algorithm \ref{alg:structure} aims to return a set of nodes $S$ of fixed size $|S| = k$ that is promising to lead to new local optima when used as a starting point for the local search procedure. The candidate solution returned by this construction heuristic is not necessarily feasible. 
+The construction heuristic includes a parameter $p \in [0,1]$ which controls the balance between choosing nodes that have not been explored yet and nodes that increase the objective value of the current candidate solution. This approach of balancing exploration and objective value is inspired by \cite{chen_nuqclq_2021}, where the authors use a similar strategy during construction. We combine the authors' idea with using a GRASP-like approach. The procedure is shown in Algorithm \ref{alg:exploration-construction}. 
+At first, a starting node is selected by choosing a node with the lowest $Freq$-value, breaking ties randomly. In each iteration of the main while loop in line \ref{alg:exploration-construction-while-start}-\ref{alg:exploration-construction-while-end}, with probability $p$ a node with the lowest $Freq$-value in $N_G(S)$ is added to the current candidate solution $S$. If $N_G(S)$ is empty, an arbitrary node with the lowest $Freq$ value from $V\setminus S$ is selected instead. 
+\fxnote{GR: Was ist $N_G$(S)? Ist nicht definiert. RE: Definition in Kapitel 2 hinzugefügt. Oder hier noch mal definieren?}
+With probability $1-p$ we perform an iteration of a GRASP-like randomized construction: The restricted candidate list $\mathit{RCL}$ is built by adding all nodes from $V \setminus S$ that fulfill the condition $d_S(u) \geq d_{\max} - \alpha(d_{\max} - d_{\min})$, where $d_S(u)$ denotes the number of neighbors in $S$ for a node $u \in V \setminus S$, and $d_{\max}, d_{\min}$ are the maximum and minimum values $d_S(u)$ over all nodes $u\in V \setminus S$. Here, the parameter $\alpha$ controls the balance between greediness and randomness in a GRASP-like manner: $\alpha=0$ corresponds to a greedy strategy, whereas $\alpha=1$ corresponds to a purely random strategy.  
 
 \begin{algorithm}
     \DontPrintSemicolon
@@ -509,7 +508,7 @@ If no improving move is possible, or one of the sets $X, Y$ is empty, a swap of 
     \KwIn{Graph $G$, Frequency list $Freq$, Target density $\gamma$, Candidate solution $S$}
     \KwOut{Best found solution $S^*$}
     $k \gets |S|$ \;
-    $S^* \gets S$
+    $S^* \gets S$ \;
     \While{stop criterion not met}{
         $X \gets $ restricted candidate set from $S$ \;
         $Y \gets $ restricted candidate set from $V \setminus S$ \;
@@ -541,15 +540,39 @@ If no improving move is possible, or one of the sets $X, Y$ is empty, a swap of 
 
 \chapter{Using Graph Neural Networks in a Local Search Based Metaheuristic}\label{chp:gnn}
 
-\todo{this chapter should introduce the GNN and show its place in the algorithm}
-
-
-Section \ref{sec:gnn-local-search} presents our idea of utilizing a GNN to the previously described local search algorithm. In Section \ref{sec:gnn-training} we show how training data is generated and how target values are obtained. Finally, our proposed GNN architecture is presented in \ref{sec:gnn-architecture}.
+In this chapter we extend the local search based metaheuristic presented in Chapter \ref{chp:local-search-algorithm} by utilizing a GNN in order to enhance the algorithm. 
+Section \ref{sec:gnn-local-search} presents our idea of utilizing a GNN in the previously described local search algorithm and the general structure of the training loop. 
+Section \ref{sec:gnn-training} concerns the definition of training samples, and how training data is obtained. 
+In order to obtain target values for training the GNN, in Section \ref{sec:lookahead-search} we present our idea of using a look-ahead search that takes into account the current candidate solution and returns the best neighboring solution. 
+Finally, we discuss relevant GNN models and architectures in Section \ref{sec:gnn-architecture}.
 
 
 \section{Using a GNN in Local Search}\label{sec:gnn-local-search}
 
-\todo{Explain role of GNN}
+In Chapter \ref{chp:local-search-algorithm} we present a swap-based metaheuristic that evaluates possible swaps relative to a candidate solution $S$ by their respective gain $\Delta_{uv}$ for $u \in S, v \in V \setminus S$ which is similar to current state-of-the-art heuristic solution approaches. 
+Here, the function $d_S$ can be seen as a scoring function over the vertices in $V$. Vertices with higher scores in $V \setminus S$ and vertices with low scores in $S$ are promising, as they maximize the gain of a swap $\Delta_{uv}$. 
+Most local search based algorithms on the MQCP are based around this scoring function, as it is efficiently computable, and swaps with a positive $\Delta_{uv}$ directly increase the objective value, which is the density of the candidate solution. 
+Using $d_S$ as a scoring function to evaluate the quality of swaps has two major drawbacks:
+\begin{itemize}
+    \item In each iteration of the local search procedure, potential swaps are determined greedily: Only swaps that maximize the gain $\Delta_{uv}$ are considered. As discussed in Chapter \ref{chp:local-search-algorithm}, this corresponds to only searching the neighborhood structure $\Omega_1$. It is possible however, that one or more swaps with low gain lead to an improved solution - for example, a local optimum $S$ with respect to the neighborhood structure $\Omega_1$ is not necessarily a local optimum with respect to the neighborhood structure $\Omega_5$, and in order to obtain an improving solution from $S$ with respect to $\Omega_5$, some swaps must have a negative gain when applied consecutively. 
+    \item As shown in \cite{chen_nuqclq_2021}, in most iterations there are many possible swaps with the same gain. The authors therefore propose to use a more fine-grained secondary scoring function which serves as a tiebreaker. 
+\end{itemize}
+
+In order to address these drawbacks, we propose to incorporate the GNN into the local search algorithm to replace the function $d_S$ as a scoring function for swaps: In each iteration of the local search algorithm, all vertices are evaluated by a GNN, assigning scores to vertices. The GNN can therefore be seen as a function $\mathit{gnn}_S$, where $\mathit{gnn}_S(v)$ denotes the score of vertex $v$ relative to candidate solution $S$. 
+As with $d_S$, the scores returned by the GNN induce a ranking over the possible swaps: High scores for vertices in $V \setminus S$ and low scores for vertices in $S$ indicate that these vertices are more likely to lead to an improved solution when considered for swaps. 
+
+The purpose of the GNN in this approach is two-fold: 
+\begin{itemize}
+    \item Similar to the use of $d_S$, the scoring function can be used to restrict the neighborhood to only promising solutions: 
+    Let $\mathit{gnn}_{\min} = \min_{u \in S} \mathit{gnn}_S(u)$ and $\mathit{gnn}_{\max} = \max_{u \in V \setminus S} \mathit{gnn}_S(u)$. 
+    The neighborhood structure can then be restricted to only those swaps that lie within a certain distance of the most promising swap: e.g. only consider swaps of the $k$ vertices with the highest scores in $V \setminus S$ with the $k$ vertices with the lowest scores in $S$. 
+    \item The GNN can be trained to determine scores not only based on the neighborhood $\Omega_1$, but also to look ahead more than a single swap. This way, it can be used to obtain higher quality solutions as it is not caught in the local optima of the neighborhood structure $\Omega_1$.
+\end{itemize}
+
+The general approach is structured as depicted in Algorithm~\ref{alg:training}. 
+Starting with a naively initialized GNN, in each iteration of the training loop the local search algorithm is started with a fixed time limit. During random iterations of the local search algorithm, training samples are added to a replay buffer, where a training sample consists of the graph $G$ and the current candidate solution $S$. For a detailed description of how training data is obtained and how target values are computed, we refer to Sections \ref{sec:gnn-training} and \ref{sec:sec:lookahead-search}, respectively. 
+Once the time limit of the local search procedure is reached, the GNN is trained with data from the replay buffer. 
+This process is repeated for $z$ iterations, until the GNN is sufficiently trained. 
 
 \begin{algorithm}
     \DontPrintSemicolon
@@ -558,7 +581,7 @@ Section \ref{sec:gnn-local-search} presents our idea of utilizing a GNN to the p
     Initialize Replay Buffer $R$ \;
     \For{$z$ iterations}{
         $G \gets$ create representative graph instance \;
-        LocalSearchWithTrainingDataGeneration($G$, $gnn$, $R$) \;
+        $\mathit{LocalSearchWithTrainingDataGeneration}$($G$, $gnn$, $R$) \;
         \If{$|R| > \rho$}{
             Train $gnn$ with data from $R$ \;
         }
@@ -569,6 +592,8 @@ Section \ref{sec:gnn-local-search} presents our idea of utilizing a GNN to the p
 \end{algorithm}
 
 \section{Training the GNN}\label{sec:gnn-training}
+
+\section{Look-Ahead Search}\label{sec:lookahead-search}
 
 In order to obtain target values for training the GNN, we need to be able to identify the best neighboring solutions in a given neighborhood relative to a candidate solution $S$. 
 
