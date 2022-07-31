@@ -1,24 +1,26 @@
+using DataStructures
+
 """
     Node
 
-A node in the beam search tree for `beam_search_construction`.
+A node in the beam search tree for `lower_bound_heuristic`.
 
 - `S`: A feasible γ-clique representing this node
 - `d_S`: Vector in the size of vertex set of the graph, d_S[v] holds number of neighbors of v in S
 - `num_edges`: Number of edges in subgraph induced by S
-- `g_val`: Heuristic value determined by guidance function 
+- `h_val`: Heuristic value determined by guidance function 
 """
 mutable struct Node
     S::Set{Int} # 
-    d_S::Vector{Int} # d_S[v] holds number of neighbors of v in S
+    d_S::Vector{Int} # d_S[v] holds number of neighbors of v in S 
     num_edges::Int # number of edges in subgraph induced by S 
-    g_val::Real # heuristic value determined by guidance function
+    h_val::Real # heuristic value determined by guidance function
 end
 
 """
     GuidanceFunction
 
-A type for guidance functions for the beam search used in `beam_search_construction`
+A type for guidance functions for the beam search used in `lower_bound_heuristic`
 
 """
 abstract type GuidanceFunction end
@@ -49,6 +51,7 @@ function (::GreedyCompletionHeuristic)(g::SimpleGraph, node::Node, γ::Real)::Re
     d_S = copy(node.d_S)
     num_edges = node.num_edges
 
+    # guaranteed complexity of O(n) per iteration, number of iterations dependent on solution size
     while true
         k = length(S′)
         k == nv(g) && break
@@ -71,6 +74,61 @@ function (::GreedyCompletionHeuristic)(g::SimpleGraph, node::Node, γ::Real)::Re
     #approx_density = 0.999 * density(induced_subgraph(g, S′)[1])
 
     return length(S′)# + approx_density
+end
+
+"""
+    GreedyCompletionHeuristicPQVariant
+
+Same as `GreedyCompletionHeuristic`, but uses a priority queue to efficiently identify maximum element, 
+with worse worst time complexity, but maybe better practical performance. 
+
+"""
+struct GreedyCompletionHeuristicPQVariant <: GuidanceFunction end
+
+function (::GreedyCompletionHeuristicPQVariant)(g::SimpleGraph, node::Node, γ::Real)::Real
+    S′ = copy(node.S)
+    k = length(S′)
+    d_S = copy(node.d_S)
+    V_S = Set(filter(v -> v ∉ S′, vertices(g)))
+
+    # make PQ from keys in V_S and values in d_S
+    # construction takes O(n log n) time
+    pq = PriorityQueue{Int, Int}(Base.Order.Reverse)
+    for v in V_S
+        pq[v] = d_S[v]
+    end
+
+    num_edges = node.num_edges
+
+    while true
+        k = length(S′)
+        k == nv(g) && break
+        min_edges_needed = γ * (k*(k+1)/2) # edges needed for feasibility in clique of size k+1
+
+        v_max, d_max = dequeue_pair!(pq)
+
+        if d_max + num_edges < min_edges_needed
+            break
+        else
+            push!(S′, v_max)
+            delete!(V_S, v_max)
+            num_edges = num_edges + d_max
+
+            # this step has a worst case complexity of O(n log n), 
+            # which is worse than the other variant (GreedyCompletionHeuristic). 
+            # in practice hopefully must neighbors of v_max are in S and not in V_S, 
+            # therefore the average case could (should) perform better than the other variant.
+            for u in neighbors(g, v_max)
+                d_S[u] += 1
+                if u ∈ V_S
+                    pq[u] = d_S[u] # update priority in pq
+                end
+            end
+        end
+    end
+
+
+    return length(S′)
 end
 
 """
@@ -100,7 +158,7 @@ function (heu::SumOfNeighborsHeuristic)(g::SimpleGraph, node::Node, γ::Real)::R
 end
 
 """
-    beam_search_construction(g, γ, guidance_function; β, expansion_limit)
+    lower_bound_heuristic(g, γ, guidance_function; β, expansion_limit)
 
 Beam search construction that returns a feasible `γ`-quasi clique in `g`. 
 Each node of the beam search tree is expanded into at most `expansion_limit` nodes, 
@@ -113,7 +171,7 @@ and the beamwidth is defined by `β`
 - `expansion_limit`: A node in the beam search tree is expanded into at most `expansion_limit` successor nodes
 
 """
-function beam_search_construction(g::SimpleGraph, γ::Real, guidance_function::GuidanceFunction; β=10, expansion_limit=Inf)
+function lower_bound_heuristic(g::SimpleGraph, γ::Real, guidance_function::GuidanceFunction; β=10, expansion_limit=Inf)
     root = Node(Set(), fill(0, nv(g)), 0, 0, )
     max_node = root
     beam = [root]
@@ -141,10 +199,10 @@ function beam_search_construction(g::SimpleGraph, γ::Real, guidance_function::G
         filter!(node -> !is_terminal(g, γ, node), children)
 
         for node in children
-            node.g_val = guidance_function(g, node, γ)
+            node.h_val = guidance_function(g, node, γ)
         end
 
-        beam = partialsort(children, 1:min(β, length(children)); by=(node -> node.g_val), rev=true)
+        beam = partialsort(children, 1:min(β, length(children)); by=(node -> node.h_val), rev=true)
     end
 
     return collect(max_node.S)
@@ -168,7 +226,7 @@ function expand(g::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set
                 if length(children) > expansion_limit
                     break
                 end
-            end 
+            end
         else
             break
         end

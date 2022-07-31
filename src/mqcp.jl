@@ -2,6 +2,8 @@ using ArgParse
 using Graphs
 using thesis.Instances
 using thesis.LocalSearch
+using CSV
+using DataFrames
 
 # To run, provide a graph instance and target density γ, e.g.:
 # julia --project=. .\src\mqcp.jl --graph="DIMACS/brock400_1.clq" --gamma=0.999 --timelimit=60
@@ -27,9 +29,9 @@ function parse_commandline()
             arg_type = Float64
             default = 0.2
         "--beta"
-            help = "Beamwidth of construction heuristic"
+            help = "Beamwidth of lower bound heuristic"
             arg_type = Int
-            default = 1
+            default = 5
         "--expansion_limit"
             help = "Limit expansion of nodes in beam search construction"
             arg_type = Int
@@ -54,6 +56,10 @@ function parse_commandline()
             help = "Enables debug output"
             arg_type = Bool
             default = false
+        "--write_result"
+            help = "Write result to file"
+            arg_type = Bool
+            default = false
     end
     return parse_args(s)
 end
@@ -75,7 +81,7 @@ function run_mqcp()
         ENV["JULIA_DEBUG"] = "thesis"
     end
     
-    graph = load_instance("inst/$(parsed_args["graph"])")
+    graph = load_instance("$(parsed_args["graph"])")
     γ = parsed_args["gamma"]
 
     construction_heuristic_settings = ConstructionHeuristicSettings(
@@ -103,6 +109,19 @@ function run_mqcp()
 
     println(solution)
     println("size of solution: $(length(solution))")
+
+    if parsed_args["write_result"]
+        df = DataFrame(GraphID=String[], V=Int[], E=Int[], Dens=Real[], γ=Real[], Result=Int[])
+        push!(df, (
+            parsed_args["graph"],
+            nv(graph),
+            ne(graph),
+            density(graph),
+            γ,
+            length(solution)
+        ))
+        CSV.write("$(split(parsed_args["graph"], "/")[end]).csv", df)
+    end
 
 end
 

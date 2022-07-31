@@ -1,8 +1,30 @@
 module Instances
 
-export load_instance, load_instances, generate_instance 
+export load_instance, load_instances, generate_instance, 
+       MQCPInstance 
 using Graphs
 using StatsBase
+
+"""
+    MQCPInstance
+
+- `graph`: Input graph
+- `graph_id`: Name of input graph
+- `target_γ`: Target density
+- `best_known`: Size of best known solution
+
+"""
+struct MQCPInstance
+    graph::SimpleGraph
+    graph_id::String
+    target_γ::Real
+    best_known::Int
+
+    function MQCPInstance(graph_id::String, target_γ::Real, best_known::Int; benchmark_id::String="DIMACS")
+        graph = load_instance("../inst/$benchmark_id/$graph_id.clq")
+        new(graph, graph_id, target_γ, best_known)
+    end
+end
 
 """
     load_instance(file)

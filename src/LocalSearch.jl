@@ -4,9 +4,9 @@ using StatsBase
 using Graphs
 # using thesis.LookaheadSearch
 
-export local_search_with_EX, construction_heuristic, beam_search_construction, 
+export local_search_with_EX, construction_heuristic, lower_bound_heuristic, 
     LocalSearchSettings, ConstructionHeuristicSettings,
-    GuidanceFunction, GreedyCompletionHeuristic, SumOfNeighborsHeuristic, 
+    GuidanceFunction, GreedyCompletionHeuristic, GreedyCompletionHeuristicPQVariant, SumOfNeighborsHeuristic, 
     ConfigurationChecking, TabuList,
     run_MQCP
 
@@ -75,7 +75,7 @@ density `γ` with settings defined in `settings`
 function run_MQCP(g::SimpleGraph, γ::Real; settings::LocalSearchSettings)
     # initial construction
     @debug "Constructing initial solution..."
-    S′ = beam_search_construction(g, γ, 
+    S′ = lower_bound_heuristic(g, γ, 
                                  settings.construction_heuristic_settings.guidance_function; 
                                  settings.construction_heuristic_settings.β,
                                  settings.construction_heuristic_settings.expansion_limit)
