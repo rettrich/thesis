@@ -592,14 +592,44 @@ This process is repeated for $z$ iterations, until the GNN is sufficiently train
 \end{algorithm}
 
 \section{Training the GNN}\label{sec:gnn-training}
+\todo{write section}
+Generating training samples: 
+\begin{itemize}
+    \item a training sample consists of i) graph ii) candidate solution
+    \item run local search algorithm with GNN as scoring function for e.g. 60 seconds 
+    \item record swap history of each repetition of local search procedure. when timelimit is reached, sample e.g. 100 random candidate solutions 
+    \item calculate target values by one of the later proposed methods
+\end{itemize}
+
+Obtain target values: 
+\begin{itemize}
+    \item Imitation learning: 
+    \begin{itemize}
+        \item first appraoch: search neighborhood $\Omega_1$ for best solution(s). vertices in these solutions have target value 1, others have target value 0
+        \item extend first approach to a larger neighborhood, e.g. $\Omega_2$ or $\Omega_3$
+        \item for small graphs: use MILP model (implement better performing formulation F3 or F4 from \cite{VeremyevPBP16})
+        \item try beam search look ahead search, which also partially searches a larger neighborhood
+    \end{itemize}
+    \item Reinforcement learning:
+    \begin{itemize}
+        \item Beam Search with fixed depth $l$ to find best neighboring solution starting from candidate solution $S$: each node of the beam search tree corresponds to a candidate solution that has a distance of $i$ swaps to initial solution, where $i$ is the level of the search tree.
+        \item expand each node of the beam search tree into successor nodes that can be obtained by performing a single swap. expand each node into $k$ children, using the $k$ most promising swaps according to the GNN. this way the GNN guides how the search space is explored
+        \item evaluate each node by performing a single iteration of the local search procedure (with a local search / tabu search that uses the GNN as a scoring function). the value of a node is determined as the best found solution by the local search procedure
+        \item on each level, keep $\beta$ most promising nodes
+        \item when maximum depth $l$ is reached, return the candidate solution(s) that have the highest value according to the local search procedure. these solutions are then used as the best neighboring solutions 
+    \end{itemize}
+    \item If there is a single best neighboring solution, calculate training targets as described: 1 for vertices in best neighboring solution, 0 otherwise. As a refinement, use e.g. the 5 best neighboring solutions and calculate targets based on the objective value of each solution: e.g. 1 for nodes in the best solution, 0.8 for nodes in the second best solution, etc 
+\end{itemize}
+
 
 \section{Look-Ahead Search}\label{sec:lookahead-search}
+\todo{überarbeiten}
 
-In order to obtain target values for training the GNN, we need to be able to identify the best neighboring solutions in a given neighborhood relative to a candidate solution $S$. 
+As previously stated, a training sample consists of a graph $G$ and a candidate solution $S$. 
+In order to obtain target values for training the GNN, we need to be able to identify the best neighboring solutions in a given neighborhood structure relative to the $S$. 
 
-\subsection{MQCP and MDCP}
-
-To identify the best neighboring solution for a candidate solution $S$ in the neighborhood $\bigcup_{i=1}^d \Omega_i$, we propose two different methods. First, we propose a MILP formulation that is suited for small instances. It is based on the formulation in \ref{milp-mqcp}, but we change it to find the neighboring solution $S'$ that can be obtained after at most $d$ swaps and maximizes the amount of edges in $G[S']$: 
+To identify the best neighboring solution for a candidate solution $S$ in the neighborhood $\bigcup_{i=1}^d \Omega_i$, we propose two different methods. First, we propose a MILP formulation that is suited for small instances. 
+It is based on the formulation in \ref{milp-mqcp}, but we change it to find the neighboring solution $S'$ that can be obtained after at most $d$ swaps and maximizes the amount of edges in $G[S']$: 
 \begin{align}
     \max & \sum_{i=1}^n \sum_{j=i+1}^n a_{ij} w_{ij} \\
     \text{s.t. } & \sum_{i \in V} x_i = k \\
@@ -653,6 +683,11 @@ Weiters ist Symmetrievermeidung/reduzierung ein wichtiger Aspekt, d.h., das Stat
 
 
 \section{GNN Architecture}\label{sec:gnn-architecture}
+\todo{überarbeiten}
+\begin{itemize}
+    \item first try with GCN: use vertex degrees and $d_S$ values as features. this implicitly encodes the state (the candidate solution $S$) into the vertex features. 
+    \item later: try GAT architecture
+\end{itemize}
 
 \subsection{Node Features}
 Idea: For each node, do BFS with depth $d$ to calculate node features: Feature vector $x_i$ for node $v_i$ has at position $j=1,\dots,d$ the number of distinct nodes with distance $j$ from $v_i$. 
