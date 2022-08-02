@@ -1,0 +1,201 @@
+GraphID,target_γ,guidance_func,β,exp_limit,time,obj,best_known
+brock400_1,0.999,greedy,1,10,0.81,20,27
+brock400_2,0.999,greedy,1,10,0.07,20,29
+brock400_2,0.8,greedy,1,10,1.51,181,187
+brock400_3,0.999,greedy,1,10,0.06,21,31
+brock800_1,0.9,greedy,1,10,0.44,37,43
+brock800_2,0.999,greedy,1,10,0.18,17,24
+brock800_2,0.8,greedy,1,10,1.24,86,96
+brock800_3,0.999,greedy,1,10,0.18,18,22
+brock800_3,0.9,greedy,1,10,0.45,38,43
+brock800_3,0.8,greedy,1,10,1.24,86,94
+C1000.9,0.999,greedy,1,10,0.94,54,70
+C1000.9,0.95,greedy,1,10,4.93,198,222
+C2000.9,0.999,greedy,1,10,3.37,59,82
+C2000.9,0.95,greedy,1,10,18.74,250,288
+DSJC1000.5,0.999,greedy,1,10,0.16,12,15
+DSJC1000.5,0.8,greedy,1,10,0.51,36,41
+DSJC500.5,0.999,greedy,1,10,0.04,11,13
+gen400_p0.9_55,0.999,greedy,1,10,0.13,39,55
+gen400_p0.9_65,0.999,greedy,1,10,0.13,40,66
+hamming10-4,0.95,greedy,1,10,1.52,82,88
+brock400_1,0.999,sum of neighbors,1,10,0.23,17,27
+brock400_2,0.999,sum of neighbors,1,10,0.01,17,29
+brock400_2,0.8,sum of neighbors,1,10,0.07,163,187
+brock400_3,0.999,sum of neighbors,1,10,0.01,16,31
+brock800_1,0.9,sum of neighbors,1,10,0.04,31,43
+brock800_2,0.999,sum of neighbors,1,10,0.05,14,24
+brock800_2,0.8,sum of neighbors,1,10,0.07,78,96
+brock800_3,0.999,sum of neighbors,1,10,0.04,18,22
+brock800_3,0.9,sum of neighbors,1,10,0.04,32,43
+brock800_3,0.8,sum of neighbors,1,10,0.07,73,94
+C1000.9,0.999,sum of neighbors,1,10,0.07,48,70
+C1000.9,0.95,sum of neighbors,1,10,0.18,188,222
+C2000.9,0.999,sum of neighbors,1,10,0.25,52,82
+C2000.9,0.95,sum of neighbors,1,10,0.52,230,288
+DSJC1000.5,0.999,sum of neighbors,1,10,0.06,11,15
+DSJC1000.5,0.8,sum of neighbors,1,10,0.06,31,41
+DSJC500.5,0.999,sum of neighbors,1,10,0.01,9,13
+gen400_p0.9_55,0.999,sum of neighbors,1,10,0.02,35,55
+gen400_p0.9_65,0.999,sum of neighbors,1,10,0.03,35,66
+hamming10-4,0.95,sum of neighbors,1,10,0.10,81,88
+brock400_1,0.999,greedy,5,10,0.11,20,27
+brock400_2,0.999,greedy,5,10,0.11,22,29
+brock400_2,0.8,greedy,5,10,4.79,180,187
+brock400_3,0.999,greedy,5,10,0.10,21,31
+brock800_1,0.9,greedy,5,10,0.69,37,43
+brock800_2,0.999,greedy,5,10,0.22,18,24
+brock800_2,0.8,greedy,5,10,2.74,87,96
+brock800_3,0.999,greedy,5,10,0.22,18,22
+brock800_3,0.9,greedy,5,10,0.70,38,43
+brock800_3,0.8,greedy,5,10,2.95,86,94
+C1000.9,0.999,greedy,5,10,1.57,55,70
+C1000.9,0.95,greedy,5,10,14.29,199,222
+C2000.9,0.999,greedy,5,10,5.15,59,82
+C2000.9,0.95,greedy,5,10,50.64,250,288
+DSJC1000.5,0.999,greedy,5,10,0.21,12,15
+DSJC1000.5,0.8,greedy,5,10,0.90,36,41
+DSJC500.5,0.999,greedy,5,10,0.05,12,13
+gen400_p0.9_55,0.999,greedy,5,10,0.33,40,55
+gen400_p0.9_65,0.999,greedy,5,10,0.36,40,66
+hamming10-4,0.95,greedy,5,10,3.60,84,88
+brock400_1,0.999,sum of neighbors,5,10,0.04,19,27
+brock400_2,0.999,sum of neighbors,5,10,0.03,19,29
+brock400_2,0.8,sum of neighbors,5,10,0.33,178,187
+brock400_3,0.999,sum of neighbors,5,10,0.04,17,31
+brock800_1,0.9,sum of neighbors,5,10,0.11,35,43
+brock800_2,0.999,sum of neighbors,5,10,0.07,17,24
+brock800_2,0.8,sum of neighbors,5,10,0.23,77,96
+brock800_3,0.999,sum of neighbors,5,10,0.06,16,22
+brock800_3,0.9,sum of neighbors,5,10,0.11,34,43
+brock800_3,0.8,sum of neighbors,5,10,0.22,76,94
+C1000.9,0.999,sum of neighbors,5,10,0.17,43,70
+C1000.9,0.95,sum of neighbors,5,10,0.67,180,222
+C2000.9,0.999,sum of neighbors,5,10,0.55,52,82
+C2000.9,0.95,sum of neighbors,5,10,2.27,235,288
+DSJC1000.5,0.999,sum of neighbors,5,10,0.08,12,15
+DSJC1000.5,0.8,sum of neighbors,5,10,0.14,32,41
+DSJC500.5,0.999,sum of neighbors,5,10,0.02,10,13
+gen400_p0.9_55,0.999,sum of neighbors,5,10,0.05,36,55
+gen400_p0.9_65,0.999,sum of neighbors,5,10,0.06,36,66
+hamming10-4,0.95,sum of neighbors,5,10,0.28,74,88
+brock400_1,0.999,greedy,5,20,0.16,22,27
+brock400_2,0.999,greedy,5,20,0.16,21,29
+brock400_2,0.8,greedy,5,20,8.29,182,187
+brock400_3,0.999,greedy,5,20,0.15,21,31
+brock800_1,0.9,greedy,5,20,1.06,38,43
+brock800_2,0.999,greedy,5,20,0.29,18,24
+brock800_2,0.8,greedy,5,20,4.57,87,96
+brock800_3,0.999,greedy,5,20,0.28,18,22
+brock800_3,0.9,greedy,5,20,1.02,39,43
+brock800_3,0.8,greedy,5,20,4.43,86,94
+C1000.9,0.999,greedy,5,20,2.47,56,70
+C1000.9,0.95,greedy,5,20,26.09,200,222
+C2000.9,0.999,greedy,5,20,7.75,60,82
+C2000.9,0.95,greedy,5,20,88.37,251,288
+DSJC1000.5,0.999,greedy,5,20,0.24,12,15
+DSJC1000.5,0.8,greedy,5,20,1.25,36,41
+DSJC500.5,0.999,greedy,5,20,0.08,11,13
+gen400_p0.9_55,0.999,greedy,5,20,0.58,41,55
+gen400_p0.9_65,0.999,greedy,5,20,0.55,40,66
+hamming10-4,0.95,greedy,5,20,5.62,83,88
+brock400_1,0.999,sum of neighbors,5,20,0.04,20,27
+brock400_2,0.999,sum of neighbors,5,20,0.04,18,29
+brock400_2,0.8,sum of neighbors,5,20,0.55,178,187
+brock400_3,0.999,sum of neighbors,5,20,0.04,21,31
+brock800_1,0.9,sum of neighbors,5,20,0.16,34,43
+brock800_2,0.999,sum of neighbors,5,20,0.08,15,24
+brock800_2,0.8,sum of neighbors,5,20,0.38,81,96
+brock800_3,0.999,sum of neighbors,5,20,0.08,15,22
+brock800_3,0.9,sum of neighbors,5,20,0.14,33,43
+brock800_3,0.8,sum of neighbors,5,20,0.36,79,94
+C1000.9,0.999,sum of neighbors,5,20,0.26,43,70
+C1000.9,0.95,sum of neighbors,5,20,1.13,178,222
+C2000.9,0.999,sum of neighbors,5,20,0.81,53,82
+C2000.9,0.95,sum of neighbors,5,20,3.37,230,288
+DSJC1000.5,0.999,sum of neighbors,5,20,0.09,11,15
+DSJC1000.5,0.8,sum of neighbors,5,20,0.19,31,41
+DSJC500.5,0.999,sum of neighbors,5,20,0.03,10,13
+gen400_p0.9_55,0.999,sum of neighbors,5,20,0.08,33,55
+gen400_p0.9_65,0.999,sum of neighbors,5,20,0.09,40,66
+hamming10-4,0.95,sum of neighbors,5,20,0.51,81,88
+brock400_1,0.999,greedy,10,20,0.25,20,27
+brock400_2,0.999,greedy,10,20,0.28,21,29
+brock400_2,0.8,greedy,10,20,17.39,184,187
+brock400_3,0.999,greedy,10,20,0.28,21,31
+brock800_1,0.9,greedy,10,20,1.74,37,43
+brock800_2,0.999,greedy,10,20,0.43,18,24
+brock800_2,0.8,greedy,10,20,8.55,86,96
+brock800_3,0.999,greedy,10,20,0.43,18,22
+brock800_3,0.9,greedy,10,20,1.94,39,43
+brock800_3,0.8,greedy,10,20,8.70,87,94
+C1000.9,0.999,greedy,10,20,4.28,56,70
+C1000.9,0.95,greedy,10,20,48.58,198,222
+C2000.9,0.999,greedy,10,20,12.58,60,82
+C2000.9,0.95,greedy,10,20,169.24,253,288
+DSJC1000.5,0.999,greedy,10,20,0.34,12,15
+DSJC1000.5,0.8,greedy,10,20,2.21,37,41
+DSJC500.5,0.999,greedy,10,20,0.11,12,13
+gen400_p0.9_55,0.999,greedy,10,20,1.20,46,55
+gen400_p0.9_65,0.999,greedy,10,20,1.15,46,66
+hamming10-4,0.95,greedy,10,20,10.64,83,88
+brock400_1,0.999,sum of neighbors,10,20,0.06,17,27
+brock400_2,0.999,sum of neighbors,10,20,0.08,18,29
+brock400_2,0.8,sum of neighbors,10,20,1.04,170,187
+brock400_3,0.999,sum of neighbors,10,20,0.08,19,31
+brock800_1,0.9,sum of neighbors,10,20,0.28,32,43
+brock800_2,0.999,sum of neighbors,10,20,0.13,15,24
+brock800_2,0.8,sum of neighbors,10,20,0.72,77,96
+brock800_3,0.999,sum of neighbors,10,20,0.13,16,22
+brock800_3,0.9,sum of neighbors,10,20,0.28,32,43
+brock800_3,0.8,sum of neighbors,10,20,0.65,73,94
+C1000.9,0.999,sum of neighbors,10,20,0.44,42,70
+C1000.9,0.95,sum of neighbors,10,20,2.24,179,222
+C2000.9,0.999,sum of neighbors,10,20,1.51,53,82
+C2000.9,0.95,sum of neighbors,10,20,6.60,226,288
+DSJC1000.5,0.999,sum of neighbors,10,20,0.13,10,15
+DSJC1000.5,0.8,sum of neighbors,10,20,0.37,34,41
+DSJC500.5,0.999,sum of neighbors,10,20,0.04,10,13
+gen400_p0.9_55,0.999,sum of neighbors,10,20,0.17,36,55
+gen400_p0.9_65,0.999,sum of neighbors,10,20,0.19,39,66
+hamming10-4,0.95,sum of neighbors,10,20,0.92,75,88
+brock400_1,0.999,greedy,20,50,1.01,21,27
+brock400_2,0.999,greedy,20,50,1.13,24,29
+brock400_2,0.8,greedy,20,50,82.86,182,187
+brock400_3,0.999,greedy,20,50,0.96,21,31
+brock800_1,0.9,greedy,20,50,8.53,39,43
+brock800_2,0.999,greedy,20,50,1.38,19,24
+brock800_2,0.8,greedy,20,50,44.46,89,96
+brock800_3,0.999,greedy,20,50,1.40,18,22
+brock800_3,0.9,greedy,20,50,9.00,40,43
+brock800_3,0.8,greedy,20,50,44.56,88,94
+C1000.9,0.999,greedy,20,50,19.50,57,70
+C1000.9,0.95,greedy,20,50,258.05,202,222
+C2000.9,0.999,greedy,20,50,50.31,62,82
+C2000.9,0.95,greedy,20,50,855.61,259,288
+DSJC1000.5,0.999,greedy,20,50,0.96,13,15
+DSJC1000.5,0.8,greedy,20,50,8.88,37,41
+DSJC500.5,0.999,greedy,20,50,0.35,12,13
+gen400_p0.9_55,0.999,greedy,20,50,5.13,46,55
+gen400_p0.9_65,0.999,greedy,20,50,5.29,47,66
+hamming10-4,0.95,greedy,20,50,50.08,83,88
+brock400_1,0.999,sum of neighbors,20,50,0.26,19,27
+brock400_2,0.999,sum of neighbors,20,50,0.22,17,29
+brock400_2,0.8,sum of neighbors,20,50,4.46,166,187
+brock400_3,0.999,sum of neighbors,20,50,0.21,18,31
+brock800_1,0.9,sum of neighbors,20,50,1.15,34,43
+brock800_2,0.999,sum of neighbors,20,50,0.40,15,24
+brock800_2,0.8,sum of neighbors,20,50,3.00,82,96
+brock800_3,0.999,sum of neighbors,20,50,0.38,15,22
+brock800_3,0.9,sum of neighbors,20,50,1.06,32,43
+brock800_3,0.8,sum of neighbors,20,50,2.84,79,94
+C1000.9,0.999,sum of neighbors,20,50,1.85,44,70
+C1000.9,0.95,sum of neighbors,20,50,9.58,173,222
+C2000.9,0.999,sum of neighbors,20,50,5.93,53,82
+C2000.9,0.95,sum of neighbors,20,50,31.18,226,288
+DSJC1000.5,0.999,sum of neighbors,20,50,0.32,12,15
+DSJC1000.5,0.8,sum of neighbors,20,50,1.34,36,41
+DSJC500.5,0.999,sum of neighbors,20,50,0.15,11,13
+gen400_p0.9_55,0.999,sum of neighbors,20,50,0.62,36,55
+gen400_p0.9_65,0.999,sum of neighbors,20,50,0.68,40,66
+hamming10-4,0.95,sum of neighbors,20,50,3.08,63,88
