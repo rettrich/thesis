@@ -37,10 +37,12 @@ function load_instance(file)
     open(file) do f
         for line in eachline(f)
             startswith(line, "c") && continue
-            startswith(line, "p") && add_vertices!(g, parse(Int, split(line, " ")[3]))
-            startswith(line, "e") && add_edge!(g, parse(Int, split(line, " ")[2]), parse(Int, split(line, " ")[3]))
+            split_line = split(line, r"\s+")
+            startswith(line, "p") && add_vertices!(g, parse(Int, split_line[3]))
+            startswith(line, "e") && add_edge!(g, parse(Int, split_line[2]), parse(Int, split_line[3]))
         end
     end
+    
     return g
 end
 
