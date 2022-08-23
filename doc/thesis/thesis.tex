@@ -447,12 +447,9 @@ We propose two different guidance functions for this beam search:
 
 \section{Construction Heuristic}\label{sec:construction-heuristic}
 
-\fxnote{GR: Auch hier sollten ggfs.\ aus der Literatur übernommene Ideen/Konzepte mit entsprechenden Referenzen belegt werden.}
-
 The construction heuristic in line \ref{alg:structure-construction} in Algorithm \ref{alg:structure} aims to return a set of nodes $S$ of fixed size $|S| = k$ that is promising to lead to new local optima when used as a starting point for the local search procedure. The candidate solution returned by this construction heuristic is not necessarily feasible. 
 The construction heuristic includes a parameter $p \in [0,1]$ which controls the balance between choosing nodes that have not been explored yet and nodes that increase the objective value of the current candidate solution. This approach of balancing exploration and objective value is inspired by \cite{chen_nuqclq_2021}, where the authors use a similar strategy during construction. We combine the authors' idea with using a GRASP-like approach. The procedure is shown in Algorithm \ref{alg:exploration-construction}. 
 At first, a starting node is selected by choosing a node with the lowest $Freq$-value, breaking ties randomly. In each iteration of the main while loop in line \ref{alg:exploration-construction-while-start}-\ref{alg:exploration-construction-while-end}, with probability $p$ a node with the lowest $Freq$-value in $N_G(S)$ is added to the current candidate solution $S$. If $N_G(S)$ is empty, an arbitrary node with the lowest $Freq$ value from $V\setminus S$ is selected instead. 
-\fxnote{GR: Was ist $N_G$(S)? Ist nicht definiert. RE: Definition in Kapitel 2 hinzugefügt. Oder hier noch mal definieren?}
 With probability $1-p$ we perform an iteration of a GRASP-like randomized construction: The restricted candidate list $\mathit{RCL}$ is built by adding all nodes from $V \setminus S$ that fulfill the condition $d_S(u) \geq d_{\max} - \alpha(d_{\max} - d_{\min})$, where $d_S(u)$ denotes the number of neighbors in $S$ for a node $u \in V \setminus S$, and $d_{\max}, d_{\min}$ are the maximum and minimum values $d_S(u)$ over all nodes $u\in V \setminus S$. Here, the parameter $\alpha$ controls the balance between greediness and randomness in a GRASP-like manner: $\alpha=0$ corresponds to a greedy strategy, whereas $\alpha=1$ corresponds to a purely random strategy.  
 
 \begin{algorithm}
@@ -621,6 +618,62 @@ Obtain target values:
     \item If there is a single best neighboring solution, calculate training targets as described: 1 for vertices in best neighboring solution, 0 otherwise. As a refinement, use e.g. the 5 best neighboring solutions and calculate targets based on the objective value of each solution: e.g. 1 for nodes in the best solution, 0.8 for nodes in the second best solution, etc 
 \end{itemize}
 
+\subsection{First Approach}
+\todo{Discuss in meeting on 24/08}
+This subsection documents the first attempts at testing GNN structures and different methods of training; it will be removed or reworked later.
+
+\paragraph{Collecting Training Data.} We start by trying an imitation learning approach on smaller graphs. Especially the following graphs in Table \ref{tab:first-approach} from the DIMACS benchmark set seem to have an appropriate size for a first approach. 
+These graphs can be grouped into three categories: two low density graphs ($0 < \mathit{dens}(G) \leq 0.2$), three medium density graphs ($0.4 \leq \mathit{dens}(G) \leq 0.6$), and five high density graphs ($0.75 \leq \mathit{dens}(G)$). 
+
+As already discussed, a training sample consists of a graph $G = (V, E)$ and a candidate solution $S \subset V$. 
+As a first step, we collect a dataset of training samples from executing the metaheuristic local search algorithm from Chapter \ref{chp:local-search-algorithm}. Training samples are collected the following way: 
+\begin{itemize}
+    \item Generate a random graph with a number of vertices sampled from a normal distribution with $\mu = 200, \sigma = 15$ - this ensures the size of the graph will be around 200 vertices
+    \item Generate uniformly sampled random edges, with uniformly sampled density depending on graph category: 
+    \begin{itemize}
+        \item low density: $dens(G) \in (0, 0.2)$
+        \item medium density: $dens(G) \in [0.4, 0.6]$
+        \item high density: $dens(G) \in [0.75, 0.9]$
+    \end{itemize}
+    \item Run the local search algorithm from Chapter \ref{chp:local-search-algorithm} for 60 seconds and record all encountered candidate solutions. From all encountered candidate solutions, sample 100 to add to the dataset. 
+\end{itemize}
+This way, we collect $10,000$ training samples for each of the three categories: We generate 100 different graphs for each category, and collect 100 samples for each graph. 
+
+\paragraph{Training the GNN.} As a first approach, we try to imitate existing local search algorithms, which try to identify the best neighbor in the $\Omega_1$ neighborhood structure: Given a training sample $(G, S)$, where $G$ is a graph instance and $S \subset V$ a candidate solution, we first obtain the best neighboring solution $S^\prime \in \Omega_1$, which is defined as the best candidate solution (= with higher objective value, which is density for the MQCP) that can be obtained by swapping a single pair of vertices $u \in S, v \in V \setminus S$. If there are multiple best neighboring solutions with equal objective value, ties are broken randomly. From this we can compute the target values for training the following way: For each vertex $v \in V$, we define the target value as $1$ if $u \in S^\prime$, and $0$ if $v \notin S^\prime$. 
+
+\paragraph{GNN Architecture.} We start with a simple Graph Convolutional Network (GCN). For each vertex $v \in V = \{1,2,\dots,n\}$, we define a feature vector 
+$x_v = 
+\begin{bmatrix} deg(v) \\
+    d_S(v) 
+\end{bmatrix}$. 
+As a first approach, we simply use three Graph Convolutional Layers. As output, we obtain a scalar value for each input vector, which is the score of the vertex evaluated by the GNN. 
+
+\paragraph{Evaluating the approach.} 
+In principle, we can view training the network as a binary classification task for each vertex $v \in V$: The GNN should predict for each vertex, whether it is in the best neighboring solution $S^\prime$ or not. 
+In order to evaluate the effectivity of this training, we therefore propose the following: We do a $80/20$ training/validation split of the $10,000$ samples and train the network on $80\%$ of the data. Then, we evaluate each sample in the validation set the following way: The GNN is used to calculate the scores for vertices in the sample, and a swap is performed according to the scores returned by the GNN. If the resulting candidate solution has the same objective value as the (one of the) best solution(s) returned by exhaustively searching the $\Omega_1$ neighborhood, then the GNN has correctly identified the best neighboring solution, otherwise, the result is incorrect. As a first step, we will look how accurately the GNN identifies the (one of the) best neighboring solution(s). 
+
+Finally, if the accuracy of this approach reaches satisfactory results, we can try evaluating the approach on the benchmark instances, and compare the results to i) the local search algorithm from Chapter \ref{chp:local-search-algorithm}, and ii) the results from the literature. 
+
+
+\begin{table}
+\begin{center}
+    \begin{tabular}{ rrrr } 
+        Graph &   V &  E & dens \\ \hline
+        C125 &  $125$ &    $6963$ &  $0.9$ \\
+        C250 &  $250$ &   $27984$ &  $0.9$ \\
+brock200\_1 &  $200$ &   $14834$ &  $0.75$ \\
+brock200\_2 &  $200$ &    $9876$ & $0.5$ \\
+brock200\_3 &  $200$ &   $12048$ &   $0.6$ \\
+c-fat200-1 &  $200$ &    $1534$ &  $0.08$ \\
+c-fat200-2 &  $200$ &    $3235$ & $0.16$ \\
+c-fat200-5 &  $200$ &    $8473$ & $0.43$ \\
+gen200\_p0 &  $200$ &   $17910$ & $0.9$ \\
+san200\_0 &  $200$ &   $17910$ & $0.9$ \\
+    \end{tabular}
+    \caption{Small instances in DIMACS set}
+    \label{tab:first-approach}
+\end{center}
+\end{table}
 
 \section{Look-Ahead Search}\label{sec:lookahead-search}
 \todo{überarbeiten}
@@ -702,6 +755,10 @@ Eine komplexere Encoder/Decoder-Struktur basierend z.B. auf GATv2 ist natürlich
 
 
 \chapter{Evaluation}
+
+\section{Dataset}
+
+
 
 \chapter{Conclusions}
 
