@@ -105,7 +105,7 @@ function run_mqcp()
     for (arg,val) in parsed_args
         println("  $arg  =>  $val")
     end
-    solution = run_MQCP(graph, γ; settings)
+    solution, swap_history = run_MQCP(graph, γ; settings)
 
     println(solution)
     println("size of solution: $(length(solution))")

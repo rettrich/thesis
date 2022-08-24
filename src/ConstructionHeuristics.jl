@@ -82,6 +82,9 @@ end
 Same as `GreedyCompletionHeuristic`, but uses a priority queue to efficiently identify maximum element, 
 with worse worst time complexity, but maybe better practical performance. 
 
+TODO/Update: performs worse, as an improvement remove construction of PriorityQueue, and use a field Node.pq, 
+as construction of the PQ is too slow -> store pq with node and only update each time a vertex is added
+
 """
 struct GreedyCompletionHeuristicPQVariant <: GuidanceFunction end
 

@@ -67,13 +67,13 @@ end
 Generate random simple graph with `n` vertices and density γ with uniformly sampled edges.
 
 - `n`: Number of nodes in graph
-- `γ`: Density of graph, `γ`∈(0,1]
+- `dens`: Density of graph, `γ`∈(0,1]
 
 """
-function generate_instance(n::Int, γ::Real)
+function generate_instance(n::Int, dens::Real)
     g = SimpleGraph(n)
     m = Int(n * (n - 1) / 2) # number of edges in complete graph
-    edge_list = sample(1:m, round(Int, γ*m); replace=false)
+    edge_list = sample(1:m, round(Int, dens*m); replace=false)
     for num in edge_list
         i,j = _num_to_edge(num, n)
         add_edge!(g, i, j)
