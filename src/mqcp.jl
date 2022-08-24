@@ -57,9 +57,9 @@ function parse_commandline()
             arg_type = Bool
             default = false
         "--write_result"
-            help = "Write result to file"
-            arg_type = Bool
-            default = false
+            help = "Write result to file if directory is specified"
+            arg_type = String
+            default = "-"
     end
     return parse_args(s)
 end
@@ -110,7 +110,7 @@ function run_mqcp()
     println(solution)
     println("size of solution: $(length(solution))")
 
-    if parsed_args["write_result"]
+    if parsed_args["write_result"] != "-"
         df = DataFrame(GraphID=String[], V=Int[], E=Int[], Dens=Real[], γ=Real[], Result=Int[])
         push!(df, (
             parsed_args["graph"],
@@ -120,7 +120,7 @@ function run_mqcp()
             γ,
             length(solution)
         ))
-        CSV.write("$(split(parsed_args["graph"], "/")[end]).csv", df)
+        CSV.write("$(parsed_args["write_result"])/$(split(parsed_args["graph"], "/")[end]).csv", df)
     end
 
 end

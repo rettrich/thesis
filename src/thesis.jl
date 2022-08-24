@@ -1,9 +1,9 @@
 module thesis
 
-export Instances, MPModels, LookaheadSearch
+export Instances, LookaheadSearch
 
 include("Instances.jl")
-include("MPModels.jl")
+# include("MPModels.jl")
 include("LookaheadSearch.jl")
 include("LocalSearch.jl")
 
