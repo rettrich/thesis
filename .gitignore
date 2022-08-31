@@ -5,3 +5,5 @@ doc/thesis/thesis.ist
 doc/thesis/thesis.loa
 doc/thesis/thesis.lof
 doc/thesis/thesis.toc
+training_data/*
+logfile*

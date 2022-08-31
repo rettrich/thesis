@@ -2,8 +2,117 @@ module LookaheadSearch
 
 # using thesis.MPModels
 using Graphs
+using StatsBase
 
-export recursive_search, get_solution, beam_search
+export LookaheadSearchFunction, Ω_1_LookaheadSearchFunction
+
+abstract type LookaheadSearchFunction end
+
+"""
+    (::LookaheadSearchFunction)(graph::SimpleGraph, S::Set{Int}, num_solutions::Int)
+
+Returns the best neighboring solution(s) `S′` of `S` in `graph` depending on the
+concrete type of `LookaheadSearchFunction` along with its objective value
+(number of edges in G[S′]). If there is more than one best neighboring solution,
+up to `num_solutions` equal solutions are chosen randomly among the best solutions.
+Neighboring solutions are returned as a vector of tuples `(in_nodes, out_nodes)`
+in order to be space efficient; a neighboring solution can be reconstructed by
+swapping the nodes in `in_nodes ∈ S` with the nodes in `out_nodes ∈ V ∖ S`.
+
+"""
+(::LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Set{Int}, d_S::Union{Vector{Int}, Nothing}=nothing, num_solutions=typemax(Int)::Int)::Tuple{Int, Vector{Tuple}} =
+    error("Abstract (::LookaheadSearchFunction)(graph::SimpleGraph, S::Set{Int}) called")
+
+"""
+    Ω_1_LookaheadSearchFunction
+
+Searches the Ω_1 neighborhood exhaustively and returns the neighboring solution(s) with
+the highest objective value.
+
+"""
+struct Ω_1_LookaheadSearchFunction <: LookaheadSearchFunction end
+
+Base.show(io::IO, ::Ω_1_LookaheadSearchFunction) = print(io, "Ω_1_LookaheadSearchFunction")
+
+function (::Ω_1_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Set{Int}, 
+                                         d_S::Union{Vector{Int}, Nothing}=nothing, 
+                                         num_solutions=typemax(Int)::Int
+                                         )::Tuple{Int, Vector{Tuple}}
+    d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
+    obj_val = calculate_obj(graph, S, d_S)
+
+    V_S = filter(v -> v ∉ S, vertices(graph))
+
+    d_min = minimum([d_S[i] for i in S])
+    d_max = maximum([d_S[i] for i in V_S])
+    X = filter(u -> (d_S[u] <= d_min+1), S)
+    Y = filter(v -> (d_S[v] >= d_max-1), V_S)
+
+    Δuv_best = 0
+
+    solutions = []
+
+    # search restricted neighborhood for best solutions
+    for u ∈ X, v ∈ Y
+        Δuv = d_S[v] - d_S[u] - Int(has_edge(graph, u, v))
+        if Δuv >= Δuv_best
+            if Δuv > Δuv_best
+                Δuv_best = Δuv
+                solutions = [] # discard worse solutions
+            end
+            push!(solutions, ([u], [v])) # store solution as pair of nodes that need to be swapped, (u ∈ S, v ∈ V∖S)
+        end
+    end
+
+    if Δuv_best == 0
+        return obj_val, [] # S is local optimum, therefore do not return any neighboring solutions
+    else
+        if num_solutions < length(solutions)
+            solutions = sample(1:length(solutions), num_solutions; replace=false)
+        end
+        return obj_val + Δuv_best, solutions
+    end
+end
+
+# """
+#     Ω_d_LookaheadSearchFunction
+
+# Searches the Ω_d neighborhood exhaustively and returns the neighboring solution with
+# the highest objective value, ties are broken randomly. For Ω_1 neighborhood, use
+# `Ω_1_LookaheadSearchFunction`, as it is optimized for that specific neighborhood.
+
+# """
+# struct Ω_d_LookaheadSearchFunction <: LookaheadSearchFunction
+#     d::Int
+
+#     function Ω_d_LookaheadSearchFunction(d::Int)
+#         new(d)
+#     end
+# end
+
+# # TODO: revisit recursive search?
+# function (::Ω_d_LookaheadSearchFunction)(graph::SimpleGraph, S::Set{Int})::Tuple{Int, Vector{Tuple{Vector{Int}, Vector{Int}}}}
+#     error("Not implemented")
+# end
+
+# """
+#     BeamSearch_LookaheadSearchFunction
+
+# Interface for beam search lookahead search
+
+# """
+# struct BeamSearch_LookaheadSearchFunction <: LookaheadSearchFunction
+#     d::Int
+#     α::Int
+#     β::Int
+
+#     function BeamSearch_LookaheadSearchFunction(d::Int, α::Int, β::Int)
+#         new(d, α, β)
+#     end
+# end
+
+# (bs::BeamSearch_LookaheadSearchFunction)(graph::SimpleGraph, S::Set{Int}) =
+#     beam_search(graph, S, bs.d; bs.α, bs.β)
 
 ##################################    Beam Search    ###############################################
 
@@ -35,13 +144,13 @@ Base.hash(a::Node, h::UInt) = hash(a.in, hash(a.out, hash(:Node, h)))
 """
     beam_search(g, candidate_solution, d; α, β)
 
-Performs a beam search to find a neighboring solution that (approximately) maximizes the objective value. 
+Performs a beam search to find a neighboring solution that (approximately) maximizes the objective value.
 `d` is the depth of the beam search (number of node swaps).
 
 - `g`: `SimpleGraph`, input graph
 - `candidate_solution`: Current candidate solution from which the search is started
 - `d`: Number of swaps that are considered - depth of the beam search tree
-- `α`: A node is expanded into at most `α`² child nodes: The worst α nodes in the candidate_solution 
+- `α`: A node is expanded into at most `α`² child nodes: The worst α nodes in the candidate_solution
         and the best α nodes outside the candidate solution are considered for swapping
 - `β`: Beam width. On each level of the beam search tree, only the best β nodes are kept.
 
@@ -52,7 +161,7 @@ function beam_search(g::SimpleGraph, candidate_solution::Set{Int}, d::Int; α::I
     d_S = calculate_d_S(g, candidate_solution) # number of neighbors in candidate solution for each node
     obj = calculate_obj(g, candidate_solution, d_S) # objective value of candidate solution
 
-    # to prevent duplicate solutions during search, store each node (defined by node.in and node.out) in hash map 
+    # to prevent duplicate solutions during search, store each node (defined by node.in and node.out) in hash map
     visited_solutions = Set{Node}()
 
     root = Node(obj, Set(), Set()) # root of BS tree
@@ -67,7 +176,7 @@ function beam_search(g::SimpleGraph, candidate_solution::Set{Int}, d::Int; α::I
         end
 
         beam = partialsort(children, 1:min(β, length(children)), rev=true)
-        
+
         if !isempty(beam)
             max_beam = beam[1]
             if max_beam > max_node
@@ -108,20 +217,20 @@ end
 """
     expand(g, candidate_solution, V_S, node, visited_solutions; α)
 
-Expand a node in the beam search into its children solutions that can be obtained by swapping 
-a node in the solution that corresponds to the node with a node outside of the solution. 
+Expand a node in the beam search into its children solutions that can be obtained by swapping
+a node in the solution that corresponds to the node with a node outside of the solution.
 
 - `g`: Graph instance
 - `candidate_solution`: Candidate solution of root in BS tree
 - `V_S`: Nodes outside the candidate solution of root in BS tree
-- `node`: Current node, contains information to modify candidate solution to the solution 
+- `node`: Current node, contains information to modify candidate solution to the solution
     corresponding to the current `node`
 - `visited_solutions`: Hash table (Set) containing all visited nodes so no duplicates are considered
-- `α`: Considere only up to α² swaps: Swap α worst nodes in current candidate solution with α 
+- `α`: Considere only up to α² swaps: Swap α worst nodes in current candidate solution with α
     best nodes outside
 """
-function expand(g::SimpleGraph, candidate_solution::Set{Int}, 
-                V_S::Set{Int}, node::Node, visited_solutions::Set{Node}; 
+function expand(g::AbstractGraph, candidate_solution::Set{Int},
+                V_S::Set{Int}, node::Node, visited_solutions::Set{Node};
                 α::Int=10) :: Vector{Node}
     # step into candidate solution
     update_candidate_solution!(candidate_solution, V_S, node)
@@ -132,7 +241,7 @@ function expand(g::SimpleGraph, candidate_solution::Set{Int},
 
     d_S_V_S = [((i in restricted_V_S) ? d_S[i] : -1) for i=vertices(g)]
     d_S_candidate_solution = [((i in restricted_candidate_solution) ? d_S[i] : nv(g)) for i=vertices(g)]
-    
+
     candidates_V_S = partialsortperm(d_S_V_S, 1:min(α, length(restricted_V_S)); rev=true)
     candidates_c_s = partialsortperm(d_S_candidate_solution, 1:min(α, length(restricted_candidate_solution)))
 
@@ -187,11 +296,11 @@ function recursive_search(g, candidate_solution, d; swap_history=[], V_S=[], d_S
     max_d_S = maximum(d_S[i] for i in V_S)
     min_d_S = minimum(d_S[i] for i in candidate_solution)
 
-    for i in 1:length(V_S)
+    for i in 1:eachindex(V_S)
         if d_S[V_S[i]] < max_d_S - 1
             continue
         end
-        for j in 1:length(candidate_solution)
+        for j in 1:eachindex(candidate_solution)
             if d_S[candidate_solution[j]] > min_d_S + 1
                 continue
             end
@@ -213,7 +322,7 @@ function recursive_search(g, candidate_solution, d; swap_history=[], V_S=[], d_S
             if new_obj > best[2]
                 best = copy(swap_history), new_obj
             end
-            
+
             # TODO: call only for best ones
             # call recursive method
             if d > 1
@@ -243,7 +352,7 @@ function get_solution(candidate_solution, swap_history)
     sort(collect(S))
 end
 
-function calculate_d_S(g, candidate_solution)
+function calculate_d_S(g::SimpleGraph, candidate_solution)
     d_S = Int[0 for _ in 1:nv(g)]
     for u in candidate_solution
         for v in neighbors(g, u)
@@ -286,10 +395,10 @@ end
 
 # function edge_to_num(e::Tuple{Int, Int}, n::Int)
 #     u,v = e
-    
+
 #     u == 1 && return v-1
-    
-#     return (u-1)*(n) - sum(1:(u-1)) + v-u 
+
+#     return (u-1)*(n) - sum(1:(u-1)) + v-u
 # end
 
 end

@@ -5,6 +5,7 @@ using Graphs
 # using thesis.LookaheadSearch
 
 export local_search_with_EX, construction_heuristic, lower_bound_heuristic, 
+    calculate_d_S, calculate_num_edges,
     LocalSearchSettings, ConstructionHeuristicSettings,
     GuidanceFunction, GreedyCompletionHeuristic, GreedyCompletionHeuristicPQVariant, SumOfNeighborsHeuristic, 
     ConfigurationChecking, TabuList,
@@ -334,7 +335,7 @@ adjacent vertices in `S` for vertex `i` in `g`.
 - `g`: Input Graph
 - `S`: Vector of vertices in `g`
 """
-function calculate_d_S(g::SimpleGraph, S::Vector{Int})
+function calculate_d_S(g::SimpleGraph, S::Union{Vector{Int}, Set{Int}})
     d_S = Int[0 for _ in 1:nv(g)]
     for u in S
         for v in neighbors(g, u)
