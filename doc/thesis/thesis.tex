@@ -330,9 +330,6 @@ The authors linearize the above quadratic formulation by introducing variables $
 
 \chapter{A Local Search Based Metaheuristic for Maximum Clique Relaxations}\label{chp:local-search-algorithm}
 
-\todo{exakter Name der Metaheuristik tbd}
-
-\fxnote{GR: Wie glaube ich schon kurz besprochen würde ich das ganze Verfahren nicht als Local Search bezeichnen, mit den ganzen enthaltenen Techniken ist es schon ``mehr'', d.h. eine Metaheuristik, evtl. eine Tabusuche etc.? Jedenfalls sollte man sich aber auch möglichst an die Literatur in den Bezeichnungen anlehnen. Das gilt dann auch für den Gesamttitel der Arbeit. }
 In this chapter we present a local search based metaheuristic for relaxations of the MCP in detail, which is the algorithmic fundament of the GNN based algorithm in Chapter \ref{chp:gnn}
 At first, we introduce the general structure of the algorithm without using GNNs in Section \ref{sec:algorithm-structure}. We present two types of construction heuristics that we use in our algorithm. The first one is used to efficiently obtain a feasible initial solution of high quality that can be used as a lower bound, whereas the second one does not necessarily yield a feasible solution, but is used to explore new regions of the search space not yet visited. In Section \ref{sec:neighborhood-structure} we define the main move operator used in the local search procedure and define the corresponding neighborhood structures. Furthermore, we show in detail the local search procedure of our algorithm that utilizes said neighborhood structures. 
 
@@ -341,11 +338,11 @@ At first, we introduce the general structure of the algorithm without using GNNs
 As noted by Friden et al. \cite{Friden1989}, a solution for the MCP can be obtained by finding a series of $k$-cliques for increasing values of $k$. Based on this observation, Wu et al. \cite{WuH13} develop an adaptive multistart tabu search algorithm for the MCP that in each iteration searches for a clique of size $k$ using a tabu search procedure. If such a clique can be found, $k$ is increased and the algorithm is restarted. The largest clique found this way is returned as the solution. Djeddi et al. \cite{djeddi_extension_2019} show that this idea can be extended to the MQCP by following the same principle: The maximum $\gamma$-quasi clique in a graph is approximated by finding a series of $k$-$\gamma$-quasi cliques, where the tabu search is restarted with increased $k$ each time a $k$-$\gamma$-quasi clique is found. This idea is applied successfully also in other state-of-the art algorithms for the MQCP, namely \cite{zhou_opposition-based_2020} and \cite{chen_nuqclq_2021}, which is why we want to base the general structure of our algorithm on this idea as well. 
 
 The pseudocode of the general structure of our local search algorithm is shown in Algorithm \ref{alg:structure}.
-$\mathit{InitialSolution}$ constructs a feasible initial solution. Its main purpose is to obtain a high quality lower bound to obtain a good starting value for $k$. The procedure is described in detail in Section \ref{sec:lower-bound-heuristic}.
+$\mathit{InitialSolution}$, which is a generalized greedy search, constructs a feasible initial solution. Its main purpose is to obtain a high quality lower bound to obtain a good starting value for $k$. The procedure is described in detail in Section~\ref{sec:lower-bound-heuristic}.
 
-In line \ref{alg:structure-freq} a long-term memory $\mathit{Freq}$ is initialized, where $\mathit{Freq[i]}$ stores how many times each vertex is operated on for $i=1,\dots,n$. This memory is kept when the loop in lines \ref{alg:structure-while-start}--\ref{alg:structure-while-end} is repeated, but no feasible solution could be found. In $\mathit{ConstructionHeuristic}$, $\mathit{Freq}$ is used to produce a candidate solution that favors vertices that have not been considered yet. This way, new regions of the search space are explored. The idea of using this long-term memory $\mathit{Freq}$ in the construction heuristic to cover a larger area of the search space comes from \cite{chen_nuqclq_2021}. We change their construction heuristic slightly by combining it with a GRASP procedure as described in Section~\ref{sec:construction-heuristic}. 
+In line \ref{alg:structure-freq} a long-term memory $\mathit{Freq}$ is initialized, where $\mathit{Freq[i]}$ stores how many times each vertex is operated on for $i=1,\dots,n$. This memory is kept when the loop in lines~\ref{alg:structure-while-start}--\ref{alg:structure-while-end} is repeated, but no feasible solution could be found. In $\mathit{ConstructionHeuristic}$, $\mathit{Freq}$ is used to produce a candidate solution that favors vertices that have not been considered yet. This way, new regions of the search space are explored. The idea of using this long-term memory $\mathit{Freq}$ in the construction heuristic to cover a larger area of the search space comes from \cite{chen_nuqclq_2021}. We change their construction heuristic slightly by combining it with a GRASP procedure as described in Section~\ref{sec:construction-heuristic}. 
 
-Once a candidate solution is obtained by a construction heuristic, it is then improved by the local search procedure in line \ref{alg:structure-construction}, which is described in detail in Section~\ref{sec:neighborhood-structure} along with the definition of the neighborhood structures. If the resulting solution $S$ is feasible, a simple search is performed in $\mathit{Extend}$ to check if the solution can be extended to a feasible solution of greater size as shown in Algorithm~\ref{alg:extend}.
+Once a candidate solution is obtained by a construction heuristic, it is then improved by the local search procedure in line~\ref{alg:structure-construction}, which is described in detail in Section~\ref{sec:neighborhood-structure} along with the definition of the neighborhood structures. If the resulting solution $S$ is feasible, a simple search is performed in $\mathit{Extend}$ to check if the solution can be extended to a feasible solution of greater size as shown in Algorithm~\ref{alg:extend}.
 Furthermore, $k$ is increased, $\mathit{Freq}$ is reset, and the best-so-far found solution $S^*$ is updated. 
 If the solution obtained by the local search procedure is not feasible, the while-loop is repeated until the stopping criterion is met, e.g., the time limit is reached. 
 
@@ -393,7 +390,7 @@ If the solution obtained by the local search procedure is not feasible, the whil
 
 \section{Lower Bound Heuristic}\label{sec:lower-bound-heuristic}
 
-In this section we propose a beam search based heuristic that returns a feasible solution that can be used as a lower bound for the size of a maximum $\gamma$-quasi clique in the input graph. This lower bound is used to obtain a high starting value for $k$ in line \ref{alg:structure-lower-bound} of Algorithm~\ref{alg:structure}. 
+In this section we propose a beam search based heuristic that returns a feasible solution that can be used as a lower bound for the size of a maximum $\gamma$-quasi clique in the input graph. This lower bound is used to obtain a high starting value for $k$ in line~\ref{alg:structure-lower-bound} of Algorithm~\ref{alg:structure}. 
 The pseudocode of the beam search is shown in Algorithm~\ref{alg:lower-bound-heuristic}. 
 In the following, note the textual distinction between \emph{nodes} in the search tree and \emph{vertices} in the input graph which is made for the sake of clarity. 
 
@@ -402,7 +399,7 @@ We use a simple data structure for nodes of the search tree where a node $v$ has
 Additionally, we define the cost of a node $v$ as $g(v) = |v.S|$, which is the size of the feasible solution that this node represents.  
 The root node of the beam search tree is then defined by an empty candidate set $\mathit{root.S}$ with $\mathit{root.g}=0, \mathit{root.h}=0$. 
 
-The main loop in line \ref{alg:exploration-construction-while-start}--\ref{alg:exploration-construction-while-end} expands all nodes in the current beam into all feasible successor nodes. 
+The main loop in line~\ref{alg:exploration-construction-while-start}--\ref{alg:exploration-construction-while-end} expands all nodes in the current beam into all feasible successor nodes. 
 Since a node $v$ represents set of vertices $\mathit{v.S}$ which is a feasible $\gamma$-quasi clique, successor nodes are generated by checking for each vertex $u \in V \setminus \mathit{v.S}$ whether $\mathit{v.S} \cup \{u\}$ is still a feasible $\gamma$-quasi clique. 
 These successor nodes are then added to a list $\mathit{children}$. 
 In order to avoid symmetries, e.g. nodes $u,v$ representing the same solutions such that $u.S = v.S$, we use a hash map for each level of the search tree containing all solution vertex sets that were already added for expansion. Before adding a successor node $v$ to $\mathit{children}$, a check is performed to make sure that a node representing $v.S$ is not already in contained in $\mathit{children}$.  
@@ -419,7 +416,6 @@ We propose two different guidance functions for this beam search:
     The size of the solution obtained this way is then the return value of the guidance function. This greedy guidance function has a time complexity of $O(kn)$ per iteration, where $k$ is the solution size obtained by the greedy construction and $n$ is the number of nodes in $G$. 
     \item The second guidance function takes a parameter $l$ and evaluates a node $v$ with candidate set $S = v.S$ by calculating the sum of the $l$ vertices in $V \setminus S$ with the highest values for $d_S(u)$. This guidance function is designed to be more time-efficient than the previous one, as the computation is independent of the solution size. 
 \end{itemize}
-
 
 \begin{algorithm}
     \DontPrintSemicolon
@@ -490,7 +486,7 @@ The quality of a candidate solution depends on the considered problem. For the M
 Similar algorithms that use local search in order to improve a candidate solution (e.g.,  \cite{chen_nuqclq_2021}, \cite{djeddi_extension_2019}, \cite{zhou_opposition-based_2020}) only search the neighborhood $\Omega_1$ for improving solutions. As the size of this neighborhood is already quadratic in $|V|$, the authors of the mentioned algorithms restrict the neighborhood to promising moves. A scoring function is used to find promising nodes in $V \setminus S$ and in $S$ that can be used for swaps. This scoring function is in most cases defined as $d_S(u) = |\{v \mid v \in S, \{u,v\} \in E \}|$. This way, the change in the objective function value when swapping a node $u \in S$ with a node $v \in V \setminus S$ can efficiently be calculated by $\Delta_{uv} = d_S(v) - d_S(u) - e_{uv}$, where $e_{uv} = 1$ if $\{u,v\} \in E$ and $e_{uv} = 0$ otherwise. 
 The scoring function $d_S$ is thus used to restrict the neighborhood $\Omega_1$. 
 Let $d_{\min} = \min_{u \in S} d_S(u)$ and $d_{\max} = \max_{u \in V \setminus S} d_S(u)$.
-\fxnote{GR: Diese Definitionen stehen etwas formloser oben schon, besser nur einmal sauber oben definieren.} Furthermore, let $X = \{ u \mid u \in S, d_S(u) \leq d_{\min} + 1 \}$ and $Y = \{ v \mid v \in V \setminus S, d_S(v) \geq d_{\max} - 1 \}$. The neighborhood $\Omega_1$ of a candidate solution $S$ is then restricted to only those neighboring solutions that can be obtained by swapping a node $u \in X$ with a node $v \in Y$, as all node swaps that maximize $\Delta_{uv}$ are contained in this restricted neighborhood. 
+Furthermore, let $X = \{ u \mid u \in S, d_S(u) \leq d_{\min} + 1 \}$ and $Y = \{ v \mid v \in V \setminus S, d_S(v) \geq d_{\max} - 1 \}$. The neighborhood $\Omega_1$ of a candidate solution $S$ is then restricted to only those neighboring solutions that can be obtained by swapping a node $u \in X$ with a node $v \in Y$, as all node swaps that maximize $\Delta_{uv}$ are contained in this restricted neighborhood. 
 
 The pseudocode for our local search procedure is shown in Algorithm \ref{alg:local-search-procedure}. 
 In each iteration of the main while-loop the restricted candidate sets $X$ and $Y$ are created from the sets $S$ and $V \setminus S$, respectively. These sets are created as described before, with an additional restriction: To prevent cycling through the same candidate solutions over and over again, a short-term memory is used to further restrict the sets $X$ and $Y$. There are two main methods that can be found in the literature, which we want to evaluate in our algorithm: 
@@ -535,6 +531,15 @@ If no improving move is possible, or one of the sets $X, Y$ is empty, a swap of 
     \label{alg:local-search-procedure}
 \end{algorithm}
 
+Summarizing the previous sections, we present a flowchart visualization of the Local Search Based Metaheuristic presented in this chapter in Figure \ref{fig:flowchart-local-search-algorithm}. 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{graphics/flowchart_local_search_algorithm.eps}
+    \caption{Flowchart of the structure of the Local Search Based Metaheuristic.}
+    \label{fig:flowchart-local-search-algorithm}
+\end{figure}
+
 \chapter{Using Graph Neural Networks in a Local Search Based Metaheuristic}\label{chp:gnn}
 
 In this chapter we extend the local search based metaheuristic presented in Chapter \ref{chp:local-search-algorithm} by utilizing a GNN in order to enhance the algorithm. 
@@ -551,7 +556,7 @@ Here, the function $d_S$ can be seen as a scoring function over the vertices in 
 Most local search based algorithms on the MQCP are based around this scoring function, as it is efficiently computable, and swaps with a positive $\Delta_{uv}$ directly increase the objective value, which is the density of the candidate solution. 
 Using $d_S$ as a scoring function to evaluate the quality of swaps has two major drawbacks:
 \begin{itemize}
-    \item In each iteration of the local search procedure, potential swaps are determined greedily: Only swaps that maximize the gain $\Delta_{uv}$ are considered. As discussed in Chapter \ref{chp:local-search-algorithm}, this corresponds to only searching the neighborhood structure $\Omega_1$. It is possible however, that one or more swaps with low gain lead to an improved solution - for example, a local optimum $S$ with respect to the neighborhood structure $\Omega_1$ is not necessarily a local optimum with respect to the neighborhood structure $\Omega_5$, and in order to obtain an improving solution from $S$ with respect to $\Omega_5$, some swaps must have a negative gain when applied consecutively. 
+    \item In each iteration of the local search procedure, potential swaps are determined greedily: Only swaps that maximize the gain $\Delta_{uv}$ are considered. As discussed in Chapter \ref{chp:local-search-algorithm}, this corresponds to only searching the neighborhood structure $\Omega_1$. It is possible however, that one or more swaps with low gain lead to an improved solution - for example, a local optimum $S$ with respect to the neighborhood structure $\Omega_1$ is not necessarily a local optimum with respect to the neighborhood structure $\Omega_5$, and in order to obtain an improving solution from $S$ with respect to $\Omega_5$, some swaps might have a negative gain when applied consecutively. 
     \item As shown in \cite{chen_nuqclq_2021}, in most iterations there are many possible swaps with the same gain. The authors therefore propose to use a more fine-grained secondary scoring function which serves as a tiebreaker. 
 \end{itemize}
 
@@ -560,25 +565,31 @@ As with $d_S$, the scores returned by the GNN induce a ranking over the possible
 
 The purpose of the GNN in this approach is two-fold: 
 \begin{itemize}
-    \item Similar to the use of $d_S$, the scoring function can be used to restrict the neighborhood to only promising solutions: 
-    Let $\mathit{gnn}_{\min} = \min_{u \in S} \mathit{gnn}_S(u)$ and $\mathit{gnn}_{\max} = \max_{u \in V \setminus S} \mathit{gnn}_S(u)$. 
-    The neighborhood structure can then be restricted to only those swaps that lie within a certain distance of the most promising swap: e.g. only consider swaps of the $k$ vertices with the highest scores in $V \setminus S$ with the $k$ vertices with the lowest scores in $S$. 
+    \item Similar to the use of $d_S$, the scoring function can be used to restrict the neighborhood to only promising neighboring candidate solutions that can be obtained by only considering swaps involving the $k$ vertices with the highest scores in $V \setminus S$ with the $k$ vertices with the lowest scores in $S$. 
     \item The GNN can be trained to determine scores not only based on the neighborhood $\Omega_1$, but also to look ahead more than a single swap. This way, it can be used to obtain higher quality solutions as it is not caught in the local optima of the neighborhood structure $\Omega_1$.
 \end{itemize}
 
-The general approach is structured as depicted in Algorithm~\ref{alg:training}. 
-Starting with a naively initialized GNN, in each iteration of the training loop the local search algorithm is started with a fixed time limit. During random iterations of the local search algorithm, training samples are added to a replay buffer, where a training sample consists of the graph $G$ and the current candidate solution $S$. For a detailed description of how training data is obtained and how target values are computed, we refer to Sections \ref{sec:gnn-training} and \ref{sec:sec:lookahead-search}, respectively. 
+Using a GNN however imposes some other challenges: 
+Whereas the scoring function $d_S$ can be updated efficiently in $O(|V|)$ time after a swap $(u,v)$ by simply increasing $d_S(w)$ for all $w \in N_G(v)$ and decreasing $d_S(w)$ for all $w \in N(u)$, incrementally updating the scores is generally not possible with a GNN, and obtaining scores therefore is less efficient using a GNN. 
+Furthermore, the quality of the scores predicted by the GNN depends on several determining factors, most importantly on the quality of the training data and the obtained target values and the architecture of the GNN. 
+We aim to tackle these challenges in Sections \ref{sec:gnn-training}, \ref{sec:lookahead-search}, and \ref{sec:gnn-architecture}.
+
+\section{Training the GNN}\label{sec:gnn-training}
+
+The general approach of the training algorithm is structured as depicted in Algorithm~\ref{alg:training}. A visualization of the algorithm structure is presented in the flowchart in Figure \ref{fig:flowchart-training-algorithm}. 
+Starting with a naively initialized GNN, in each iteration of the training loop a random representative instance is generated on the fly and the local search algorithm is started with a fixed time limit. The local search algorithm is almost identical to the algorithm described in Chapter~\ref{chp:local-search-algorithm}, with the key difference that the GNN is used as a scoring function in order to restrict the neighborhood during search instead of the function $d_S$. 
+During random iterations of the local search algorithm, training samples are added to a replay buffer, where a training sample consists of the graph $G$ and the current candidate solution $S$. For each training sample, a look-ahead search is applied in order to identify which vertices lead to improving solutions when considered for swaps. For a detailed description of how target values for these samples are computed, we refer to Subsection \ref{subsec:target-values} Section and \ref{sec:lookahead-search}, where we propose and discuss different methods to identify improving neighboring solutions. 
 Once the time limit of the local search procedure is reached, the GNN is trained with data from the replay buffer. 
 This process is repeated for $z$ iterations, until the GNN is sufficiently trained. 
 
 \begin{algorithm}
     \DontPrintSemicolon
-    \KwIn{Untrained GNN $gnn$, Number of iterations $z$, min. replay buffer fill $\rho$}
+    \KwIn{Untrained GNN $gnn$, Target density $\gamma$, Number of iterations $z$, min. replay buffer fill $\rho$}
     \KwOut{Trained GNN $gnn$}
     Initialize Replay Buffer $R$ \;
     \For{$z$ iterations}{
         $G \gets$ create representative graph instance \;
-        $\mathit{LocalSearchWithTrainingDataGeneration}$($G$, $gnn$, $R$) \;
+        $\mathit{LocalSearchWithTrainingDataGeneration}$($G$, $\gamma$, $gnn$, $R$) \;
         \If{$|R| > \rho$}{
             Train $gnn$ with data from $R$ \;
         }
@@ -588,100 +599,67 @@ This process is repeated for $z$ iterations, until the GNN is sufficiently train
     \label{alg:training}
 \end{algorithm}
 
-\section{Training the GNN}\label{sec:gnn-training}
-\todo{write section}
-Generating training samples: 
-\begin{itemize}
-    \item a training sample consists of i) graph ii) candidate solution
-    \item run local search algorithm with GNN as scoring function for e.g. 60 seconds 
-    \item record swap history of each repetition of local search procedure. when timelimit is reached, sample e.g. 100 random candidate solutions 
-    \item calculate target values by one of the later proposed methods
-\end{itemize}
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{graphics/flowchart_training_algorithm.eps}
+    \caption{Flowchart of the structure of the training algorithm.}
+    \label{fig:flowchart-training-algorithm}
+\end{figure}
 
-Obtain target values: 
-\begin{itemize}
-    \item Imitation learning: 
-    \begin{itemize}
-        \item first appraoch: search neighborhood $\Omega_1$ for best solution(s). vertices in these solutions have target value 1, others have target value 0
-        \item extend first approach to a larger neighborhood, e.g. $\Omega_2$ or $\Omega_3$
-        \item for small graphs: use MILP model (implement better performing formulation F3 or F4 from \cite{VeremyevPBP16})
-        \item try beam search look ahead search, which also partially searches a larger neighborhood
-    \end{itemize}
-    \item Reinforcement learning:
-    \begin{itemize}
-        \item Beam Search with fixed depth $l$ to find best neighboring solution starting from candidate solution $S$: each node of the beam search tree corresponds to a candidate solution that has a distance of $i$ swaps to initial solution, where $i$ is the level of the search tree.
-        \item expand each node of the beam search tree into successor nodes that can be obtained by performing a single swap. expand each node into $k$ children, using the $k$ most promising swaps according to the GNN. this way the GNN guides how the search space is explored
-        \item evaluate each node by performing a single iteration of the local search procedure (with a local search / tabu search that uses the GNN as a scoring function). the value of a node is determined as the best found solution by the local search procedure
-        \item on each level, keep $\beta$ most promising nodes
-        \item when maximum depth $l$ is reached, return the candidate solution(s) that have the highest value according to the local search procedure. these solutions are then used as the best neighboring solutions 
-    \end{itemize}
-    \item If there is a single best neighboring solution, calculate training targets as described: 1 for vertices in best neighboring solution, 0 otherwise. As a refinement, use e.g. the 5 best neighboring solutions and calculate targets based on the objective value of each solution: e.g. 1 for nodes in the best solution, 0.8 for nodes in the second best solution, etc 
-\end{itemize}
+\subsection{Obtaining Target Values}\label{subsec:target-values}
+As already mentioned, a training sample consists of a graph $G = (V,E)$ and a candidate solution $S$. Training is done in an imitation learning setting: In order to obtain target values for the vertices in $V$, we apply a look-ahead search as described in Section \ref{sec:lookahead-search}, and the GNN is then trained to imitate this look-ahead search. 
+The look-ahead search returns a set of solutions $Y = \{S_1, S_2, \dots, S_k\}$, which contains subsets of vertices in $V$ such that $S_1, S_2, \dots, S_k \subset V$, and $|S| = |S_1| = |S_2| = \dots = |S_k|$. Furthermore, all sets in $Y$ returned by the look-ahead search are the best neighboring solutions with respect to $S$ with equal objective value $f(S) < f(S_1) = f(S_2) = \dots = f(S_k)$. Note that if $S$ is already a local optimum with respect to the neighborhood structure searched by the look-ahead search, then $Y$ might be empty. Target values for the vertices in $V$ are then given by a mapping $y \colon V \rightarrow \{0,1\}$ which is defined the following way: For each $S_i \in Y$, let $S_{i}^1 = S_i \setminus S$, and let $S_{i}^0 = S \setminus S_i$. In other words, $S_i^1$ contains all vertices in $S_i$ that are outside $S$, and $S_i^0$ contains all vertices inside $S$ that are not in $S_i$. For $v \in (\bigcup_{S_i \in Y} S_i^1) \cup (S \setminus \bigcup_{S_i \in \hat{Y}} S_i^0)$ we define $y(v) = 1$, and for $u \in \bigcup_{S_i \in Y} S_i^0$ we define $y(u) = 0 $. We demonstrate this mapping by a small example in Figure \ref{fig:target-values}. 
 
-\subsection{First Approach}
-\todo{Discuss in meeting on 24/08}
-This subsection documents the first attempts at testing GNN structures and different methods of training; it will be removed or reworked later.
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{graphics/target_values.eps}
+    \caption[]{A training sample given by a graph $G$ with candidate solution $S$. Edges are omitted for the sake of clarity. The three best neighboring solutions of $S$ w.r.t. the $\Omega_1$ neighborhood structure can be obtained by applying one of the swaps $(u_1, v_1), (u_1, v_2), (u_2, v_2)$ (marked by dotted lines). Thus, the vertices $v_1, v_2$ and the vertices in $S \setminus \{u_1, u_2\}$ are labeled with 1, whereas all remaining vertices are labeled with 0. }
+    \label{fig:target-values}
+\end{figure}
 
-\paragraph{Collecting Training Data.} We start by trying an imitation learning approach on smaller graphs. Especially the following graphs in Table \ref{tab:first-approach} from the DIMACS benchmark set seem to have an appropriate size for a first approach. 
-These graphs can be grouped into three categories: two low density graphs ($0 < \mathit{dens}(G) \leq 0.2$), three medium density graphs ($0.4 \leq \mathit{dens}(G) \leq 0.6$), and five high density graphs ($0.75 \leq \mathit{dens}(G)$). 
+As the target mapping $y$ maps the vertices to either 0 or 1, this method of training can be seen as a vertex level binary classification task. A vertex $v \in V \setminus S$ is labeled with 1, if there exists a vertex $u \in S$ with label 0 such that swapping $u, v$ leads to a candidate solution with improved objective value. 
+In order to train the GNN therefore propose to use the binary cross entropy\footnote{More precisely, we use Flux.jl's logitbinarycrossentropy function, which is mathematically equivalent, but more numerically stable} as a loss function, which is suitable for binary classification tasks:
+\[
+    \mathit{binarycrossentropy}(\hat{y}, y) = \mathit{mean}(-y \cdot \log(\hat{y} + \epsilon) - (1 - y) \cdot \log(1 - \hat{y} + \epsilon))    
+\]
+Here, $\hat{y}$ denotes a vector of size $|V|$ that contains predictions given by the GNN, $y$ denotes the target values obtained as previously described, and $\epsilon$ denotes a small positive number that is included to avoid infinity. 
 
-As already discussed, a training sample consists of a graph $G = (V, E)$ and a candidate solution $S \subset V$. 
-As a first step, we collect a dataset of training samples from executing the metaheuristic local search algorithm from Chapter \ref{chp:local-search-algorithm}. Training samples are collected the following way: 
-\begin{itemize}
-    \item Generate a random graph with a number of vertices sampled from a normal distribution with $\mu = 200, \sigma = 15$ - this ensures the size of the graph will be around 200 vertices
-    \item Generate uniformly sampled random edges, with uniformly sampled density depending on graph category: 
-    \begin{itemize}
-        \item low density: $dens(G) \in (0, 0.2)$
-        \item medium density: $dens(G) \in [0.4, 0.6]$
-        \item high density: $dens(G) \in [0.75, 0.9]$
-    \end{itemize}
-    \item Run the local search algorithm from Chapter \ref{chp:local-search-algorithm} for 60 seconds and record all encountered candidate solutions. From all encountered candidate solutions, sample 100 to add to the dataset. 
-\end{itemize}
-This way, we collect $10,000$ training samples for each of the three categories: We generate 100 different graphs for each category, and collect 100 samples for each graph. 
+% Obtain target values: 
+% \begin{itemize}
+%     \item Imitation learning: 
+%     \begin{itemize}
+%         \item first appraoch: search neighborhood $\Omega_1$ for best solution(s). vertices in these solutions have target value 1, others have target value 0
+%         \item extend first approach to a larger neighborhood, e.g. $\Omega_2$ or $\Omega_3$
+%         \item for small graphs: use MILP model (implement better performing formulation F3 or F4 from \cite{VeremyevPBP16})
+%         \item try beam search look ahead search, which also partially searches a larger neighborhood
+%     \end{itemize}
+%     \item Reinforcement learning:
+%     \begin{itemize}
+%         \item Beam Search with fixed depth $l$ to find best neighboring solution starting from candidate solution $S$: each node of the beam search tree corresponds to a candidate solution that has a distance of $i$ swaps to initial solution, where $i$ is the level of the search tree.
+%         \item expand each node of the beam search tree into successor nodes that can be obtained by performing a single swap. expand each node into $k$ children, using the $k$ most promising swaps according to the GNN. this way the GNN guides how the search space is explored
+%         \item evaluate each node by performing a single iteration of the local search procedure (with a local search / tabu search that uses the GNN as a scoring function). the value of a node is determined as the best found solution by the local search procedure
+%         \item on each level, keep $\beta$ most promising nodes
+%         \item when maximum depth $l$ is reached, return the candidate solution(s) that have the highest value according to the local search procedure. these solutions are then used as the best neighboring solutions 
+%     \end{itemize}
+%     \item If there is a single best neighboring solution, calculate training targets as described: 1 for vertices in best neighboring solution, 0 otherwise. As a refinement, use e.g. the 5 best neighboring solutions and calculate targets based on the objective value of each solution: e.g. 1 for nodes in the best solution, 0.8 for nodes in the second best solution, etc 
+% \end{itemize}
 
-\paragraph{Training the GNN.} As a first approach, we try to imitate existing local search algorithms, which try to identify the best neighbor in the $\Omega_1$ neighborhood structure: Given a training sample $(G, S)$, where $G$ is a graph instance and $S \subset V$ a candidate solution, we first obtain the best neighboring solution $S^\prime \in \Omega_1$, which is defined as the best candidate solution (= with higher objective value, which is density for the MQCP) that can be obtained by swapping a single pair of vertices $u \in S, v \in V \setminus S$. If there are multiple best neighboring solutions with equal objective value, ties are broken randomly. From this we can compute the target values for training the following way: For each vertex $v \in V$, we define the target value as $1$ if $u \in S^\prime$, and $0$ if $v \notin S^\prime$. 
-
-\paragraph{GNN Architecture.} We start with a simple Graph Convolutional Network (GCN). For each vertex $v \in V = \{1,2,\dots,n\}$, we define a feature vector 
-$x_v = 
-\begin{bmatrix} deg(v) \\
-    d_S(v) 
-\end{bmatrix}$. 
-As a first approach, we simply use three Graph Convolutional Layers. As output, we obtain a scalar value for each input vector, which is the score of the vertex evaluated by the GNN. 
-
-\paragraph{Evaluating the approach.} 
-In principle, we can view training the network as a binary classification task for each vertex $v \in V$: The GNN should predict for each vertex, whether it is in the best neighboring solution $S^\prime$ or not. 
-In order to evaluate the effectivity of this training, we therefore propose the following: We do a $80/20$ training/validation split of the $10,000$ samples and train the network on $80\%$ of the data. Then, we evaluate each sample in the validation set the following way: The GNN is used to calculate the scores for vertices in the sample, and a swap is performed according to the scores returned by the GNN. If the resulting candidate solution has the same objective value as the (one of the) best solution(s) returned by exhaustively searching the $\Omega_1$ neighborhood, then the GNN has correctly identified the best neighboring solution, otherwise, the result is incorrect. As a first step, we will look how accurately the GNN identifies the (one of the) best neighboring solution(s). 
-
-Finally, if the accuracy of this approach reaches satisfactory results, we can try evaluating the approach on the benchmark instances, and compare the results to i) the local search algorithm from Chapter \ref{chp:local-search-algorithm}, and ii) the results from the literature. 
-
-
-\begin{table}
-\begin{center}
-    \begin{tabular}{ rrrr } 
-        Graph &   V &  E & dens \\ \hline
-        C125 &  $125$ &    $6963$ &  $0.9$ \\
-        C250 &  $250$ &   $27984$ &  $0.9$ \\
-brock200\_1 &  $200$ &   $14834$ &  $0.75$ \\
-brock200\_2 &  $200$ &    $9876$ & $0.5$ \\
-brock200\_3 &  $200$ &   $12048$ &   $0.6$ \\
-c-fat200-1 &  $200$ &    $1534$ &  $0.08$ \\
-c-fat200-2 &  $200$ &    $3235$ & $0.16$ \\
-c-fat200-5 &  $200$ &    $8473$ & $0.43$ \\
-gen200\_p0 &  $200$ &   $17910$ & $0.9$ \\
-san200\_0 &  $200$ &   $17910$ & $0.9$ \\
-    \end{tabular}
-    \caption{Small instances in DIMACS set}
-    \label{tab:first-approach}
-\end{center}
-\end{table}
 
 \section{Look-Ahead Search}\label{sec:lookahead-search}
 \todo{überarbeiten}
 
-As previously stated, a training sample consists of a graph $G$ and a candidate solution $S$. 
-In order to obtain target values for training the GNN, we need to be able to identify the best neighboring solutions in a given neighborhood structure relative to the $S$. 
+In order to obtain target values for training the GNN, we need to be able to identify the best neighboring solutions in a given neighborhood structure relative to the $S$. More specifically, we want to consider the neighborhood structure(s) $\bigcup_{i=1}^d \Omega_i$ for different values of $d$. In this section, we propose different methods in order to search these neighborhood structures. 
 
-To identify the best neighboring solution for a candidate solution $S$ in the neighborhood $\bigcup_{i=1}^d \Omega_i$, we propose two different methods. First, we propose a MILP formulation that is suited for small instances. 
+\subsection{A simple approach: Searching $\Omega_1$}
+
+As a first approach, we can define the look-ahead search as simply searching the neighborhood structure $\Omega_1$ w.r.t. a candidate solution $S$, which can be done in time $O(|V|^2)$ by inspecting all possible swaps. 
+When the GNN is trained successfully to imitate this look-ahead search, it will serve the same purpose as the function $d_S$ in Chapter~\ref{chp:local-search-algorithm}. 
+
+\subsection{Beyond $\Omega_1$}
+
+In order to search the larger neighborhoods $\bigcup_{i=1}^d \Omega_i$ for $d > 1$, we propose two different methods: An exact MILP-approach, which can be used for small instances, and a heuristic approach, that should serve as an approximation of the best neighboring solution, as even for small $d$, the neighborhood structures are already too large to be searched exhaustively for bigger instances. 
+
+First, we propose a MILP formulation that is suited for small instances. 
 It is based on the formulation in \ref{milp-mqcp}, but we change it to find the neighboring solution $S'$ that can be obtained after at most $d$ swaps and maximizes the amount of edges in $G[S']$: 
 \begin{align}
     \max & \sum_{i=1}^n \sum_{j=i+1}^n a_{ij} w_{ij} \\
@@ -753,6 +731,62 @@ Eine komplexere Encoder/Decoder-Struktur basierend z.B. auf GATv2 ist natürlich
 
 \subsection{Decoder}
 
+
+\section{First Approach}
+This subsection documents the first attempts at testing GNN structures and different methods of training; it will be removed or reworked later.
+
+\paragraph{Collecting Training Data.} We start by trying an imitation learning approach on smaller graphs. Especially the following graphs in Table \ref{tab:first-approach} from the DIMACS benchmark set seem to have an appropriate size for a first approach. 
+These graphs can be grouped into three categories: two low density graphs ($0 < \mathit{dens}(G) \leq 0.2$), three medium density graphs ($0.4 \leq \mathit{dens}(G) \leq 0.6$), and five high density graphs ($0.75 \leq \mathit{dens}(G)$). 
+
+As already discussed, a training sample consists of a graph $G = (V, E)$ and a candidate solution $S \subset V$. 
+As a first step, we collect a dataset of training samples from executing the metaheuristic local search algorithm from Chapter \ref{chp:local-search-algorithm}. Training samples are collected the following way: 
+\begin{itemize}
+    \item Generate a random graph with a number of vertices sampled from a normal distribution with $\mu = 200, \sigma = 15$ - this ensures the size of the graph will be around 200 vertices
+    \item Generate uniformly sampled random edges, with uniformly sampled density depending on graph category: 
+    \begin{itemize}
+        \item low density: $dens(G) \in (0, 0.2)$
+        \item medium density: $dens(G) \in [0.4, 0.6]$
+        \item high density: $dens(G) \in [0.75, 0.9]$
+    \end{itemize}
+    \item Run the local search algorithm from Chapter \ref{chp:local-search-algorithm} for 60 seconds and record all encountered candidate solutions. From all encountered candidate solutions, sample 100 to add to the dataset. 
+\end{itemize}
+This way, we collect $10,000$ training samples for each of the three categories: We generate 100 different graphs for each category, and collect 100 samples for each graph. 
+
+\paragraph{Training the GNN.} As a first approach, we try to imitate existing local search algorithms, which try to identify the best neighbor in the $\Omega_1$ neighborhood structure: Given a training sample $(G, S)$, where $G$ is a graph instance and $S \subset V$ a candidate solution, we first obtain the best neighboring solution $S^\prime \in \Omega_1$, which is defined as the best candidate solution (= with higher objective value, which is density for the MQCP) that can be obtained by swapping a single pair of vertices $u \in S, v \in V \setminus S$. If there are multiple best neighboring solutions with equal objective value, ties are broken randomly. From this we can compute the target values for training the following way: For each vertex $v \in V$, we define the target value as $1$ if $u \in S^\prime$, and $0$ if $v \notin S^\prime$. 
+
+\paragraph{GNN Architecture.} We start with a simple Graph Convolutional Network (GCN). For each vertex $v \in V = \{1,2,\dots,n\}$, we define a feature vector 
+$x_v = 
+\begin{bmatrix} deg(v) \\
+    d_S(v) 
+\end{bmatrix}$. 
+As a first approach, we simply use three Graph Convolutional Layers. As output, we obtain a scalar value for each input vector, which is the score of the vertex evaluated by the GNN. 
+
+\paragraph{Evaluating the approach.} 
+In principle, we can view training the network as a binary classification task for each vertex $v \in V$: The GNN should predict for each vertex, whether it is in the best neighboring solution $S^\prime$ or not. 
+In order to evaluate the effectivity of this training, we therefore propose the following: We do a $80/20$ training/validation split of the $10,000$ samples and train the network on $80\%$ of the data. Then, we evaluate each sample in the validation set the following way: The GNN is used to calculate the scores for vertices in the sample, and a swap is performed according to the scores returned by the GNN. If the resulting candidate solution has the same objective value as the (one of the) best solution(s) returned by exhaustively searching the $\Omega_1$ neighborhood, then the GNN has correctly identified the best neighboring solution, otherwise, the result is incorrect. As a first step, we will look how accurately the GNN identifies the (one of the) best neighboring solution(s). 
+
+Finally, if the accuracy of this approach reaches satisfactory results, we can try evaluating the approach on the benchmark instances, and compare the results to i) the local search algorithm from Chapter \ref{chp:local-search-algorithm}, and ii) the results from the literature. 
+
+
+\begin{table}
+\begin{center}
+    \begin{tabular}{ rrrr } 
+        Graph &   V &  E & dens \\ \hline
+        C125 &  $125$ &    $6963$ &  $0.9$ \\
+        C250 &  $250$ &   $27984$ &  $0.9$ \\
+brock200\_1 &  $200$ &   $14834$ &  $0.75$ \\
+brock200\_2 &  $200$ &    $9876$ & $0.5$ \\
+brock200\_3 &  $200$ &   $12048$ &   $0.6$ \\
+c-fat200-1 &  $200$ &    $1534$ &  $0.08$ \\
+c-fat200-2 &  $200$ &    $3235$ & $0.16$ \\
+c-fat200-5 &  $200$ &    $8473$ & $0.43$ \\
+gen200\_p0 &  $200$ &   $17910$ & $0.9$ \\
+san200\_0 &  $200$ &   $17910$ & $0.9$ \\
+    \end{tabular}
+    \caption{Small instances in DIMACS set}
+    \label{tab:first-approach}
+\end{center}
+\end{table}
 
 \chapter{Evaluation}
 
