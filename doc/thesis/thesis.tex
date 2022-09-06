@@ -565,14 +565,14 @@ As with $d_S$, the scores returned by the GNN induce a ranking over the possible
 
 The purpose of the GNN in this approach is two-fold: 
 \begin{itemize}
-    \item Similar to the use of $d_S$, the scoring function can be used to restrict the neighborhood to only promising neighboring candidate solutions that can be obtained by only considering swaps involving the $k$ vertices with the highest scores in $V \setminus S$ with the $k$ vertices with the lowest scores in $S$. 
+    \item Similar to the use of $d_S$, the scoring function $\mathit{gnn}_S$ can be used to restrict the neighborhood to only promising neighboring candidate solutions that can be obtained by only considering swaps involving the $k$ vertices with the highest scores in $V \setminus S$ with the $k$ vertices with the lowest scores in $S$. 
     \item The GNN can be trained to determine scores not only based on the neighborhood $\Omega_1$, but also to look ahead more than a single swap. This way, it can be used to obtain higher quality solutions as it is not caught in the local optima of the neighborhood structure $\Omega_1$.
 \end{itemize}
 
 Using a GNN however imposes some other challenges: 
 Whereas the scoring function $d_S$ can be updated efficiently in $O(|V|)$ time after a swap $(u,v)$ by simply increasing $d_S(w)$ for all $w \in N_G(v)$ and decreasing $d_S(w)$ for all $w \in N(u)$, incrementally updating the scores is generally not possible with a GNN, and obtaining scores therefore is less efficient using a GNN. 
 Furthermore, the quality of the scores predicted by the GNN depends on several determining factors, most importantly on the quality of the training data and the obtained target values and the architecture of the GNN. 
-We aim to tackle these challenges in Sections \ref{sec:gnn-training}, \ref{sec:lookahead-search}, and \ref{sec:gnn-architecture}.
+We aim to tackle these challenges in Sections \ref{sec:gnn-training} and \ref{sec:lookahead-search} by showing how the GNN can be trained in an imitation learning setting to make high quality predictions, and in \ref{sec:gnn-architecture} by proposing suitable efficient GNN architectures.
 
 \section{Training the GNN}\label{sec:gnn-training}
 
@@ -607,12 +607,12 @@ This process is repeated for $z$ iterations, until the GNN is sufficiently train
 \end{figure}
 
 \subsection{Obtaining Target Values}\label{subsec:target-values}
-As already mentioned, a training sample consists of a graph $G = (V,E)$ and a candidate solution $S$. Training is done in an imitation learning setting: In order to obtain target values for the vertices in $V$, we apply a look-ahead search as described in Section \ref{sec:lookahead-search}, and the GNN is then trained to imitate this look-ahead search. 
-The look-ahead search returns a set of solutions $Y = \{S_1, S_2, \dots, S_k\}$, which contains subsets of vertices in $V$ such that $S_1, S_2, \dots, S_k \subset V$, and $|S| = |S_1| = |S_2| = \dots = |S_k|$. Furthermore, all sets in $Y$ returned by the look-ahead search are the best neighboring solutions with respect to $S$ with equal objective value $f(S) < f(S_1) = f(S_2) = \dots = f(S_k)$. Note that if $S$ is already a local optimum with respect to the neighborhood structure searched by the look-ahead search, then $Y$ might be empty. Target values for the vertices in $V$ are then given by a mapping $y \colon V \rightarrow \{0,1\}$ which is defined the following way: For each $S_i \in Y$, let $S_{i}^1 = S_i \setminus S$, and let $S_{i}^0 = S \setminus S_i$. In other words, $S_i^1$ contains all vertices in $S_i$ that are outside $S$, and $S_i^0$ contains all vertices inside $S$ that are not in $S_i$. For $v \in (\bigcup_{S_i \in Y} S_i^1) \cup (S \setminus \bigcup_{S_i \in \hat{Y}} S_i^0)$ we define $y(v) = 1$, and for $u \in \bigcup_{S_i \in Y} S_i^0$ we define $y(u) = 0 $. We demonstrate this mapping by a small example in Figure \ref{fig:target-values}. 
+As already mentioned, a training sample consists of a graph $G = (V,E)$ and a candidate solution $S$. Training is done in an imitation learning setting: In order to obtain target values for the vertices in $V$, we apply a look-ahead search to the candidate solution $S$ as described in Section \ref{sec:lookahead-search}, and the GNN is then trained to imitate this look-ahead search. 
+The look-ahead search returns a set of neighboring solutions $Y = \{S_1, S_2, \dots, S_k\}$ such that $S_1, S_2, \dots, S_k \subset V$ and $|S| = |S_1| = |S_2| = \dots = |S_k|$. Furthermore, all sets in $Y$ returned by the look-ahead search are the best neighboring solutions with respect to $S$ with equal objective value $f(S) < f(S_1) = f(S_2) = \dots = f(S_k)$. Note that if $S$ is already a local optimum with respect to the neighborhood structure searched by the look-ahead search, then $Y$ might be empty. Target values for the vertices in $V$ are then given by a mapping $y \colon V \rightarrow \{0,1\}$ which is defined the following way: For each $S_i \in Y$, let $S_{i}^1 = S_i \setminus S$, and let $S_{i}^0 = S \setminus S_i$. In other words, $S_i^1$ contains all vertices in $S_i$ that are outside $S$, and $S_i^0$ contains all vertices inside $S$ that are not in $S_i$. For $v \in (\bigcup_{S_i \in Y} S_i^1) \cup (S \setminus \bigcup_{S_i \in Y} S_i^0)$ we define $y(v) = 1$, and for $u \in \bigcup_{S_i \in Y} S_i^0$ we define $y(u) = 0 $. We demonstrate this mapping by a small example in Figure \ref{fig:target-values}. 
 
 \begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{graphics/target_values.eps}
+    \includegraphics[width=0.8\textwidth]{graphics/target_values.eps}
     \caption[]{A training sample given by a graph $G$ with candidate solution $S$. Edges are omitted for the sake of clarity. The three best neighboring solutions of $S$ w.r.t. the $\Omega_1$ neighborhood structure can be obtained by applying one of the swaps $(u_1, v_1), (u_1, v_2), (u_2, v_2)$ (marked by dotted lines). Thus, the vertices $v_1, v_2$ and the vertices in $S \setminus \{u_1, u_2\}$ are labeled with 1, whereas all remaining vertices are labeled with 0. }
     \label{fig:target-values}
 \end{figure}
