@@ -15,6 +15,7 @@ export local_search_with_EX, construction_heuristic, lower_bound_heuristic,
 include("ConstructionHeuristics.jl")
 include("ShortTermMemory.jl")
 include("SwapHistory.jl")
+include("ScoringFunctions.jl")
 
 """
    ExplorationConstructionSettings
@@ -352,47 +353,5 @@ end
 function density_of_subgraph(g, S)
     density(induced_subgraph(g, S)[1])
 end
-
-# # used for testing lookahead search, maybe remove later
-# function local_search_with_EX(g, γ; d=10, α=10, β=100)
-#     restarts = 0
-#     best = Set(), -Inf
-#     k = 3
-
-#     while restarts < 5
-#         candidate_solution = grasp(g, k)
-        
-#         improvement = true
-
-#         current = ne(induced_subgraph(g, collect(candidate_solution))[1])
-#         max_γ = k*(k-1)/2
-
-#         while improvement
-#             bs_obj, bs_sol = beam_search(g, candidate_solution, min(k, d); α, β)
-
-#             if bs_obj > current
-#                 current = bs_obj
-#                 candidate_solution = bs_sol
-#             else
-#                 improvement = false
-#             end
-
-#             if current / max_γ >= γ
-#                 best = candidate_solution, current
-#                 break
-#             end
-#         end
-
-#         if current / max_γ < γ
-#             restarts += 1
-#             @debug "Restarting"
-#         else
-#             @debug "Found solution of size $k"
-#             k += 1
-#             restarts = 0
-#         end
-#     end
-#     return best
-# end
 
 end
