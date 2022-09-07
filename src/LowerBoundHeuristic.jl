@@ -161,20 +161,51 @@ function (heu::SumOfNeighborsHeuristic)(g::SimpleGraph, node::Node, γ::Real)::R
 end
 
 """
-    lower_bound_heuristic(g, γ, guidance_function; β, expansion_limit)
+    LowerBoundHeuristic
 
-Beam search construction that returns a feasible `γ`-quasi clique in `g`. 
-Each node of the beam search tree is expanded into at most `expansion_limit` nodes, 
-and the beamwidth is defined by `β`
-
-- `g`: Input graph
-- `γ`: Target density
-- `guidance_function`: Guidance function used to evaluate nodes in the beam search tree
-- `β`: Beam width, at most β nodes on each level of the beam search tree are pursued further
-- `expansion_limit`: A node in the beam search tree is expanded into at most `expansion_limit` successor nodes
+Abstract type for LowerBoundHeuristic in the Local Search based Metaheuristic
+Used to find a feasible solution quickly that can be used as a lower bound. 
 
 """
-function lower_bound_heuristic(g::SimpleGraph, γ::Real, guidance_function::GuidanceFunction; β=10, expansion_limit=Inf)
+abstract type LowerBoundHeuristic end
+
+(::LowerBoundHeuristic)(graph::SimpleGraph) = 
+    error("Abstract method (::LowerBoundHeuristic)(graph::SimpleGraph) called")
+
+"""
+    BeamSearch_LowerBoundHeuristic
+
+Type for a beam search heuristic for the MQCP that returns a feasible `γ`-quasi clique 
+when applied to a graph. Each node of the beam search tree is expanded into at most 
+`expansion_limit` nodes, and the beamwidth of the search is defined by `β`.
+
+"""
+struct BeamSearch_LowerBoundHeuristic
+    guidance_func::GuidanceFunction
+    β::Int
+    γ::Real
+    expansion_limit::Int
+
+    function BeamSearch_LowerBoundHeuristic(guidance_func::GuidanceFunction; β::Int=5, γ::Real, expansion_limit=50)
+        new(guidance_func; γ, β, expansion_limit)
+    end
+end
+
+"""
+    (bs_lbh::BeamSearch_LowerBoundHeuristic)(graph::SimpleGraph)
+
+Beam search heuristic that returns a feasible `γ`-quasi clique in `graph`. 
+Each node of the beam search tree is expanded into at most `expansion_limit` nodes, 
+and the beamwidth is defined by `β`. Corresponds to Algorithm 5.3 in thesis.
+
+- `graph`: Input graph
+
+"""
+function (bs_lbh::BeamSearch_LowerBoundHeuristic)(graph::SimpleGraph)
+    β = bs_lbh.β
+    expansion_limit = bs_lbh.expansion_limit
+    γ = bs_lbh.γ
+
     root = Node(Set(), fill(0, nv(g)), 0, 0, )
     max_node = root
     beam = [root]
@@ -190,19 +221,19 @@ function lower_bound_heuristic(g::SimpleGraph, γ::Real, guidance_function::Guid
         # ignore expansion limit only for first node
         for node in beam
             if level == 1
-                children = vcat(children, expand(g, node, γ, visited_solutions))
+                children = vcat(children, expand(graph, node, γ, visited_solutions))
             else
-                children = vcat(children, expand(g, node, γ, visited_solutions; expansion_limit))
+                children = vcat(children, expand(graph, node, γ, visited_solutions; expansion_limit))
             end
         end
         if !isempty(children)
             max_node = sample(children)
         end
 
-        filter!(node -> !is_terminal(g, γ, node), children)
+        filter!(node -> !is_terminal(graph, γ, node), children)
 
         for node in children
-            node.h_val = guidance_function(g, node, γ)
+            node.h_val = guidance_function(graph, node, γ)
         end
 
         beam = partialsort(children, 1:min(β, length(children)); by=(node -> node.h_val), rev=true)
@@ -211,8 +242,59 @@ function lower_bound_heuristic(g::SimpleGraph, γ::Real, guidance_function::Guid
     return collect(max_node.S)
 end
 
+# """
+#     lower_bound_heuristic(g, γ, guidance_function; β, expansion_limit)
+
+# Beam search construction that returns a feasible `γ`-quasi clique in `g`. 
+# Each node of the beam search tree is expanded into at most `expansion_limit` nodes, 
+# and the beamwidth is defined by `β`
+
+# - `g`: Input graph
+# - `γ`: Target density
+# - `guidance_function`: Guidance function used to evaluate nodes in the beam search tree
+# - `β`: Beam width, at most β nodes on each level of the beam search tree are pursued further
+# - `expansion_limit`: A node in the beam search tree is expanded into at most `expansion_limit` successor nodes
+
+# """
+# function lower_bound_heuristic(g::SimpleGraph, γ::Real, guidance_function::GuidanceFunction; β=10, expansion_limit=Inf)
+#     root = Node(Set(), fill(0, nv(g)), 0, 0, )
+#     max_node = root
+#     beam = [root]
+#     level::Int = 0
+
+#     while !isempty(beam)
+#         level = level + 1
+#         @debug "level", level
+        
+#         children = []
+#         visited_solutions = Set{Set{Int}}()
+
+#         # ignore expansion limit only for first node
+#         for node in beam
+#             if level == 1
+#                 children = vcat(children, expand(g, node, γ, visited_solutions))
+#             else
+#                 children = vcat(children, expand(g, node, γ, visited_solutions; expansion_limit))
+#             end
+#         end
+#         if !isempty(children)
+#             max_node = sample(children)
+#         end
+
+#         filter!(node -> !is_terminal(g, γ, node), children)
+
+#         for node in children
+#             node.h_val = guidance_function(g, node, γ)
+#         end
+
+#         beam = partialsort(children, 1:min(β, length(children)); by=(node -> node.h_val), rev=true)
+#     end
+
+#     return collect(max_node.S)
+# end
+
 # expand node into feasible successors
-function expand(g::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set{Int}}; expansion_limit=Inf)::Vector{Node}
+function expand(graph::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set{Int}}; expansion_limit=Inf)::Vector{Node}
     d_S = node.d_S
     k = length(node.S)
     min_edges_needed = Int(ceil(γ * (k*(k+1)/2))) - node.num_edges
@@ -225,7 +307,7 @@ function expand(g::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set
             S′ = Set([node.S..., v])
             if S′ ∉ visited_solutions
                 push!(visited_solutions, S′)
-                push!(children, Node(S′, update_d_S(g, d_S, v), node.num_edges + d_S[v], 0))
+                push!(children, Node(S′, update_d_S(graph, d_S, v), node.num_edges + d_S[v], 0))
                 if length(children) > expansion_limit
                     break
                 end
@@ -237,10 +319,10 @@ function expand(g::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set
     return children    
 end
 
-function update_d_S(g, d_S, v; rev=false)
+function update_d_S(graph, d_S, v; rev=false)
     d_S = copy(d_S)
     sign = rev ? -1 : 1
-    for u in neighbors(g, v)
+    for u in neighbors(graph, v)
         d_S[u] = d_S[u] + sign
     end
     return d_S
@@ -248,18 +330,18 @@ end
 
 
 """
-    is_terminal(g, γ, S)
+    is_terminal(graph, γ, S)
 
 Returns true if candidate solution `S` can be extended to a γ-quasi clique of size |`S`|+1, and 
 false otherwise.
 
-- `g`: Input Graph
+- `graph`: Input Graph
 - `γ`: Target density that defines feasibility of a quasi-clique
 - `node`: Node in the beam search tree
 
 """
-function is_terminal(g::SimpleGraph, γ::Real, node::Node)
-    V_S = setdiff(vertices(g), node.S)
+function is_terminal(graph::SimpleGraph, γ::Real, node::Node)
+    V_S = setdiff(vertices(graph), node.S)
     d_S_filtered = [node.d_S[i] for i in V_S]
     k = length(node.S)
     edges_needed = γ*(k*(k+1)/2) # minimum number of edges needed in solution of size |S|+1 
@@ -271,77 +353,3 @@ function is_terminal(g::SimpleGraph, γ::Real, node::Node)
         return false
     end
 end
-
-"""
-    construction_heuristic(g, k, freq; α, p)
-
-Corresponds to Algorithm 5.4 in thesis. Returns a vector of distinct vertices in `g` of size `k` that is build 
-incrementally. In each iteration, with probability `p` a vertex with low frequency value is added, 
-and with probability 1-p a vertex is added in a GRASP-like manner.
-
-- `g`: Input Graph
-- `k`: Target size of the returned vector of vertices
-- `freq`: Frequency list with length |V|. Vertices with low frequency are preferred during construction.
-- `α`: GRASP parameter; α=0 performs a greedy construction, α=1 performs a randomized construction
-- `p`: Controls the balance between GRASP construction and preferring vertices with low frequency values. 
-    `p`=0 ignores frequency values, while `p`=1 only uses frequency values.
-
-"""
-function construction_heuristic(g::SimpleGraph, k::Int, freq=[0 for i=1:nv(g)]::Vector{Int}; α=0.2::Real, p=0.2::Real)
-    freq_sorted = sortperm(freq)
-    init_vertex = freq_sorted[1]
-    S = [init_vertex]
-    d_S = calculate_d_S(g, S)
-
-    while length(S) < k
-        if rand() < p
-            N_G_S = open_set_neighborhood(g, S)
-            if !isempty(N_G_S)
-                u = filter(v -> v ∈ N_G_S, freq_sorted)[1]
-            else
-                V_S = setdiff(vertices(g), S)
-                u = filter(v -> v ∈ V_S, freq_sorted)[1]
-            end
-        else
-            V_S = setdiff(vertices(g), S) # V ∖ candidate_solution
-            d_S_V_S = [d_S[i] for i in V_S] # only d_S values for V_S
-            d_max = maximum(d_S_V_S)
-            d_min = minimum(d_S_V_S)
-            min_val = d_max - α*(d_max - d_min)
-            restricted_candidate_list = filter(v -> d_S[v] >= min_val, V_S)
-            u = sample(restricted_candidate_list)
-        end
-        push!(S, u)
-        for v in neighbors(g, u)
-            d_S[v] += 1
-        end
-    end
-
-    return S
-end
-
-"""
-    open_set_neighborhood(g, vertex_list)
-
-Return the union of neighborhoods of vertices in `vertex_list` excluding vertices in `vertex_list`
-
-- `g`: Input Graph
-- `vertex_list`: Vector of vertices from `g`
-
-"""
-open_set_neighborhood(g::SimpleGraph, vertex_list::Vector{Int})::Vector{Int} = 
-    setdiff(reduce(vcat, neighbors(g, v) for v in vertex_list), vertex_list)
-
-
-open_set_neighborhood(g::SimpleGraph, vertex_set::Set{Int})::Vector{Int} = open_set_neighborhood(g, collect(vertex_set))
-
-"""
-    calculate_num_edges(g, candidate_solution)
-
-Returns the number of edges in the subgraph induced by candidate solution `S` in `g`
-
-- `g`: Input Graph
-- `S`: List of nodes representing the candidate solution
-
-"""
-calculate_num_edges(g::SimpleGraph, S::Vector{Int})::Int = ne(induced_subgraph(g, S)[1])
