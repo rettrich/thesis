@@ -1,5 +1,6 @@
 
 using thesis.GNNs
+using GraphNeuralNetworks
 
 """
     ScoringFunction
@@ -15,10 +16,10 @@ It provides a simple interface:
 """
 abstract type ScoringFunction end
 
-update!(sf::ScoringFunction, graph::G) = error("update!(sf, graph) called on abstract ScoringFunction")
+update!(sf::ScoringFunction, graph::SimpleGraph) = error("update!(sf, graph) called on abstract ScoringFunction")
 update!(sf::ScoringFunction, S::Set{Int}) = error("update!(sf, S) called on abstract ScoringFunction")
 update!(sf::ScoringFunction, u::Int, v::Int) = error("update!(sf, u, v) called on abstract ScoringFunction")
-get_restricted_neighborhood(sf::ScorinfFunction, S::Set{Int}, V_S::Set{Int})::@NamedTuple{X::Vector{Int}, Y::Vector{Int}} = 
+get_restricted_neighborhood(sf::ScoringFunction, S::Set{Int}, V_S::Set{Int})::@NamedTuple{X::Vector{Int}, Y::Vector{Int}} = 
     error("get_restricted_neighborhood(sf) called on abstract ScoringFunction")
 
 struct d_S_ScoringFunction <: ScoringFunction
@@ -26,7 +27,7 @@ struct d_S_ScoringFunction <: ScoringFunction
     d_S::Vector{Int}
 end
 
-function update!(sf::d_S_ScoringFunction, graph::G)
+function update!(sf::d_S_ScoringFunction, graph::SimpleGraph)
     sf.graph = graph
     sf.d_S = fill(0, nv(graph))
     return nothing
@@ -65,7 +66,7 @@ struct GNN_ScoringFunction <: ScoringFunction
     neighborhood_size::Int
 end
 
-function update!(sf::GNN_ScoringFunction, graph::G)
+function update!(sf::GNN_ScoringFunction, graph::SimpleGraph)
     sf.graph = graph
 end
 

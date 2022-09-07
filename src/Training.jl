@@ -6,7 +6,7 @@ using thesis
 using Distributions
 using DataStructures
 using Flux
-using LookaheadSearch
+using thesis.LookaheadSearch
 
 export TrainingSample, ReplayBuffer,
        add_to_buffer!, get_data, compute_node_features, create_sample,

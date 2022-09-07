@@ -179,15 +179,20 @@ Type for a beam search heuristic for the MQCP that returns a feasible `γ`-quasi
 when applied to a graph. Each node of the beam search tree is expanded into at most 
 `expansion_limit` nodes, and the beamwidth of the search is defined by `β`.
 
+- `guidance_func`: Guidance function used to evaluate nodes in the beam search
+- `β`: Beam width
+- `γ`: Target density for MQCP
+- `expansion_limit`: Limit expansion of nodes into up to `expansion_limit` child nodes for performance
+
 """
-struct BeamSearch_LowerBoundHeuristic
+struct BeamSearch_LowerBoundHeuristic <: LowerBoundHeuristic
     guidance_func::GuidanceFunction
     β::Int
     γ::Real
     expansion_limit::Int
 
-    function BeamSearch_LowerBoundHeuristic(guidance_func::GuidanceFunction; β::Int=5, γ::Real, expansion_limit=50)
-        new(guidance_func; γ, β, expansion_limit)
+    function BeamSearch_LowerBoundHeuristic(guidance_func::GuidanceFunction; β::Int=5, γ::Real, expansion_limit::Int=50)
+        new(guidance_func, β, γ, expansion_limit)
     end
 end
 

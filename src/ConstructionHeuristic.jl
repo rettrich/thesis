@@ -33,7 +33,7 @@ In each iteration, with probability `p` a vertex with low frequency value is add
 and with probability 1-p a vertex is added in a GRASP-like manner.
 
 """
-struct Freq_GRASP_ConstructionHeuristic
+struct Freq_GRASP_ConstructionHeuristic <: ConstructionHeuristic
     α::Real
     p::Real
 

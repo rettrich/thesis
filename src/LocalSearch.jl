@@ -4,120 +4,217 @@ using StatsBase
 using Graphs
 # using thesis.LookaheadSearch
 
-export local_search_with_EX, construction_heuristic, lower_bound_heuristic, 
-    calculate_d_S, calculate_num_edges,
-    LocalSearchSettings, ConstructionHeuristicSettings,
-    GuidanceFunction, GreedyCompletionHeuristic, GreedyCompletionHeuristicPQVariant, SumOfNeighborsHeuristic, 
+export calculate_d_S, calculate_num_edges,
+    LocalSearchBasedMH,
+    LowerBoundHeuristic, BeamSearch_LowerBoundHeuristic,
+    ConstructionHeuristic, Freq_GRASP_ConstructionHeuristic,
     ConfigurationChecking, TabuList,
-    sample_candidate_solutions,
-    run_MQCP
+    LocalSearchProcedure, MQCP_LocalSearchProcedure,
+    GuidanceFunction, GreedyCompletionHeuristic, GreedyCompletionHeuristicPQVariant, SumOfNeighborsHeuristic,
+    SwapHistory, sample_candidate_solutions,
+    run
 
-include("ConstructionHeuristics.jl")
+include("LowerBoundHeuristic.jl")
+include("ConstructionHeuristic.jl")
 include("ShortTermMemory.jl")
 include("SwapHistory.jl")
 include("ScoringFunctions.jl")
 
-"""
-   ExplorationConstructionSettings
+# """
+#    ExplorationConstructionSettings
    
-Settings for construction heuristics used in the local search algorithm (Algorithms 5.3 and 5.4 in thesis)
+# Settings for construction heuristics used in the local search algorithm (Algorithms 5.3 and 5.4 in thesis)
 
-- `p`: Controls the balance between GRASP construction and preferring vertices with low frequency values. 
-    `p`=0 ignores frequency values, while `p`=1 only uses frequency values. 
-- `α`: GRASP parameter; α=0 performs a greedy construction, α=1 performs a randomized construction
-- `β`: Beamwidth
-- `expansion_limit`: Every node in the beam search tree is expanded into at most `expansion_limit` nodes
-- `guidance_function`: Guidance function used to evaluate nodes in the beam search
-"""
-struct ConstructionHeuristicSettings
-    p::Real
-    α::Real
-    β::Int # beamwidth
-    expansion_limit::Int
-    guidance_function::GuidanceFunction
+# - `p`: Controls the balance between GRASP construction and preferring vertices with low frequency values. 
+#     `p`=0 ignores frequency values, while `p`=1 only uses frequency values. 
+# - `α`: GRASP parameter; α=0 performs a greedy construction, α=1 performs a randomized construction
+# - `β`: Beamwidth
+# - `expansion_limit`: Every node in the beam search tree is expanded into at most `expansion_limit` nodes
+# - `guidance_function`: Guidance function used to evaluate nodes in the beam search
+# """
+# struct ConstructionHeuristicSettings
+#     p::Real
+#     α::Real
+#     β::Int # beamwidth
+#     expansion_limit::Int
+#     guidance_function::GuidanceFunction
+# end
+
+abstract type LocalSearchProcedure end
+
+struct MQCP_LocalSearchProcedure <: LocalSearchProcedure
+    γ::Real
+    scoring_function::ScoringFunction
 end
 
 """
-    LocalSearchSettings
+    LocalSearchBasedMH
 
-Settings for the local search algorithm. 
+Type for the Local Search Based Metaheuristic. Consists of five key components that depend on the specific problem 
+(MQCP, MDCP, MDP): 
+- a `LowerBoundHeuristic` used to quickly obtain a feasible solution
+- a `ConstructionHeuristic` that produces a candidate solution as a starting point for local search
+- a `ShortTermMemory` mechanism (e.g. TabuList or ConfigurationChecking) to prevent cycling
+- a `ScoringFunction` in order to restrict the neighborhood to promising swaps
+- a `LocalSearchProcedure`
 
-- `g`: Input graph
-- `construction_heuristic_settings`: Settings for construction heuristics used in the local search algorithm
-- `stm`: Short term memory mechanism used in local search (TabuList, ConfigurationChecking)
+Furthermore, the following settings are customisable: 
 - `timelimit`: Timelimit for search in seconds
 - `max_iter`: Search is restarted after `max_iter` iterations without finding an improved solution
 - `next_improvement`: If true: Next improvement is used as strategy when searching neighborhoods. Otherwise, 
     best improvement is used. 
+- `record_swap_history`: If true: Records all encountered candidate solutions as a `SwapHistory` in order to 
+    process them later (e.g. create training samples). 
+
 """
-struct LocalSearchSettings
-    g::SimpleGraph
-    construction_heuristic_settings::ConstructionHeuristicSettings
-    stm::ShortTermMemory
+struct LocalSearchBasedMH
+    # key components
+    lower_bound_heuristic::LowerBoundHeuristic
+    construction_heuristic::ConstructionHeuristic
+    short_term_memory::ShortTermMemory
+    scoring_function::ScoringFunction
+    local_search_procedure::LocalSearchProcedure
+
+    # settings
     timelimit::Float64
     max_iter::Int
     next_improvement::Bool
     record_swap_history::Bool
 
-    # default settings
-    function LocalSearchSettings(g::SimpleGraph; 
-                                 construction_heuristic_settings::ConstructionHeuristicSettings = ConstructionHeuristicSettings(0.2, 0.2, 1, 50, GreedyCompletionHeuristic()), 
-                                 short_term_memory::ShortTermMemory = ConfigurationChecking(g, 7),
-                                 timelimit::Float64 = 600.0,
-                                 max_iter::Int = 4000,
-                                 next_improvement::Bool = true,
-                                 record_swap_history::Bool = false
-                                 )
-        new(g, construction_heuristic_settings, short_term_memory, timelimit, 
-            max_iter, next_improvement, record_swap_history)
+    function LocalSearchBasedMH(lower_bound_heuristic::LowerBoundHeuristic, 
+                                construction_heuristic::ConstructionHeuristic,
+                                short_term_memory::ShortTermMemory,
+                                scoring_function::ScoringFunction,
+                                local_search_procedure::LocalSearchProcedure;
+                                timelimit::Float64 = 600.0, # 10 minutes
+                                max_iter::Int = 4000, 
+                                next_improvement::Bool = false,
+                                record_swap_history::Bool = false,
+                                )
+        new(lower_bound_heuristic, construction_heuristic, short_term_memory, scoring_function, local_search_procedure,
+            timelimit, max_iter, next_improvement, record_swap_history)
     end
 end
 
-"""
-    run_MQCP(g, γ; settings)
+# """
+#     LocalSearchSettings
 
-Runs the local search algorithm for the MQCP for the instance defined by graph `g` and target 
-density `γ` with settings defined in `settings` 
-"""
-function run_MQCP(g::SimpleGraph, γ::Real; settings::LocalSearchSettings)
+# Settings for the local search algorithm. 
+
+# - `g`: Input graph
+# - `construction_heuristic_settings`: Settings for construction heuristics used in the local search algorithm
+# - `stm`: Short term memory mechanism used in local search (TabuList, ConfigurationChecking)
+# - `timelimit`: Timelimit for search in seconds
+# - `max_iter`: Search is restarted after `max_iter` iterations without finding an improved solution
+# - `next_improvement`: If true: Next improvement is used as strategy when searching neighborhoods. Otherwise, 
+#     best improvement is used. 
+# """
+# struct LocalSearchSettings
+#     g::SimpleGraph
+#     construction_heuristic_settings::ConstructionHeuristicSettings
+#     stm::ShortTermMemory
+#     timelimit::Float64
+#     max_iter::Int
+#     next_improvement::Bool
+#     record_swap_history::Bool
+
+#     # default settings
+#     function LocalSearchSettings(g::SimpleGraph; 
+#                                  construction_heuristic_settings::ConstructionHeuristicSettings = ConstructionHeuristicSettings(0.2, 0.2, 1, 50, GreedyCompletionHeuristic()), 
+#                                  short_term_memory::ShortTermMemory = ConfigurationChecking(g, 7),
+#                                  timelimit::Float64 = 600.0,
+#                                  max_iter::Int = 4000,
+#                                  next_improvement::Bool = true,
+#                                  record_swap_history::Bool = false
+#                                  )
+#         new(g, construction_heuristic_settings, short_term_memory, timelimit, 
+#             max_iter, next_improvement, record_swap_history)
+#     end
+# end
+
+# TODO: Remove problem specific parts by generalizing extend() and is_feasible as components of LocalSearchBasedMH
+function run(local_search::LocalSearchBasedMH, graph::SimpleGraph, γ::Real)::@NamedTuple{solution::Vector{Int}, swap_history::Union{Nothing, SwapHistory}}
     # initial construction
     @debug "Constructing initial solution..."
-    S′ = lower_bound_heuristic(g, γ, 
-                                 settings.construction_heuristic_settings.guidance_function; 
-                                 settings.construction_heuristic_settings.β,
-                                 settings.construction_heuristic_settings.expansion_limit)
+    S′ = local_search.lower_bound_heuristic(graph)
+
     @debug "Found initial solution of size $(length(S′))"
     k = length(S′)+1
-    freq = fill(0, nv(g))
-    timelimit = time() + settings.timelimit
+    freq = fill(0, nv(graph))
+    timelimit = time() + local_search.timelimit
 
-    swap_history::Union{Nothing, SwapHistory} = settings.record_swap_history ? SwapHistory(g) : nothing
+    swap_history::Union{Nothing, SwapHistory} = local_search.record_swap_history ? SwapHistory(graph) : nothing
 
-    while time() < timelimit
+    while time < timelimit
         @debug "Generate candidate solution for size $k"
-        S = construction_heuristic(g, k, freq; 
-                                   settings.construction_heuristic_settings.p,
-                                   settings.construction_heuristic_settings.α)
+        S = local_search.construction_heuristic(g, k, freq)
 
         if !isnothing(swap_history)
             push!(swap_history, Set(S))
         end
 
         @debug "Starting local search with candidate solution of density $(density_of_subgraph(g, S))"
-        S, freq, swap_history = local_search_procedure(g, S, γ, freq, settings.stm;
-                                   timelimit, settings.max_iter, settings.next_improvement,
-                                   swap_history)
+        S, freq, swap_history = local_search.local_search_procedure(graph, S, freq, 
+                    local_search.short_term_memory;
+                    timelimit, local_search.max_iter, local_search.next_improvement, swap_history)
+        
         @debug "Found solution with density $(density_of_subgraph(g, S))"
 
-        if is_feasible_MQC(g, S, γ)
+        if is_feasible_MQCP(graph, S, γ)
             S = extend_solution(g, S, γ)
             S′ = S
             k = length(S′)+1
             freq = fill(0, nv(g))
         end
     end
-    return S′, swap_history
+    return (;solution=S′, swap_history)
 end
+
+# """
+#     run_MQCP(g, γ; settings)
+
+# Runs the local search algorithm for the MQCP for the instance defined by graph `g` and target 
+# density `γ` with settings defined in `settings` 
+# """
+# function run_MQCP(g::SimpleGraph, γ::Real; settings::LocalSearchSettings)
+#     # initial construction
+#     @debug "Constructing initial solution..."
+#     S′ = lower_bound_heuristic(g, γ, 
+#                                  settings.construction_heuristic_settings.guidance_function; 
+#                                  settings.construction_heuristic_settings.β,
+#                                  settings.construction_heuristic_settings.expansion_limit)
+#     @debug "Found initial solution of size $(length(S′))"
+#     k = length(S′)+1
+#     freq = fill(0, nv(g))
+#     timelimit = time() + settings.timelimit
+
+#     swap_history::Union{Nothing, SwapHistory} = settings.record_swap_history ? SwapHistory(g) : nothing
+
+#     while time() < timelimit
+#         @debug "Generate candidate solution for size $k"
+#         S = construction_heuristic(g, k, freq; 
+#                                    settings.construction_heuristic_settings.p,
+#                                    settings.construction_heuristic_settings.α)
+
+#         if !isnothing(swap_history)
+#             push!(swap_history, Set(S))
+#         end
+
+#         @debug "Starting local search with candidate solution of density $(density_of_subgraph(g, S))"
+#         S, freq, swap_history = local_search_procedure(g, S, γ, freq, settings.stm;
+#                                    timelimit, settings.max_iter, settings.next_improvement,
+#                                    swap_history)
+#         @debug "Found solution with density $(density_of_subgraph(g, S))"
+
+#         if is_feasible_MQC(g, S, γ)
+#             S = extend_solution(g, S, γ)
+#             S′ = S
+#             k = length(S′)+1
+#             freq = fill(0, nv(g))
+#         end
+#     end
+#     return S′, swap_history
+# end
 
 # TODO: Extend to bfs variant?
 """
@@ -158,14 +255,14 @@ function extend_solution(g::SimpleGraph, S::Vector{Int}, γ::Real)::Vector{Int}
 end
 
 """
-    local_search_procedure(g, S, γ, freq, short_term_memory; timelimit, max_iter, first_improvement)
+    (local_search_procedure::MQCP_LocalSearchProcedure)(g, S, freq, short_term_memory; timelimit, max_iter, first_improvement)
 
 Local search procedure for MQCP. Corresponds to Algorithm 5.5 in thesis. 
-Returns the best found solution and the updated frequency list that tracks how many times each vertex was moved. 
+Returns the best found solution, the updated frequency list that tracks how many times each vertex was moved, 
+and optionally the swap history. 
 
-- `g`: Input graph
+- `graph`: Input graph
 - `S`: Candidate solution
-- `γ`: Target density
 - `freq`: Frequency list, keeps track of how many times each vertex is moved
 - `short_term_memory`: Short term memory mechanism that blocks vertices from being moved in and out 
     of the solution too often for a short time. 
@@ -177,16 +274,20 @@ Returns the best found solution and the updated frequency list that tracks how m
 - `swap_history`: Swap history will be recorded, if a `SwapHistory` instance is passed.
 
 """
-function local_search_procedure(g::SimpleGraph, S::Vector{Int}, γ::Real, freq::Vector{Int}, 
-                                short_term_memory::ShortTermMemory; 
-                                timelimit::Float64, max_iter::Int, next_improvement::Bool,
-                                swap_history::Union{Nothing, SwapHistory})::Tuple{Vector{Int}, Vector{Int}, Union{Nothing, SwapHistory}}
+function (local_search_procedure::MQCP_LocalSearchProcedure)(
+          graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}},
+          freq::Vector{Int}, short_term_memory::ShortTermMemory;
+          timelimit::Float64, max_iter::Int, next_improvement::Bool,
+          swap_history::Union{Nothing, SwapHistory})::@NamedTuple{S::Vector{Int}, freq::Vector{Int}, swap_history::Union{Nothing, SwapHistory}}
+
+    γ = local_search_procedure.γ
+    
     k = length(S)
-    best_obj = calculate_num_edges(g, S)
-    d_S = calculate_d_S(g, S)
+    best_obj = calculate_num_edges(graph, S)
+    d_S = calculate_d_S(graph, S)
     S = Set(S)
     S′ = copy(S)
-    V_S = Set(filter(v -> v ∉ S, vertices(g)))
+    V_S = Set(filter(v -> v ∉ S, vertices(graph)))
     current_obj = best_obj
     min_edges_needed = γ * k * (k-1) / 2
 
@@ -204,12 +305,12 @@ function local_search_procedure(g::SimpleGraph, S::Vector{Int}, γ::Real, freq::
         Y_restricted = filter(v -> (d_S[v] >= d_max-1), Y_unblocked)
 
         if !isempty(X_restricted) && !isempty(Y_restricted)
-            u, v, Δuv = search_neighborhood(g, d_S, X_restricted, Y_restricted; next_improvement)
+            u, v, Δuv = search_neighborhood(graph, d_S, X_restricted, Y_restricted; next_improvement)
             # TODO: if move is not improving, maybe use arbitrary move?
         else 
             u = sample(first_non_empty(X_restricted, X_unblocked, S))
             v = sample(first_non_empty(Y_restricted, Y_unblocked, V_S))
-            Δuv = gain(g, d_S, u, v)
+            Δuv = gain(graph, d_S, u, v)
         end
 
         # update S, V∖S
@@ -232,7 +333,7 @@ function local_search_procedure(g::SimpleGraph, S::Vector{Int}, γ::Real, freq::
         
         # update current candidate solution and corresponding data
         current_obj += Δuv
-        update_d_S!(g, d_S, u, v)
+        update_d_S!(graph, d_S, u, v)
         
         if current_obj > best_obj
             S′ = S
@@ -243,11 +344,104 @@ function local_search_procedure(g::SimpleGraph, S::Vector{Int}, γ::Real, freq::
         end
 
         if best_obj >= min_edges_needed
-            return collect(S′), freq, swap_history
+            return (;S=collect(S′), freq, swap_history)
         end 
     end
-    return collect(S′), freq, swap_history
+    return (;S=collect(S′), freq, swap_history)
 end
+
+# """
+#     local_search_procedure(g, S, γ, freq, short_term_memory; timelimit, max_iter, first_improvement)
+
+# Local search procedure for MQCP. Corresponds to Algorithm 5.5 in thesis. 
+# Returns the best found solution, the updated frequency list that tracks how many times each vertex was moved, 
+# and optionally the swap history. 
+
+# - `graph`: Input graph
+# - `S`: Candidate solution
+# - `γ`: Target density
+# - `freq`: Frequency list, keeps track of how many times each vertex is moved
+# - `short_term_memory`: Short term memory mechanism that blocks vertices from being moved in and out 
+#     of the solution too often for a short time. 
+# - `timelimit`: Cutoff time for search
+# - `max_iter`: Stop search after `max_iter` iterations of no improvement
+# - `first_improvement`: Strategy used for searching the neighborhood: If `first_improvement` is `true`, then 
+#         the first improving neighboring solution will be selected, otherwise the neighborhood is always searched to 
+#         completion and best improvement is used. 
+# - `swap_history`: Swap history will be recorded, if a `SwapHistory` instance is passed.
+
+# """
+# function local_search_procedure(graph::SimpleGraph, S::Vector{Int}, γ::Real, freq::Vector{Int}, 
+#                                 short_term_memory::ShortTermMemory; 
+#                                 timelimit::Float64, max_iter::Int, next_improvement::Bool,
+#                                 swap_history::Union{Nothing, SwapHistory})::Tuple{Vector{Int}, Vector{Int}, Union{Nothing, SwapHistory}}
+#     k = length(S)
+#     best_obj = calculate_num_edges(graph, S)
+#     d_S = calculate_d_S(graph, S)
+#     S = Set(S)
+#     S′ = copy(S)
+#     V_S = Set(filter(v -> v ∉ S, vertices(graph)))
+#     current_obj = best_obj
+#     min_edges_needed = γ * k * (k-1) / 2
+
+#     iter_since_last_improvement = 0
+
+#     reset!(short_term_memory)
+    
+#     while time() < timelimit && iter_since_last_improvement < max_iter
+#         blocked = get_blocked(short_term_memory)
+#         X_unblocked = filter(u -> u ∉ blocked, S)
+#         Y_unblocked = filter(v -> v ∉ blocked, V_S)
+#         d_min = minimum([d_S[i] for i in X_unblocked])
+#         d_max = maximum([d_S[i] for i in Y_unblocked])
+#         X_restricted = filter(u -> (d_S[u] <= d_min+1), X_unblocked)
+#         Y_restricted = filter(v -> (d_S[v] >= d_max-1), Y_unblocked)
+
+#         if !isempty(X_restricted) && !isempty(Y_restricted)
+#             u, v, Δuv = search_neighborhood(graph, d_S, X_restricted, Y_restricted; next_improvement)
+#             # TODO: if move is not improving, maybe use arbitrary move?
+#         else 
+#             u = sample(first_non_empty(X_restricted, X_unblocked, S))
+#             v = sample(first_non_empty(Y_restricted, Y_unblocked, V_S))
+#             Δuv = gain(graph, d_S, u, v)
+#         end
+
+#         # update S, V∖S
+#         push!(S, v)
+#         delete!(S, u)
+#         push!(V_S, u)
+#         delete!(V_S, v)
+
+#         # update short term memory
+#         move!(short_term_memory, u, v)
+        
+#         # update long term memory
+#         freq[u] += 1
+#         freq[v] += 1
+
+#         # update swap SwapHistory
+#         if !isnothing(swap_history)
+#             push!(swap_history, u, v)
+#         end
+        
+#         # update current candidate solution and corresponding data
+#         current_obj += Δuv
+#         update_d_S!(graph, d_S, u, v)
+        
+#         if current_obj > best_obj
+#             S′ = S
+#             best_obj = current_obj
+#             iter_since_last_improvement = 0
+#         else
+#             iter_since_last_improvement += 1
+#         end
+
+#         if best_obj >= min_edges_needed
+#             return collect(S′), freq, swap_history
+#         end 
+#     end
+#     return collect(S′), freq, swap_history
+# end
 
 """
     gain(g, d_S, u, v)
