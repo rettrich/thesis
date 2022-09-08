@@ -7,3 +7,4 @@ doc/thesis/thesis.lof
 doc/thesis/thesis.toc
 training_data/*
 logfile*
+.VSCodeCounter/*
