@@ -79,13 +79,6 @@ function get_data(buffer::ReplayBuffer)
     return Flux.DataLoader(data, batchsize=32, shuffle=true, collate=true)
 end
 
-
-function compute_node_features(graph::SimpleGraph, S::Union{Set{Int}, Vector{Int}}, d_S::Vector{Int})
-    degrees = degree(graph)
-    node_features = Float32.(vcat(degrees', d_S'))
-    return node_features
-end
-
 function create_sample(graph::SimpleGraph{Int},
                        S::Union{Set{Int}, Vector{Int}},
                        lookahead_func::LookaheadSearchFunction
@@ -93,7 +86,7 @@ function create_sample(graph::SimpleGraph{Int},
 
     # node features
     d_S = thesis.LocalSearch.calculate_d_S(graph, S)
-    node_features = compute_node_features(graph, S, d_S)
+    node_features = thesis.GNNs.compute_node_features(graph, d_S)
 
     # use lookahead function to obtain best neighboring solutions
     obj_val, solutions = lookahead_func(graph, S, d_S)

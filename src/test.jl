@@ -32,7 +32,7 @@ ENV["JULIA_DEBUG"] = "thesis"
 #     push!(S, node_2)
 
 #     println(S)
-    
+
 #     println("contains node_3? $(node_3 in S)")
 
 #     println("node1 == node3? $(node_1 == node_3)")
@@ -45,17 +45,17 @@ function test()
     # sum_heu = SumOfNeighborsHeuristic(100, 0.5)
     γ = 0.9
 
-    t_greedy = @elapsed begin 
+    t_greedy = @elapsed begin
         S_greedy = lower_bound_heuristic(graph, γ, greedy_heu; β=5, expansion_limit=10)
     end
-    # t_sum = @elapsed begin 
+    # t_sum = @elapsed begin
     #     S_sum = lower_bound_heuristic(graph, γ, sum_heu; β=10, expansion_limit=50)
     # end
     # @time S_const = construction_heuristic(g, 80, rand(0:10, 800); p=0.5)
     # S_random = sample(1:800, 80; replace=false)
     # println("density constr: $(density(induced_subgraph(g, S_const)[1]))")
     # println("density random: $(density(induced_subgraph(g, S_random)[1]))")
-    
+
     println("greedy_heu length: $(length(S_greedy)), runtime: $t_greedy")
     # println("sum_heu length: $(length(S_sum)), runtime: $t_sum")
 
@@ -66,24 +66,25 @@ function test_local_search()
     γ = 0.9
 
     construction_heuristic_settings = ConstructionHeuristicSettings(
-                                    0.2, # parameter p of exploration construction 
+                                    0.2, # parameter p of exploration construction
                                     0.2, # GRASP parameter α
                                     1,   # beamwidth β of initial construction
                                     50,  # expansion_limit of initial construction
                                     GreedyCompletionHeuristic() # guidance function of initial construction
                                     )
     short_term_memory = TabuList(graph)
-    settings = LocalSearchSettings(graph; 
-                                   construction_heuristic_settings, 
+    settings = LocalSearchSettings(graph;
+                                   construction_heuristic_settings,
                                    short_term_memory,
-                                   timelimit=60.0, 
-                                   max_iter=4000, 
-                                   next_improvement=true, 
+                                   timelimit=60.0,
+                                   max_iter=4000,
+                                   next_improvement=true,
                                    )
 
     solution = run_MQCP(graph, γ; settings)
-    
+
     println("solution length: $(length(solution))")
 end
 
-test()
+# test()
+

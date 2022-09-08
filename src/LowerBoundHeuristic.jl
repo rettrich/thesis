@@ -191,6 +191,16 @@ struct BeamSearch_LowerBoundHeuristic <: LowerBoundHeuristic
     γ::Real
     expansion_limit::Int
 
+    """
+    
+        BeamSearch_LowerBoundHeuristic
+    
+    - `guidance_func`: GuidanceFunction used to evaluate nodes in the beam search
+    - `β`: Beam width
+    - `γ`: Target density for MQCP
+    - `expansion_limit`: Limit expansion of nodes into up to `expansion_limit` child nodes for performance
+
+    """
     function BeamSearch_LowerBoundHeuristic(guidance_func::GuidanceFunction; β::Int=5, γ::Real, expansion_limit::Int=50)
         new(guidance_func, β, γ, expansion_limit)
     end
@@ -210,8 +220,9 @@ function (bs_lbh::BeamSearch_LowerBoundHeuristic)(graph::SimpleGraph)
     β = bs_lbh.β
     expansion_limit = bs_lbh.expansion_limit
     γ = bs_lbh.γ
+    guidance_function = bs_lbh.guidance_func
 
-    root = Node(Set(), fill(0, nv(g)), 0, 0, )
+    root = Node(Set(), fill(0, nv(graph)), 0, 0, )
     max_node = root
     beam = [root]
     level::Int = 0

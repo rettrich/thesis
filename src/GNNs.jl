@@ -8,7 +8,7 @@ using Flux, Graphs, GraphNeuralNetworks, CUDA
 # using MLUtils
 # using Logging
 
-export GNNModel, ResGatedGraphConvGNN
+export GNNModel, ResGatedGraphConvGNN, compute_node_features, device
 
 device = CUDA.functional() ? Flux.gpu : Flux.cpu
 # device = Flux.cpu
@@ -50,6 +50,12 @@ end
 Flux.params(gnn::ResGatedGraphConvGNN) = Flux.params(gnn.model)
 
 (gnn::ResGatedGraphConvGNN)(gnn_graph::GNNGraph, inputs::AbstractMatrix) = gnn.model(gnn_graph, inputs)
+
+function compute_node_features(graph::SimpleGraph, d_S::Vector{Int})
+    degrees = degree(graph)
+    node_features = Float32.(vcat(degrees', d_S'))
+    return node_features
+end
 
 # function create_sample(graph::SimpleGraph{Int},
 #                        S::Union{Set{Int}, Vector{Int}},
