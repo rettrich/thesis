@@ -78,7 +78,7 @@ function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, S::Set{Int}, looka
     pushfirst!(buffer.buffer, sample)
 
     if length(buffer) > buffer.capacity
-        pop!(buffer)
+        pop!(buffer.buffer)
     end
 end
 
