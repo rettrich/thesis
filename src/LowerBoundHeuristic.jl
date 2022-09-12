@@ -258,57 +258,6 @@ function (bs_lbh::BeamSearch_LowerBoundHeuristic)(graph::SimpleGraph)
     return collect(max_node.S)
 end
 
-# """
-#     lower_bound_heuristic(g, γ, guidance_function; β, expansion_limit)
-
-# Beam search construction that returns a feasible `γ`-quasi clique in `g`. 
-# Each node of the beam search tree is expanded into at most `expansion_limit` nodes, 
-# and the beamwidth is defined by `β`
-
-# - `g`: Input graph
-# - `γ`: Target density
-# - `guidance_function`: Guidance function used to evaluate nodes in the beam search tree
-# - `β`: Beam width, at most β nodes on each level of the beam search tree are pursued further
-# - `expansion_limit`: A node in the beam search tree is expanded into at most `expansion_limit` successor nodes
-
-# """
-# function lower_bound_heuristic(g::SimpleGraph, γ::Real, guidance_function::GuidanceFunction; β=10, expansion_limit=Inf)
-#     root = Node(Set(), fill(0, nv(g)), 0, 0, )
-#     max_node = root
-#     beam = [root]
-#     level::Int = 0
-
-#     while !isempty(beam)
-#         level = level + 1
-#         @debug "level", level
-        
-#         children = []
-#         visited_solutions = Set{Set{Int}}()
-
-#         # ignore expansion limit only for first node
-#         for node in beam
-#             if level == 1
-#                 children = vcat(children, expand(g, node, γ, visited_solutions))
-#             else
-#                 children = vcat(children, expand(g, node, γ, visited_solutions; expansion_limit))
-#             end
-#         end
-#         if !isempty(children)
-#             max_node = sample(children)
-#         end
-
-#         filter!(node -> !is_terminal(g, γ, node), children)
-
-#         for node in children
-#             node.h_val = guidance_function(g, node, γ)
-#         end
-
-#         beam = partialsort(children, 1:min(β, length(children)); by=(node -> node.h_val), rev=true)
-#     end
-
-#     return collect(max_node.S)
-# end
-
 # expand node into feasible successors
 function expand(graph::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set{Int}}; expansion_limit=Inf)::Vector{Node}
     d_S = node.d_S
