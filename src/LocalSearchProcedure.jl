@@ -98,6 +98,7 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
         end
         
         # update current candidate solution and corresponding data
+        @assert Δuv > -Inf
         current_obj += Δuv
 
         #update scoring function
@@ -105,7 +106,7 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
         d_S = scoring_function.d_S
         
         if current_obj > best_obj
-            S′ = S
+            S′ = copy(S)
             best_obj = current_obj
             iter_since_last_improvement = 0
         else

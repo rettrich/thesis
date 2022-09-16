@@ -1,7 +1,7 @@
 module Instances
 
 export load_instance, load_instances, generate_instance, 
-       MQCPInstance 
+       MQCPInstance, graph_to_file 
 using Graphs
 using StatsBase
 
@@ -79,6 +79,16 @@ function generate_instance(n::Int, dens::Real)
         add_edge!(g, i, j)
     end
     return g
+end
+
+function graph_to_file(graph::SimpleGraph, filename::String)
+    open("$filename", "w") do f
+        write(f, "c random graph: density $(density(graph))\n")
+        write(f, "p edge $(nv(graph)) $(ne(graph))\n")
+        for e in edges(graph)
+            write(f, "e $(src(e)) $(dst(e))\n")
+        end
+    end
 end
 
 """

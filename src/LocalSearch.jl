@@ -6,13 +6,13 @@ using Graphs
 
 export calculate_d_S, calculate_num_edges,
     LocalSearchBasedMH,
-    LowerBoundHeuristic, BeamSearch_LowerBoundHeuristic,
+    LowerBoundHeuristic, BeamSearch_LowerBoundHeuristic, SingleVertex_LowerBoundHeuristic,
     ConstructionHeuristic, Freq_GRASP_ConstructionHeuristic,
     ConfigurationChecking, TabuList,
     LocalSearchProcedure, MQCP_LocalSearchProcedure,
     GuidanceFunction, GreedyCompletionHeuristic, GreedyCompletionHeuristicPQVariant, SumOfNeighborsHeuristic,
     SwapHistory, sample_candidate_solutions,
-    ScoringFunction, d_S_ScoringFunction, GNN_ScoringFunction,
+    ScoringFunction, d_S_ScoringFunction, GNN_ScoringFunction, Random_ScoringFunction,
     SolutionExtender, MQCP_GreedySolutionExtender,
     FeasibilityChecker, MQCP_FeasibilityChecker,
     run_lsbmh
@@ -59,6 +59,7 @@ struct LocalSearchBasedMH
     max_iter::Int
     next_improvement::Bool
     record_swap_history::Bool
+    max_restarts::Float32
 
     function LocalSearchBasedMH(lower_bound_heuristic::LowerBoundHeuristic, 
                                 construction_heuristic::ConstructionHeuristic,
@@ -69,9 +70,10 @@ struct LocalSearchBasedMH
                                 max_iter::Int = 4000, 
                                 next_improvement::Bool = false,
                                 record_swap_history::Bool = false,
+                                max_restarts = Inf,
                                 )
         new(lower_bound_heuristic, construction_heuristic, local_search_procedure, feasibility_checker, solution_extender, 
-            timelimit, max_iter, next_improvement, record_swap_history)
+            timelimit, max_iter, next_improvement, record_swap_history, max_restarts)
     end
 end
 
@@ -87,8 +89,10 @@ function run_lsbmh(local_search::LocalSearchBasedMH, graph::SimpleGraph)::@Named
 
     swap_history::Union{Nothing, SwapHistory} = local_search.record_swap_history ? SwapHistory(graph) : nothing
 
-    while time() < timelimit
-        @debug "Generate candidate solution for size $k"
+    restarts = 0
+
+    while time() < timelimit && restarts < local_search.max_restarts
+        @debug "Generate candidate solution for size $k, attempt: $restarts"
         S = local_search.construction_heuristic(graph, k, freq)
 
         if !isnothing(swap_history)
@@ -101,11 +105,14 @@ function run_lsbmh(local_search::LocalSearchBasedMH, graph::SimpleGraph)::@Named
         
         @debug "Found solution with density $(density_of_subgraph(graph, S))"
 
+        restarts += 1
+
         if local_search.feasibility_checker(graph, S)
             S = extend(local_search.solution_extender, graph, S)
             S′ = S
             k = length(S′)+1
             freq = fill(0, nv(graph))
+            restarts = 0
         end
     end
     return (;solution=S′, swap_history)

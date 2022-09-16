@@ -8,7 +8,8 @@ using Flux, Graphs, GraphNeuralNetworks, CUDA
 # using MLUtils
 # using Logging
 
-export GNNModel, ResGatedGraphConvGNN, compute_node_features, device
+export GNNModel, ResGatedGraphConvGNN, compute_node_features, device,
+    NodeFeature, d_S_NodeFeature, DegreeNodeFeature, get_feature_list
 
 device = CUDA.functional() ? Flux.gpu : Flux.cpu
 # device = Flux.cpu
@@ -22,6 +23,19 @@ Flux.params(gnn::GNNModel) = Flux.params(gnn.model)
 
 (gnn::GNNModel)(gnn_graph::GNNGraph, inputs::AbstractMatrix) = gnn.model(gnn_graph, inputs)
 
+abstract type NodeFeature end
+
+"""
+    (::NodeFeature)(graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}, Nothing} = nothing)
+
+Compute some node feature of a `graph` and optional candidate solution `S` and return it as a vector 
+of length of `vertices(graph)`. 
+
+"""
+(::NodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing)::Vector{Float32} = error("NodeFeature: Abstract functor called")
+
+get_feature_list(gnn::GNNModel) = gnn.node_features
+
 AddResidual(l) = Parallel(+, Base.identity, l) # residual connection
 
 struct ResGatedGraphConvGNN <: GNNModel
@@ -30,8 +44,12 @@ struct ResGatedGraphConvGNN <: GNNModel
     dims::Vector{Int} # output dimensions of GCN layers (dims[i] is output dim of layer i)
     model::GNNChain
     opt
+    node_features::Vector{<:NodeFeature}
 
-    function ResGatedGraphConvGNN(d_in::Int, dims::Vector{Int}, opt=Adam(0.001, (0.9, 0.999)))
+    function ResGatedGraphConvGNN(d_in::Int, dims::Vector{Int}; 
+                                  opt=Adam(0.001, (0.9, 0.999)), 
+                                  node_features::Vector{<:NodeFeature}=[DegreeNodeFeature(), d_S_NodeFeature()]
+                                  )
         @assert length(dims) >= 1
         inner_layers_gcn = (AddResidual(ResGatedGraphConv(dims[i] => dims[i+1], relu)) for i in 1:(length(dims)-1))
         inner_layers_batch_norm = (BatchNorm(dims[i+1]) for i in 1:(length(dims)-1))
@@ -43,7 +61,7 @@ struct ResGatedGraphConvGNN <: GNNModel
             inner_layers...,
             Dense(dims[end] => 1, sigmoid),
         ) |> device
-        new(length(dims), d_in, dims, model, opt)
+        new(length(dims), d_in, dims, model, opt, node_features)
     end
 end
 
@@ -56,6 +74,24 @@ function compute_node_features(graph::SimpleGraph, d_S::Vector{Int})
     node_features = Float32.(vcat(degrees', d_S'))
     return node_features
 end
+
+function compute_node_features(feature_list::Vector{<:NodeFeature}, graph, S, d_S)
+    features = [node_feature(graph, S, d_S)' for node_feature in feature_list]
+    vcat(features...)
+end
+
+struct DegreeNodeFeature <: NodeFeature end
+
+(::DegreeNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(degree(graph))
+
+struct d_S_NodeFeature <: NodeFeature end
+
+(::d_S_NodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(d_S)
+
+
+# struct EgoNetNodeFeature <: NodeFeature end
+
+# struct PageRankNodeFeature <: NodeFeature end
 
 # function create_sample(graph::SimpleGraph{Int},
 #                        S::Union{Set{Int}, Vector{Int}},

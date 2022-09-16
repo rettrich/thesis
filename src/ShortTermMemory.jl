@@ -120,7 +120,7 @@ function reset!(stm::ConfigurationChecking, graph::SimpleGraph)
 end
 
 function get_blocked(stm::ConfigurationChecking)::Set{Int}
-    Set(filter(v -> stm.conf_change[v] < stm.threshold[v], vertices(stm.g)))
+    Set(filter(v -> stm.conf_change[v] < stm.threshold[v], vertices(stm.graph)))
 end
 
 function move!(stm::ConfigurationChecking, u::Int, v::Int)

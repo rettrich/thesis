@@ -10,7 +10,7 @@ using Flux
 using thesis.LookaheadSearch
 using thesis.Instances: generate_instance
 using thesis.LocalSearch: run_lsbmh, LocalSearchBasedMH, sample_candidate_solutions
-using thesis.GNNs: GNNModel, device
+using thesis.GNNs: GNNModel, device, NodeFeature, get_feature_list
 using Printf
 
 export TrainingSample, ReplayBuffer,
@@ -72,14 +72,15 @@ by using `lookahead_func`
     in order to calculate target values. 
 
 """
-function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, S::Set{Int}, lookahead_func::LookaheadSearchFunction)
-    sample = create_sample(g, S, lookahead_func)
+function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, S::Set{Int}, lookahead_func::LookaheadSearchFunction, feature_list::Vector{<:NodeFeature})
+    sample, is_local_optimum = create_sample(g, S, lookahead_func, feature_list)
 
     pushfirst!(buffer.buffer, sample)
 
     if length(buffer) > buffer.capacity
         pop!(buffer.buffer)
     end
+    return is_local_optimum
 end
 
 """
@@ -95,10 +96,13 @@ them to the buffer.
     in order to calculate target values. 
 
 """
-function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, Ss::Vector{Set{Int}}, lookahead_func::LookaheadSearchFunction)
+function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, Ss::Vector{Set{Int}}, lookahead_func::LookaheadSearchFunction, feature_list::Vector{<:NodeFeature})
+    local_optima = 0
     for S in Ss
-        add_to_buffer!(buffer, g, S, lookahead_func)
+        is_local_optimum = add_to_buffer!(buffer, g, S, lookahead_func, feature_list)
+        is_local_optimum && (local_optima += 1)
     end
+    return local_optima
 end
 
 Base.length(buffer::ReplayBuffer) = length(buffer.buffer)
@@ -119,12 +123,13 @@ contain the inputs and target values for training, respectively.
 """
 function create_sample(graph::SimpleGraph{Int},
                        S::Union{Set{Int}, Vector{Int}},
-                       lookahead_func::LookaheadSearchFunction
-                       )::TrainingSample
+                       lookahead_func::LookaheadSearchFunction,
+                       feature_list::Vector{<:NodeFeature}
+                       )::Tuple{TrainingSample, Bool}
 
     # node features
     d_S = thesis.LocalSearch.calculate_d_S(graph, S)
-    node_features = thesis.GNNs.compute_node_features(graph, d_S)
+    node_features = thesis.GNNs.compute_node_features(feature_list, graph, S, d_S)
 
     # use lookahead function to obtain best neighboring solutions
     obj_val, solutions = lookahead_func(graph, S, d_S)
@@ -152,7 +157,7 @@ function create_sample(graph::SimpleGraph{Int},
         ndata=(; x = node_features, y = targets)
         )
     gnn_graph = add_self_loops(gnn_graph) # add self loops for message passing
-    return TrainingSample(gnn_graph, graph, S)
+    return TrainingSample(gnn_graph, graph, S), isempty(solutions)
 end
 
 """
@@ -200,43 +205,53 @@ Target values for training are computed using `lookahead_func`.
 
 """
 function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGenerator, gnn::GNNModel; 
-               epochs=100, lookahead_func=Ω_1_LookaheadSearchFunction()
+               epochs=200, lookahead_func=Ω_1_LookaheadSearchFunction(), baseline::Union{Nothing, LocalSearchBasedMH}=nothing
                )
-    capacity = 2000
-    min_fill = 1000
+    capacity = 4000
+    min_fill = 2000
     buffer = ReplayBuffer(min_fill, capacity, lookahead_func)
     ps = Flux.params(gnn.model)
 
-    @printf("Iteration | t_local_search | t_compute_targets | t_train | buffer | loss \n")
+    t_baseline = 0
+    s_base = 0
+
+
+    @printf("Iteration | encountered |   t_ls | t_base | t_targets | t_train | (opt)buffer | loss | V/density | solution | baseline \n")
 
     for i = 1:epochs
-        start_time = time()
         
         graph = sample_graph(instance_generator)
-
-        solution, swap_history = run_lsbmh(local_search, graph)
         
-        after_local_search = time()
+        t_ls = @elapsed solution, swap_history = run_lsbmh(local_search, graph)
+
+        if !isnothing(baseline)
+            t_baseline = @elapsed baseline_sol, _ = run_lsbmh(baseline, graph)
+            s_base = length(baseline_sol)
+        end
 
         _, samples = sample_candidate_solutions(swap_history, 100)
-        add_to_buffer!(buffer, graph, samples, lookahead_func)
 
-        after_add_to_buffer = time()
+        t_targets = @elapsed (local_optima = add_to_buffer!(buffer, graph, samples, lookahead_func, get_feature_list(gnn)))
 
         if length(buffer) < buffer.min_fill
-            @printf("%9i %16.3f %19.3f %9.3f %8i %6.3f\n", 
-                    i, after_local_search - start_time, after_add_to_buffer - after_local_search, 0, 
-                    length(buffer), NaN)
+            @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i\n", 
+                    i, length(swap_history),
+                    t_ls, t_baseline, t_targets, 0, 
+                    local_optima, length(buffer), 
+                    NaN, 
+                    nv(graph), density(graph), 
+                    length(solution), s_base)
             continue
         end
 
 
+        before_training = time()
+
         train_loader = get_data(buffer)
         loss(g::GNNGraph) = Flux.logitbinarycrossentropy( vec(gnn(g, g.ndata.x)), g.ndata.y)
-        
 
         losses = []
-        for g in first(train_loader, 4)
+        for g in first(train_loader, 2)
             g = g |> device
             gs = gradient(ps) do 
                 loss(g)
@@ -247,12 +262,15 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
 
         after_training = time()
 
-        @printf("%9i %16.3f %19.3f %9.3f %8i %6.3f\n", 
-                    i, after_local_search - start_time, after_add_to_buffer - after_local_search, after_training - after_add_to_buffer, 
-                    length(buffer), mean(losses))
+        @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i\n", 
+                    i, length(swap_history),
+                    t_ls, t_baseline, t_targets, after_training-before_training, 
+                    local_optima, length(buffer), 
+                    mean(losses), 
+                    nv(graph), density(graph), 
+                    length(solution), s_base)
 
     end
-    return gnn
 end
 
 

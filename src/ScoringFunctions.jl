@@ -1,7 +1,9 @@
 
-using thesis.GNNs: GNNModel, compute_node_features, device
+using thesis.GNNs: GNNModel, compute_node_features, device, get_feature_list
 using Flux: gpu, cpu
 using GraphNeuralNetworks
+using DataStructures: PriorityQueue, enqueue!, dequeue!
+using StatsBase
 
 """
     ScoringFunction
@@ -16,7 +18,7 @@ It provides a simple interface:
 """
 abstract type ScoringFunction end
 
-update!(sf::ScoringFunction, S::Union{Vector{Int}, Set{Int}}) = error("ScoringFunction: Abstract update!(sf, graph, S) called")
+update!(sf::ScoringFunction, graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}}) = error("ScoringFunction: Abstract update!(sf, graph, S) called")
 update!(sf::ScoringFunction, u::Int, v::Int) = error("ScoringFunction: Abstract update!(sf, u, v) called")
 get_restricted_neighborhood(sf::ScoringFunction, S::Union{Vector{Int}, Set{Int}}, 
                             V_S::Union{Vector{Int}, Set{Int}}
@@ -79,7 +81,7 @@ function update!(sf::GNN_ScoringFunction, graph::SimpleGraph, S::Union{Vector{In
         sf.gnn_graph = GNNGraph(sf.graph) |> device
     end
     sf.d_S = calculate_d_S(sf.graph, S)
-    node_features = compute_node_features(sf.graph, sf.d_S)
+    node_features = compute_node_features(get_feature_list(sf.gnn), sf.graph, S, sf.d_S)
     sf.scores = vec(sf.gnn(sf.gnn_graph, node_features |> device) |> cpu)
     return sf.scores
 end
@@ -91,7 +93,7 @@ function update!(sf::GNN_ScoringFunction, u::Int, v::Int)
     for w in neighbors(sf.graph, v)
         sf.d_S[w] += 1
     end
-    node_features = compute_node_features(sf.graph, sf.d_S)
+    node_features = compute_node_features(get_feature_list(sf.gnn), sf.graph, nothing, sf.d_S)
     sf.scores = vec(sf.gnn(sf.gnn_graph, node_features |> device) |> cpu)
     return sf.scores
 end
@@ -103,10 +105,93 @@ function get_restricted_neighborhood(sf::GNN_ScoringFunction, S::Union{Vector{In
         S = collect(S)
         V_S = collect(V_S)
     end
+
     scores_S = [sf.scores[i] for i in S]
     scores_V_S = [sf.scores[i] for i in V_S]
-    X = S[partialsortperm(scores_S, 1:min(sf.neighborhood_size, length(S)))]
-    Y = V_S[partialsortperm(scores_V_S, 1:min(sf.neighborhood_size, length(V_S)); rev=true)]
+    
+    if sf.neighborhood_size < length(S)
+        # X = S[partialsortperm(scores_S, 1:sf.neighborhood_size)]
+        X = get_k_order_statistic(S, scores_S, sf.neighborhood_size; order=Base.Order.ReverseOrdering())
+    else
+        X = S
+    end
+
+    if sf.neighborhood_size < length(V_S)
+        Y = get_k_order_statistic(V_S, scores_V_S, sf.neighborhood_size)
+    else
+        Y = V_S
+    end
+
 
     return (;X, Y)
+end
+
+mutable struct Random_ScoringFunction <: ScoringFunction 
+    neighborhood_size::Int
+    d_S_sf::d_S_ScoringFunction
+    d_S::Vector{Int}
+
+    function Random_ScoringFunction(neighborhood_size::Int)
+        new(neighborhood_size, d_S_ScoringFunction(), [])
+    end
+end
+
+function update!(sf::Random_ScoringFunction, graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}}) 
+    d_S = update!(sf.d_S_sf, graph, S)
+    sf.d_S = d_S
+    return sf.d_S
+end
+
+function update!(sf::Random_ScoringFunction, u::Int, v::Int) 
+    d_S = update!(sf.d_S_sf, u, v)
+    sf.d_S = d_S
+    return sf.d_S
+end
+
+function get_restricted_neighborhood(sf::Random_ScoringFunction, S::Union{Vector{Int}, Set{Int}}, 
+                                     V_S::Union{Vector{Int}, Set{Int}}
+                                     )::@NamedTuple{X::Union{Vector{Int}, Set{Int}}, Y::Union{Vector{Int}, Set{Int}}}
+
+    if sf.neighborhood_size < length(S)
+        # X = S[partialsortperm(scores_S, 1:sf.neighborhood_size)]
+        X = sample(collect(S), sf.neighborhood_size; replace=false)
+    else
+        X = S
+    end
+
+    if sf.neighborhood_size < length(V_S)
+        Y = sample(collect(V_S), sf.neighborhood_size; replace=false)
+    else
+        Y = V_S
+    end
+
+    return (; X, Y)
+end
+
+
+"""
+    get k maximum (ForwardOrdering) / minimum (ReverseOrdering) valued keys from (key, value) pairs in zip(keys, values)
+"""
+function get_k_order_statistic(keys::Vector{K}, values::Vector{V}, k::Int; order=Base.Order.ForwardOrdering()) where {K, V}
+    pq = PriorityQueue{K, V}(order)
+    compare = (a::V, b::V) -> (Base.lt(Base.Order.ReverseOrdering(order), a, b))
+    for i=1:k
+        enqueue!(pq, keys[i], values[i])
+    end
+
+    for i=(k+1):length(keys)
+        key, val = peek(pq)
+        if compare(values[i], val)
+            dequeue!(pq)
+            enqueue!(pq, keys[i], values[i])
+        end
+    end
+
+    result = K[]
+    for i=1:k
+        key, val = peek(pq)
+        dequeue!(pq)
+        push!(result, key)
+    end
+    result
 end

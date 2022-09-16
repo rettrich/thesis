@@ -173,6 +173,16 @@ abstract type LowerBoundHeuristic end
     error("Abstract method (::LowerBoundHeuristic)(graph::SimpleGraph) called")
 
 """
+    SingleVertex_LowerBoundHeuristic
+
+Return a single vertex (with index 1) as the lower bound solution or an empty solution 
+if the graph is empty
+"""
+struct SingleVertex_LowerBoundHeuristic <: LowerBoundHeuristic end
+
+(::SingleVertex_LowerBoundHeuristic)(graph::SimpleGraph) = (nv(graph) > 0 ? [1] : [])
+
+"""
     BeamSearch_LowerBoundHeuristic
 
 Type for a beam search heuristic for the MQCP that returns a feasible `γ`-quasi clique 
