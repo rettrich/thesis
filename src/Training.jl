@@ -185,6 +185,9 @@ struct InstanceGenerator
     end
 end
 
+Base.show(io::IO, ::MIME"text/plain", x::InstanceGenerator) = print(io, "V=$(x.nv_sampler)-dens=$(x.density_sampler)")
+
+
 """
     sample_graph(generator)
 

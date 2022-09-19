@@ -10,7 +10,10 @@ using Statistics
 # using Logging
 
 export GNNModel, SimpleGNN, compute_node_features, device,
-    NodeFeature, d_S_NodeFeature, DegreeNodeFeature, get_feature_list
+    NodeFeature, d_S_NodeFeature, DegreeNodeFeature, get_feature_list,
+    GNNChainFactory, ResGatedGraphConv_GNNChainFactory, GATv2Conv_GNNChainFactory
+
+# no trailing commas in export!
 
 device = CUDA.functional() ? Flux.gpu : Flux.cpu
 # device = Flux.cpu
@@ -32,37 +35,26 @@ get_loss(gnn::GNNModel) = gnn.loss
 AddResidual(l) = Parallel(+, Base.identity, l) # residual connection
 
 """
+    GNNChainFactory
 
-
-A graph neural network that classifies nodes in a single forward pass by applying multiple graph convolutional layers. 
-Its corresponding ScoringFunction type `SimpleGNN_ScoringFunction` is only used for testing purposes as it is very slow. 
-Use `Encoder_Decoder_GNNModel` and its corresponding ScoringFunction type instead. 
+Can be used to create a `GNNChain` of a specific type, e.g. `ResGatedGraphConv` or `GATv2Conv` networks.
 
 """
-struct SimpleGNN <: GNNModel
-    num_layers::Int # number of layers
-    d_in::Int # dimension of node feature vectors
-    dims::Vector{Int} # output dimensions of GCN layers (dims[i] is output dim of layer i)
-    model::GNNChain
-    node_features::Vector{<:NodeFeature}
-    loss # loss function for training
-    opt
+abstract type GNNChainFactory end
 
-    function SimpleGNN(d_in::Int, dims::Vector{Int}; 
-                                  node_features::Vector{<:NodeFeature}=[DegreeNodeFeature(), d_S_NodeFeature()],
-                                  loss = Flux.logitbinarycrossentropy,
-                                  opt=Adam(0.001, (0.9, 0.999)), 
-                                  model = ResGatedGraphConv_model(d_in, dims; add_classifier=true),
-                                  )
-        model = model |> device
+"""
+    (::GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_classifier::Bool)
 
-        loss_func(g::GNNGraph) = loss( vec(model(g, g.ndata.x)), g.ndata.y)
+Creates a `GNNChain` of a specific type with a first layer of size `d_in` => `dims[1]`, 
+second layer of size `dims[1]` => `dims[2]`, etc. If `add_classifier` is set to true, a Dense layer of size `dims[end] => 1` 
+with a sigmoid classifier is added as a final layer. 
 
-        new(length(dims), d_in, dims, model, node_features, loss_func, opt)
-    end
-end
+"""
+(::GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_classifier::Bool)::GNNChain = error("ModelFactory: Abstract Functor called")
 
-function ResGatedGraphConv_model(d_in::Int, dims::Vector{Int}; add_classifier=false)::GNNChain
+struct ResGatedGraphConv_GNNChainFactory <: GNNChainFactory end
+
+function (::ResGatedGraphConv_GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_classifier::Bool = false)::GNNChain
     @assert length(dims) >= 1
     inner_layers_gcn = (AddResidual(ResGatedGraphConv(dims[i] => dims[i+1], relu)) for i in 1:(length(dims)-1))
     inner_layers_batch_norm = (BatchNorm(dims[i+1]) for i in 1:(length(dims)-1))
@@ -83,12 +75,15 @@ function ResGatedGraphConv_model(d_in::Int, dims::Vector{Int}; add_classifier=fa
     return model
 end
 
-function GATv2Conv_model(d_in::Int, dims::Vector{Int}; add_classifier=false)::GNNChain
+struct GATv2Conv_GNNChainFactory <: GNNChainFactory end
+
+function (::GATv2Conv_GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_classifier::Bool = false)::GNNChain
     @assert length(dims) >= 1
     
     model = GNNChain(
             GATv2Conv(d_in => encoder_dims[1]),
             (GATv2Conv(encoder_dims[i] => encoder_dims[i+1]) for i in 1:(length(encoder_dims)-1))...,
+            BatchNorm(dims[end]),
     )
 
     if add_classifier
@@ -101,7 +96,54 @@ function GATv2Conv_model(d_in::Int, dims::Vector{Int}; add_classifier=false)::GN
     return model
 end
 
-Base.show(io::IO, ::MIME"text/plain", x::SimpleGNN) = print(io, "SimpleGNN($(x.d_in)-$(x.dims))")
+"""
+    Dense_classifier(d_in, dims)
+
+Simple Dense Feed Forward Network with specified dimensions and sigmoid classifier at the final layer. 
+"""
+function Dense_classifier(d_in, dims)::Chain
+    model = Chain(
+            (Dense(decoder_dims[i] => decoder_dims[i+1], relu) for i in 1:(length(decoder_dims)-1))...,
+            Dense(decoder_dims[end] => 1, sigmoid)
+    )
+    return model
+end
+
+"""
+    SimpleGNN
+
+A graph neural network that classifies nodes in a single forward pass by applying multiple graph convolutional layers. 
+Its corresponding ScoringFunction type `SimpleGNN_ScoringFunction` is only used for testing purposes as it is very slow. 
+Use `Encoder_Decoder_GNNModel` and its corresponding ScoringFunction type instead. 
+
+"""
+struct SimpleGNN <: GNNModel
+    num_layers::Int # number of layers
+    d_in::Int # dimension of node feature vectors
+    dims::Vector{Int} # output dimensions of GCN layers (dims[i] is output dim of layer i)
+    model::GNNChain
+    node_features::Vector{<:NodeFeature}
+    gnn_type::String
+    loss # loss function for training
+    opt
+
+    function SimpleGNN(d_in::Int, dims::Vector{Int}; 
+                                  node_features::Vector{<:NodeFeature}=[DegreeNodeFeature(), d_S_NodeFeature()],
+                                  loss = Flux.logitbinarycrossentropy,
+                                  opt=Adam(0.001, (0.9, 0.999)), 
+                                  model_factory::GNNChainFactory = ResGatedGraphConv_GNNChainFactory(),
+                                  )
+        model = model_factory(d_in, dims; add_classifier=true) |> device
+
+        loss_func(g::GNNGraph) = loss( vec(model(g, g.ndata.x)), g.ndata.y)
+
+        gnn_type = split(string(typeof(model_factory)), "_")[1]
+
+        new(length(dims), d_in, dims, model, node_features, gnn_type, loss_func, opt)
+    end
+end
+
+Base.show(io::IO, ::MIME"text/plain", x::SimpleGNN) = print(io, "$(x.gnn_type)-$(x.d_in)-$(x.dims)")
 
 struct Encoder_Decoder_GNNModel <: GNNModel
     d_in::Int
@@ -114,9 +156,12 @@ struct Encoder_Decoder_GNNModel <: GNNModel
     opt
 
     function Encoder_Decoder_GNNModel(d_in::Int, encoder_dims::Vector{Int}, decoder_dims::Vector{Int};
+                      encoder = GATv2Conv_model(d_in, encoder_dims),
+                      decoder = Dense_classifier(encoder_dims[end]*2, decoder_dims), # TODO: maybe change later. depends on context embedding 
                       node_features::Vector{<:NodeFeature} = [DegreeNodeFeature()],
                       loss = Flux.binarycrossentropy,
                       opt = Adam(0.001, (0.9, 0.999)),
+
                       )
 
         # encoder: GNN, compute node embeddings

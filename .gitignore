@@ -13,3 +13,4 @@ eval/*.csv
 eval/*.txt
 *.txt
 *.csv
+logs/*

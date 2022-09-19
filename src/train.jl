@@ -55,7 +55,7 @@ function train_MQCP()
     instance_generator = Training.InstanceGenerator(Normal(200, 15), Uniform(0.4, 0.6))
 
     tblogger = nothing
-    run_id = replace("MQCP-$(repr(MIME"text/plain"(), gnn))-" * 
+    run_id = replace("MQCP-$(repr(MIME"text/plain"(), gnn))-$(repr(MIME"text/plain"(), instance_generator))-" * 
                         string(now()) * tempname(".")[3:end], ":"=>"-")
     logdir = joinpath("./logs", run_id)
     tblogger = TBLogger(logdir)
