@@ -62,7 +62,7 @@ function get_restricted_neighborhood(sf::d_S_ScoringFunction, S::Union{Vector{In
     return (;X, Y)
 end
 
-mutable struct GNN_ScoringFunction <: ScoringFunction
+mutable struct SimpleGNN_ScoringFunction <: ScoringFunction
     graph::Union{Nothing, SimpleGraph}
     gnn_graph::Union{Nothing, GNNGraph}
     gnn::GNNModel
@@ -70,12 +70,12 @@ mutable struct GNN_ScoringFunction <: ScoringFunction
     scores::Vector{Float32}
     neighborhood_size::Int
 
-    function GNN_ScoringFunction(gnn, neighborhood_size)
+    function SimpleGNN_ScoringFunction(gnn, neighborhood_size)
         new(nothing, nothing, gnn, [], [], neighborhood_size)
     end
 end
 
-function update!(sf::GNN_ScoringFunction, graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}})
+function update!(sf::SimpleGNN_ScoringFunction, graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}})
     if graph != sf.graph
         sf.graph = graph
         sf.gnn_graph = GNNGraph(sf.graph) |> device
@@ -86,7 +86,7 @@ function update!(sf::GNN_ScoringFunction, graph::SimpleGraph, S::Union{Vector{In
     return sf.scores
 end
 
-function update!(sf::GNN_ScoringFunction, u::Int, v::Int)
+function update!(sf::SimpleGNN_ScoringFunction, u::Int, v::Int)
     for w in neighbors(sf.graph, u)
         sf.d_S[w] -= 1
     end
@@ -98,7 +98,7 @@ function update!(sf::GNN_ScoringFunction, u::Int, v::Int)
     return sf.scores
 end
 
-function get_restricted_neighborhood(sf::GNN_ScoringFunction, S::Union{Vector{Int}, Set{Int}}, 
+function get_restricted_neighborhood(sf::SimpleGNN_ScoringFunction, S::Union{Vector{Int}, Set{Int}}, 
                                      V_S::Union{Vector{Int}, Set{Int}}
                                      )::@NamedTuple{X::Union{Vector{Int}, Set{Int}}, Y::Union{Vector{Int}, Set{Int}}}
     if typeof(S) <: Set # need fixed order of elements

@@ -160,7 +160,7 @@ if parsed_args["scoring_function"] != "-"
     else
         println("Load scoring function $(parsed_args["scoring_function"])")
         BSON.@load parsed_args["scoring_function"] gnn
-        scoring_function = GNN_ScoringFunction(gnn, 20)
+        scoring_function = SimpleGNN_ScoringFunction(gnn, 20)
     end
 end
 

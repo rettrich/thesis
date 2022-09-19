@@ -28,8 +28,8 @@ function train_MQCP()
     
     solution_extender = MQCP_GreedySolutionExtender(γ)
 
-    gnn = ResGatedGraphConvGNN(2, [64, 64, 64])
-    scoring_function = GNN_ScoringFunction(gnn, 20)
+    gnn = SimpleGNN(2, [64, 64, 64])
+    scoring_function = SimpleGNN_ScoringFunction(gnn, 20)
 
     # compare with baseline
     baseline_scoring_function = d_S_ScoringFunction()

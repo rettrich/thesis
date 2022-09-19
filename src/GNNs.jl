@@ -9,7 +9,7 @@ using Statistics
 # using MLUtils
 # using Logging
 
-export GNNModel, ResGatedGraphConvGNN, compute_node_features, device,
+export GNNModel, SimpleGNN, compute_node_features, device,
     NodeFeature, d_S_NodeFeature, DegreeNodeFeature, get_feature_list
 
 device = CUDA.functional() ? Flux.gpu : Flux.cpu
@@ -31,7 +31,15 @@ get_loss(gnn::GNNModel) = gnn.loss
 
 AddResidual(l) = Parallel(+, Base.identity, l) # residual connection
 
-struct ResGatedGraphConvGNN <: GNNModel
+"""
+
+
+A graph neural network that classifies nodes in a single forward pass by applying multiple graph convolutional layers. 
+Its corresponding ScoringFunction type `SimpleGNN_ScoringFunction` is only used for testing purposes as it is very slow. 
+Use `Encoder_Decoder_GNNModel` and its corresponding ScoringFunction type instead. 
+
+"""
+struct SimpleGNN <: GNNModel
     num_layers::Int # number of layers
     d_in::Int # dimension of node feature vectors
     dims::Vector{Int} # output dimensions of GCN layers (dims[i] is output dim of layer i)
@@ -40,23 +48,13 @@ struct ResGatedGraphConvGNN <: GNNModel
     loss # loss function for training
     opt
 
-    function ResGatedGraphConvGNN(d_in::Int, dims::Vector{Int}; 
+    function SimpleGNN(d_in::Int, dims::Vector{Int}; 
                                   node_features::Vector{<:NodeFeature}=[DegreeNodeFeature(), d_S_NodeFeature()],
                                   loss = Flux.logitbinarycrossentropy,
                                   opt=Adam(0.001, (0.9, 0.999)), 
+                                  model = ResGatedGraphConv_model(d_in, dims; add_classifier=true),
                                   )
-        @assert length(dims) >= 1
-        inner_layers_gcn = (AddResidual(ResGatedGraphConv(dims[i] => dims[i+1], relu)) for i in 1:(length(dims)-1))
-        inner_layers_batch_norm = (BatchNorm(dims[i+1]) for i in 1:(length(dims)-1))
-        inner_layers = collect(Iterators.flatten(zip(inner_layers_gcn, inner_layers_batch_norm)))
-
-
-        model = GNNChain(
-            ResGatedGraphConv(d_in => dims[1], relu),
-            BatchNorm(dims[1]),
-            inner_layers...,
-            Dense(dims[end] => 1, sigmoid),
-        ) |> device
+        model = model |> device
 
         loss_func(g::GNNGraph) = loss( vec(model(g, g.ndata.x)), g.ndata.y)
 
@@ -64,13 +62,52 @@ struct ResGatedGraphConvGNN <: GNNModel
     end
 end
 
-Base.show(io::IO, ::MIME"text/plain", x::ResGatedGraphConvGNN) = print(io, "ResGatedGraphConvGNN($(x.d_in)-$(x.dims))")
+function ResGatedGraphConv_model(d_in::Int, dims::Vector{Int}; add_classifier=false)::GNNChain
+    @assert length(dims) >= 1
+    inner_layers_gcn = (AddResidual(ResGatedGraphConv(dims[i] => dims[i+1], relu)) for i in 1:(length(dims)-1))
+    inner_layers_batch_norm = (BatchNorm(dims[i+1]) for i in 1:(length(dims)-1))
+    inner_layers = collect(Iterators.flatten(zip(inner_layers_gcn, inner_layers_batch_norm)))
+    model = GNNChain(
+        ResGatedGraphConv(d_in => dims[1], relu),
+        BatchNorm(dims[1]),
+        inner_layers...,
+    )
+
+    if add_classifier
+        model = GNNChain(
+            model,
+            Dense(dims[end] => 1, sigmoid),
+        )
+    end
+    
+    return model
+end
+
+function GATv2Conv_model(d_in::Int, dims::Vector{Int}; add_classifier=false)::GNNChain
+    @assert length(dims) >= 1
+    
+    model = GNNChain(
+            GATv2Conv(d_in => encoder_dims[1]),
+            (GATv2Conv(encoder_dims[i] => encoder_dims[i+1]) for i in 1:(length(encoder_dims)-1))...,
+    )
+
+    if add_classifier
+        model = GNNChain(
+            model,
+            Dense(dims[end] => 1, sigmoid),
+        )
+    end
+
+    return model
+end
+
+Base.show(io::IO, ::MIME"text/plain", x::SimpleGNN) = print(io, "SimpleGNN($(x.d_in)-$(x.dims))")
 
 struct Encoder_Decoder_GNNModel <: GNNModel
     d_in::Int
     encoder_dims::Vector{Int}
     decoder_dims::Vector{Int}
-    encoder::GNNChain # more expensive gnn chain, takes O(n^2) time
+    encoder::GNNChain # more expensive gnn chain
     decoder::Chain    # linear time decoder 
     node_features::Vector{<:NodeFeature}
     loss
@@ -120,9 +157,9 @@ function get_context_embeddings(node_embeddings, in_S::Vector{Int})
 end
 
 
-Flux.params(gnn::ResGatedGraphConvGNN) = Flux.params(gnn.model)
+Flux.params(gnn::SimpleGNN) = Flux.params(gnn.model)
 
-(gnn::ResGatedGraphConvGNN)(gnn_graph::GNNGraph, inputs::AbstractMatrix) = gnn.model(gnn_graph, inputs)
+(gnn::SimpleGNN)(gnn_graph::GNNGraph, inputs::AbstractMatrix) = gnn.model(gnn_graph, inputs)
 
 """
     (::NodeFeature)(graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}, Nothing} = nothing)
