@@ -1,6 +1,7 @@
 module GNNs
 
 using Flux, Graphs, GraphNeuralNetworks, CUDA
+using Statistics
 # using BSON
 # using thesis
 # using Statistics
@@ -25,6 +26,104 @@ Flux.params(gnn::GNNModel) = Flux.params(gnn.model)
 
 abstract type NodeFeature end
 
+get_feature_list(gnn::GNNModel) = gnn.node_features
+get_loss(gnn::GNNModel) = gnn.loss
+
+AddResidual(l) = Parallel(+, Base.identity, l) # residual connection
+
+struct ResGatedGraphConvGNN <: GNNModel
+    num_layers::Int # number of layers
+    d_in::Int # dimension of node feature vectors
+    dims::Vector{Int} # output dimensions of GCN layers (dims[i] is output dim of layer i)
+    model::GNNChain
+    node_features::Vector{<:NodeFeature}
+    loss # loss function for training
+    opt
+
+    function ResGatedGraphConvGNN(d_in::Int, dims::Vector{Int}; 
+                                  node_features::Vector{<:NodeFeature}=[DegreeNodeFeature(), d_S_NodeFeature()],
+                                  loss = Flux.logitbinarycrossentropy,
+                                  opt=Adam(0.001, (0.9, 0.999)), 
+                                  )
+        @assert length(dims) >= 1
+        inner_layers_gcn = (AddResidual(ResGatedGraphConv(dims[i] => dims[i+1], relu)) for i in 1:(length(dims)-1))
+        inner_layers_batch_norm = (BatchNorm(dims[i+1]) for i in 1:(length(dims)-1))
+        inner_layers = collect(Iterators.flatten(zip(inner_layers_gcn, inner_layers_batch_norm)))
+
+
+        model = GNNChain(
+            ResGatedGraphConv(d_in => dims[1], relu),
+            BatchNorm(dims[1]),
+            inner_layers...,
+            Dense(dims[end] => 1, sigmoid),
+        ) |> device
+
+        loss_func(g::GNNGraph) = loss( vec(model(g, g.ndata.x)), g.ndata.y)
+
+        new(length(dims), d_in, dims, model, node_features, loss_func, opt)
+    end
+end
+
+Base.show(io::IO, ::MIME"text/plain", x::ResGatedGraphConvGNN) = print(io, "ResGatedGraphConvGNN($(x.d_in)-$(x.dims))")
+
+struct Encoder_Decoder_GNNModel <: GNNModel
+    d_in::Int
+    encoder_dims::Vector{Int}
+    decoder_dims::Vector{Int}
+    encoder::GNNChain # more expensive gnn chain, takes O(n^2) time
+    decoder::Chain    # linear time decoder 
+    node_features::Vector{<:NodeFeature}
+    loss
+    opt
+
+    function Encoder_Decoder_GNNModel(d_in::Int, encoder_dims::Vector{Int}, decoder_dims::Vector{Int};
+                      node_features::Vector{<:NodeFeature} = [DegreeNodeFeature()],
+                      loss = Flux.binarycrossentropy,
+                      opt = Adam(0.001, (0.9, 0.999)),
+                      )
+
+        # encoder: GNN, compute node embeddings
+
+        encoder = GNNChain(
+            GATv2Conv(d_in => encoder_dims[1]),
+            (GATv2Conv(encoder_dims[i] => encoder_dims[i+1]) for i in 1:(length(encoder_dims)-1))...,
+        ) |> device
+
+        # decoder from node embeddings + context embedding, used to classify node
+
+        decoder = Chain(
+            (Dense(decoder_dims[i] => decoder_dims[i+1], relu) for i in 1:(length(decoder_dims)-1))...,
+            Dense(decoder_dims[end] => 1, sigmoid)
+        ) |> device
+
+        function loss_func(g::GNNGraph, S::Vector{Int}) # TODO: Batching?
+            node_embeddings = encoder(g, g.ndata.x)
+            context_embeddings = repeat(get_context_embeddings(node_embeddings, S), 1, size(node_embeddings, 2))
+            S = vec(g.ndata.in_S) .* collect(vertices(g))
+            decoder_inputs = vcat(node_embeddings, context_embeddings)
+            output = decoder(g, decoder_inputs)
+            loss( vec(output), g.ndata.y )
+        end
+
+        new(d_in, encoder_dims, decoder_dims, encoder, decoder, node_features, loss_func, opt)
+    end
+end
+
+"""
+
+Get context embedding of dimension d from node_embeddings, which is a d x n matrix 
+
+"""
+function get_context_embeddings(node_embeddings, in_S::Vector{Int})
+    repeat(d_S, 1)
+    mean(embeddings[:, S], dims=2)
+end
+
+
+Flux.params(gnn::ResGatedGraphConvGNN) = Flux.params(gnn.model)
+
+(gnn::ResGatedGraphConvGNN)(gnn_graph::GNNGraph, inputs::AbstractMatrix) = gnn.model(gnn_graph, inputs)
+
 """
     (::NodeFeature)(graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}, Nothing} = nothing)
 
@@ -34,40 +133,17 @@ of length of `vertices(graph)`.
 """
 (::NodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing)::Vector{Float32} = error("NodeFeature: Abstract functor called")
 
-get_feature_list(gnn::GNNModel) = gnn.node_features
+struct DegreeNodeFeature <: NodeFeature end
 
-AddResidual(l) = Parallel(+, Base.identity, l) # residual connection
+(::DegreeNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(degree(graph))
 
-struct ResGatedGraphConvGNN <: GNNModel
-    num_layers::Int # number of layers
-    d_in::Int # dimension of node feature vectors
-    dims::Vector{Int} # output dimensions of GCN layers (dims[i] is output dim of layer i)
-    model::GNNChain
-    opt
-    node_features::Vector{<:NodeFeature}
+struct d_S_NodeFeature <: NodeFeature end
 
-    function ResGatedGraphConvGNN(d_in::Int, dims::Vector{Int}; 
-                                  opt=Adam(0.001, (0.9, 0.999)), 
-                                  node_features::Vector{<:NodeFeature}=[DegreeNodeFeature(), d_S_NodeFeature()]
-                                  )
-        @assert length(dims) >= 1
-        inner_layers_gcn = (AddResidual(ResGatedGraphConv(dims[i] => dims[i+1], relu)) for i in 1:(length(dims)-1))
-        inner_layers_batch_norm = (BatchNorm(dims[i+1]) for i in 1:(length(dims)-1))
-        inner_layers = collect(Iterators.flatten(zip(inner_layers_gcn, inner_layers_batch_norm)))
+(::d_S_NodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(d_S)
 
-        model = GNNChain(
-            ResGatedGraphConv(d_in => dims[1], relu),
-            BatchNorm(dims[1]),
-            inner_layers...,
-            Dense(dims[end] => 1, sigmoid),
-        ) |> device
-        new(length(dims), d_in, dims, model, opt, node_features)
-    end
+function Base.convert(t::Type{Vector{<:NodeFeature}}, a::Vector{Any})
+    res::Vector{<:NodeFeature} = [_ for _ in a]
 end
-
-Flux.params(gnn::ResGatedGraphConvGNN) = Flux.params(gnn.model)
-
-(gnn::ResGatedGraphConvGNN)(gnn_graph::GNNGraph, inputs::AbstractMatrix) = gnn.model(gnn_graph, inputs)
 
 function compute_node_features(graph::SimpleGraph, d_S::Vector{Int})
     degrees = degree(graph)
@@ -79,15 +155,6 @@ function compute_node_features(feature_list::Vector{<:NodeFeature}, graph, S, d_
     features = [node_feature(graph, S, d_S)' for node_feature in feature_list]
     vcat(features...)
 end
-
-struct DegreeNodeFeature <: NodeFeature end
-
-(::DegreeNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(degree(graph))
-
-struct d_S_NodeFeature <: NodeFeature end
-
-(::d_S_NodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(d_S)
-
 
 # struct EgoNetNodeFeature <: NodeFeature end
 

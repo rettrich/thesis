@@ -91,7 +91,7 @@ function run_lsbmh(local_search::LocalSearchBasedMH, graph::SimpleGraph)::@Named
 
     restarts = 0
 
-    while time() < timelimit && restarts < local_search.max_restarts
+    while time() < timelimit && restarts <= local_search.max_restarts
         @debug "Generate candidate solution for size $k, attempt: $restarts"
         S = local_search.construction_heuristic(graph, k, freq)
 
