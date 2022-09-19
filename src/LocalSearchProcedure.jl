@@ -40,9 +40,6 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
     γ = local_search_procedure.γ
     short_term_memory = local_search_procedure.short_term_memory
     scoring_function = local_search_procedure.scoring_function
-
-    reset!(short_term_memory, graph)
-    update!(scoring_function, graph, S)
     
     k = length(S)
     best_obj = calculate_num_edges(graph, S)
@@ -52,6 +49,9 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
     V_S = Set(filter(v -> v ∉ S, vertices(graph)))
     current_obj = best_obj
     min_edges_needed = γ * k * (k-1) / 2
+
+    reset!(short_term_memory, graph)
+    update!(scoring_function, graph, S)
 
     iter_since_last_improvement = 0
 

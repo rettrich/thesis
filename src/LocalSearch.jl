@@ -12,7 +12,7 @@ export calculate_d_S, calculate_num_edges,
     LocalSearchProcedure, MQCP_LocalSearchProcedure,
     GuidanceFunction, GreedyCompletionHeuristic, GreedyCompletionHeuristicPQVariant, SumOfNeighborsHeuristic,
     SwapHistory, sample_candidate_solutions,
-    ScoringFunction, d_S_ScoringFunction, SimpleGNN_ScoringFunction, Random_ScoringFunction,
+    ScoringFunction, d_S_ScoringFunction, SimpleGNN_ScoringFunction, Random_ScoringFunction, Encoder_Decoder_ScoringFunction,
     SolutionExtender, MQCP_GreedySolutionExtender,
     FeasibilityChecker, MQCP_FeasibilityChecker,
     run_lsbmh

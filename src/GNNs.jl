@@ -9,7 +9,7 @@ using Statistics
 # using MLUtils
 # using Logging
 
-export GNNModel, SimpleGNN, compute_node_features, device,
+export GNNModel, SimpleGNN, Encoder_Decoder_GNNModel, compute_node_features, device,
     NodeFeature, d_S_NodeFeature, DegreeNodeFeature, get_feature_list,
     GNNChainFactory, ResGatedGraphConv_GNNChainFactory, GATv2Conv_GNNChainFactory
 
@@ -145,6 +145,14 @@ end
 
 Base.show(io::IO, ::MIME"text/plain", x::SimpleGNN) = print(io, "$(x.gnn_type)-$(x.d_in)-$(x.dims)")
 
+"""
+    Encoder_Decoder_GNNModel
+
+A deep neural network based on the encoder / decoder paradigm. The encoder is a GNNChain which should be used to compute 
+node embeddings for a graph. During each iteration, the context (based on the current candidate solution) is derived from 
+node embeddings and fed through the simpler decoder, which is e.g. a small Dense feed forward network. 
+
+"""
 struct Encoder_Decoder_GNNModel <: GNNModel
     d_in::Int
     encoder_dims::Vector{Int}

@@ -165,6 +165,8 @@ function create_sample(graph::SimpleGraph{Int},
         ndata=(; x = node_features, y = targets, in_S = in_S)
         )
     gnn_graph = add_self_loops(gnn_graph) # add self loops for message passing
+
+    # return training sample and a boolean indicating whether this sample is a local optimum wrt lookahead search
     return TrainingSample(gnn_graph, graph, S), isempty(solutions)
 end
 

@@ -1,9 +1,10 @@
 
-using thesis.GNNs: GNNModel, compute_node_features, device, get_feature_list
-using Flux: gpu, cpu
+using thesis.GNNs: GNNModel, SimpleGNN, Encoder_Decoder_GNNModel, compute_node_features, device, get_feature_list
+using Flux: gpu, cpu, NNlib.gather
 using GraphNeuralNetworks
 using DataStructures: PriorityQueue, enqueue!, dequeue!
 using StatsBase
+using Statistics
 
 """
     ScoringFunction
@@ -18,11 +19,10 @@ It provides a simple interface:
 """
 abstract type ScoringFunction end
 
-update!(sf::ScoringFunction, graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}}) = error("ScoringFunction: Abstract update!(sf, graph, S) called")
+update!(sf::ScoringFunction, graph::SimpleGraph, S::Set{Int}) = error("ScoringFunction: Abstract update!(sf, graph, S) called")
 update!(sf::ScoringFunction, u::Int, v::Int) = error("ScoringFunction: Abstract update!(sf, u, v) called")
-get_restricted_neighborhood(sf::ScoringFunction, S::Union{Vector{Int}, Set{Int}}, 
-                            V_S::Union{Vector{Int}, Set{Int}}
-                            )::@NamedTuple{X::Union{Vector{Int}, Set{Int}}, Y::Union{Vector{Int}, Set{Int}}} = 
+get_restricted_neighborhood(sf::ScoringFunction, S::Set{Int}, V_S::Set{Int}
+                           )::@NamedTuple{X::Union{Vector{Int}, Set{Int}}, Y::Union{Vector{Int}, Set{Int}}} = 
     error("ScoringFunction: Abstract get_restricted_neighborhood(sf) called")
 
 mutable struct d_S_ScoringFunction <: ScoringFunction
@@ -34,7 +34,7 @@ mutable struct d_S_ScoringFunction <: ScoringFunction
     end
 end
 
-function update!(sf::d_S_ScoringFunction, graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}})::Vector{Int}
+function update!(sf::d_S_ScoringFunction, graph::SimpleGraph, S::Set{Int})::Vector{Int}
     sf.graph = graph
     sf.d_S = fill(0, nv(graph))
     sf.d_S = calculate_d_S(sf.graph, S)
@@ -51,8 +51,7 @@ function update!(sf::d_S_ScoringFunction, u::Int, v::Int)
     return sf.d_S
 end
 
-function get_restricted_neighborhood(sf::d_S_ScoringFunction, S::Union{Vector{Int}, Set{Int}}, 
-                                     V_S::Union{Vector{Int}, Set{Int}}
+function get_restricted_neighborhood(sf::d_S_ScoringFunction, S::Set{Int}, V_S::Set{Int}
                                      )::@NamedTuple{X::Union{Vector{Int}, Set{Int}}, Y::Union{Vector{Int}, Set{Int}}}
     d_S = sf.d_S
     d_min = minimum([d_S[i] for i in S])
@@ -62,7 +61,50 @@ function get_restricted_neighborhood(sf::d_S_ScoringFunction, S::Union{Vector{In
     return (;X, Y)
 end
 
-mutable struct SimpleGNN_ScoringFunction <: ScoringFunction
+mutable struct Random_ScoringFunction <: ScoringFunction 
+    neighborhood_size::Int
+    d_S_sf::d_S_ScoringFunction
+    d_S::Vector{Int}
+
+    function Random_ScoringFunction(neighborhood_size::Int)
+        new(neighborhood_size, d_S_ScoringFunction(), [])
+    end
+end
+
+function update!(sf::Random_ScoringFunction, graph::SimpleGraph, S::Set{Int}) 
+    d_S = update!(sf.d_S_sf, graph, S)
+    sf.d_S = d_S
+    return sf.d_S
+end
+
+function update!(sf::Random_ScoringFunction, u::Int, v::Int) 
+    d_S = update!(sf.d_S_sf, u, v)
+    sf.d_S = d_S
+    return sf.d_S
+end
+
+function get_restricted_neighborhood(sf::Random_ScoringFunction, S::Set{Int}, V_S::Set{Int}
+                                     )::@NamedTuple{X::Union{Vector{Int}, Set{Int}}, Y::Union{Vector{Int}, Set{Int}}}
+
+    if sf.neighborhood_size < length(S)
+        # X = S[partialsortperm(scores_S, 1:sf.neighborhood_size)]
+        X = sample(collect(S), sf.neighborhood_size; replace=false)
+    else
+        X = S
+    end
+
+    if sf.neighborhood_size < length(V_S)
+        Y = sample(collect(V_S), sf.neighborhood_size; replace=false)
+    else
+        Y = V_S
+    end
+
+    return (; X, Y)
+end
+
+abstract type GNN_ScoringFunction <: ScoringFunction end
+
+mutable struct SimpleGNN_ScoringFunction <: GNN_ScoringFunction
     graph::Union{Nothing, SimpleGraph}
     gnn_graph::Union{Nothing, GNNGraph}
     gnn::GNNModel
@@ -75,7 +117,7 @@ mutable struct SimpleGNN_ScoringFunction <: ScoringFunction
     end
 end
 
-function update!(sf::SimpleGNN_ScoringFunction, graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}})
+function update!(sf::SimpleGNN_ScoringFunction, graph::SimpleGraph, S::Set{Int})
     if graph != sf.graph
         sf.graph = graph
         sf.gnn_graph = GNNGraph(sf.graph) |> device
@@ -98,8 +140,69 @@ function update!(sf::SimpleGNN_ScoringFunction, u::Int, v::Int)
     return sf.scores
 end
 
-function get_restricted_neighborhood(sf::SimpleGNN_ScoringFunction, S::Union{Vector{Int}, Set{Int}}, 
-                                     V_S::Union{Vector{Int}, Set{Int}}
+mutable struct Encoder_Decoder_ScoringFunction <: GNN_ScoringFunction
+    graph::Union{Nothing, SimpleGraph}
+    gnn_graph::Union{Nothing, GNNGraph}
+    gnn::Encoder_Decoder_GNNModel
+    embeddings::Union{Nothing, AbstractMatrix{Float32}}
+    d_S::Vector{Int}
+    S::Set{Int}
+    scores::Vector{Float32}
+    neighborhood_size::Int
+
+    function SimpleGNN_ScoringFunction(gnn, neighborhood_size)
+        new(nothing, nothing, gnn, nothing, [], Set(), [], neighborhood_size)
+    end
+end
+
+# apply encoder each time the graph changes, otherwise just compute the context from the embedding
+function update!(sf::Encoder_Decoder_ScoringFunction, graph::SimpleGraph, S::Set{Int})
+    sf.d_S = calculate_d_S(sf.graph, S)
+    sf.S = copy(S)
+
+    if graph != sf.graph
+        sf.graph = graph
+        sf.gnn_graph = GNNGraph(sf.graph) |> device
+        # compute node embeddings
+        node_features = compute_node_features(get_feature_list(sf.gnn), sf.graph, S, sf.d_S)
+        sf.embeddings = sf.gnn.encoder(sf.gnn_graph, node_features |> device)
+    end
+    
+    # compute context from node embeddings: context is the index wise mean of all node embeddings of nodes in S
+    embeddings_with_context = vcat(sf.embeddings, compute_context(sf.embeddings, sf.S, nv(graph)))
+
+    # compute scores by applying decoder on embeddings + context
+    sf.scores = vec(sf.gnn.decoder(embeddings_with_context) |> cpu)
+
+    return sf.scores
+end
+
+function compute_context(embeddings::AbstractMatrix{Float32}, S::Set{Int}, n::Int; offset=0)
+    S = [v+offset for v in S] # if embedding is of batched graph, add offset to vertex number for correct matrix columns
+    repeat(mean(NNlib.gather(embeddings, S), dims=2), 1, n)
+end
+
+# only apply decoder, compute context from node embeddings
+function update!(sf::Encoder_Decoder_ScoringFunction, u::Int, v::Int)
+    for w in neighbors(sf.graph, u)
+        sf.d_S[w] -= 1
+    end
+    for w in neighbors(sf.graph, v)
+        sf.d_S[w] += 1
+    end
+    delete!(sf.S, u)
+    push!(sf.S, v)
+
+    embeddings_with_context = vcat(sf.embeddings, compute_context(sf.embeddings, sf.S, nv(graph)))
+
+    # compute scores by applying decoder on embeddings + context
+    sf.scores = vec(sf.gnn.decoder(embeddings_with_context) |> cpu)
+    
+    return sf.scores
+end
+
+# this method is the same for SimpleGNN_ScoringFunction and Encoder_Decoder_GNN_ScoringFunction
+function get_restricted_neighborhood(sf::GNN_ScoringFunction, S::Set{Int}, V_S::Set{Int}
                                      )::@NamedTuple{X::Union{Vector{Int}, Set{Int}}, Y::Union{Vector{Int}, Set{Int}}}
     if typeof(S) <: Set # need fixed order of elements
         S = collect(S)
@@ -108,9 +211,8 @@ function get_restricted_neighborhood(sf::SimpleGNN_ScoringFunction, S::Union{Vec
 
     scores_S = [sf.scores[i] for i in S]
     scores_V_S = [sf.scores[i] for i in V_S]
-    
+
     if sf.neighborhood_size < length(S)
-        # X = S[partialsortperm(scores_S, 1:sf.neighborhood_size)]
         X = get_k_order_statistic(S, scores_S, sf.neighborhood_size; order=Base.Order.ReverseOrdering())
     else
         X = S
@@ -122,55 +224,12 @@ function get_restricted_neighborhood(sf::SimpleGNN_ScoringFunction, S::Union{Vec
         Y = V_S
     end
 
-
     return (;X, Y)
-end
-
-mutable struct Random_ScoringFunction <: ScoringFunction 
-    neighborhood_size::Int
-    d_S_sf::d_S_ScoringFunction
-    d_S::Vector{Int}
-
-    function Random_ScoringFunction(neighborhood_size::Int)
-        new(neighborhood_size, d_S_ScoringFunction(), [])
-    end
-end
-
-function update!(sf::Random_ScoringFunction, graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}}) 
-    d_S = update!(sf.d_S_sf, graph, S)
-    sf.d_S = d_S
-    return sf.d_S
-end
-
-function update!(sf::Random_ScoringFunction, u::Int, v::Int) 
-    d_S = update!(sf.d_S_sf, u, v)
-    sf.d_S = d_S
-    return sf.d_S
-end
-
-function get_restricted_neighborhood(sf::Random_ScoringFunction, S::Union{Vector{Int}, Set{Int}}, 
-                                     V_S::Union{Vector{Int}, Set{Int}}
-                                     )::@NamedTuple{X::Union{Vector{Int}, Set{Int}}, Y::Union{Vector{Int}, Set{Int}}}
-
-    if sf.neighborhood_size < length(S)
-        # X = S[partialsortperm(scores_S, 1:sf.neighborhood_size)]
-        X = sample(collect(S), sf.neighborhood_size; replace=false)
-    else
-        X = S
-    end
-
-    if sf.neighborhood_size < length(V_S)
-        Y = sample(collect(V_S), sf.neighborhood_size; replace=false)
-    else
-        Y = V_S
-    end
-
-    return (; X, Y)
 end
 
 
 """
-    get k maximum (ForwardOrdering) / minimum (ReverseOrdering) valued keys from (key, value) pairs in zip(keys, values)
+    get k maximum (ForwardOrdering) / minimum (ReverseOrdering) valued keys from (key, value) pairs in zip(keys, values) 
 """
 function get_k_order_statistic(keys::Vector{K}, values::Vector{V}, k::Int; order=Base.Order.ForwardOrdering()) where {K, V}
     pq = PriorityQueue{K, V}(order)

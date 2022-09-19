@@ -2,6 +2,7 @@ using ArgParse
 using Graphs
 using thesis.Instances
 using thesis.LocalSearch
+using thesis.Training
 using CSV
 using DataFrames
 using Distributions
@@ -46,6 +47,16 @@ function run_mqcp(i::Int)
 
 end
 
+function generate_graphs(iter=10)
+    
+    ig = InstanceGenerator(Normal(200, 15), Uniform(0.75, 0.92))
+    for i = 1:iter
+        graph = sample_graph(ig)
+        graph_to_file(graph, "rnd-medium-$(lpad(string(i), 3, "0")).clq")
+    end
+end
+
+generate_graphs()
 # for i = 1:100
 #     run_mqcp(i)
 # end
