@@ -43,7 +43,6 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
     
     k = length(S)
     best_obj = calculate_num_edges(graph, S)
-    d_S = scoring_function.d_S
     S = Set(S)
     S′ = copy(S)
     V_S = Set(filter(v -> v ∉ S, vertices(graph)))
@@ -52,6 +51,7 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
 
     reset!(short_term_memory, graph)
     update!(scoring_function, graph, S)
+    d_S = scoring_function.d_S
 
     iter_since_last_improvement = 0
 

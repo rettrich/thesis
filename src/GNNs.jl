@@ -34,13 +34,15 @@ get_loss(gnn::GNNModel) = gnn.loss
 
 AddResidual(l) = Parallel(+, Base.identity, l) # residual connection
 
+abstract type ChainFactory end
+
 """
     GNNChainFactory
 
 Can be used to create a `GNNChain` of a specific type, e.g. `ResGatedGraphConv` or `GATv2Conv` networks.
 
 """
-abstract type GNNChainFactory end
+abstract type GNNChainFactory <: ChainFactory end
 
 """
     (::GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_classifier::Bool)
@@ -96,15 +98,21 @@ function (::GATv2Conv_GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_classif
     return model
 end
 
+struct Dense_ChainFactory <: ChainFactory end
+
 """
     Dense_classifier(d_in, dims)
 
 Simple Dense Feed Forward Network with specified dimensions and sigmoid classifier at the final layer. 
 """
-function Dense_classifier(d_in, dims)::Chain
+function (::Dense_ChainFactory)(d_in::Int, dims::Vector{Int}; add_classifier::Bool = true)::Chain
+    @assert length(dims) >= 1
+
     model = Chain(
-            (Dense(decoder_dims[i] => decoder_dims[i+1], relu) for i in 1:(length(decoder_dims)-1))...,
-            Dense(decoder_dims[end] => 1, sigmoid)
+            Dense(d_in => dims[1]),
+            (Dense(dims[i] => dims[i+1], relu) for i in 1:(length(dims)-1))...,
+            BatchNorm(dims[end]),
+            Dense(dims[end] => 1, sigmoid)
     )
     return model
 end
@@ -143,7 +151,7 @@ struct SimpleGNN <: GNNModel
     end
 end
 
-Base.show(io::IO, ::MIME"text/plain", x::SimpleGNN) = print(io, "$(x.gnn_type)-$(x.d_in)-$(x.dims)")
+Base.show(io::IO, ::MIME"text/plain", x::SimpleGNN) = print(io, "$(x.gnn_type)-$(x.d_in)-$(join(x.dims, "-"))")
 
 """
     Encoder_Decoder_GNNModel
@@ -164,35 +172,28 @@ struct Encoder_Decoder_GNNModel <: GNNModel
     opt
 
     function Encoder_Decoder_GNNModel(d_in::Int, encoder_dims::Vector{Int}, decoder_dims::Vector{Int};
-                      encoder = GATv2Conv_model(d_in, encoder_dims),
-                      decoder = Dense_classifier(encoder_dims[end]*2, decoder_dims), # TODO: maybe change later. depends on context embedding 
+                      encoder_factory::GNNChainFactory = ResGatedGraphConv_GNNChainFactory(),
+                      decoder_factory::ChainFactory = Dense_ChainFactory(),  
                       node_features::Vector{<:NodeFeature} = [DegreeNodeFeature()],
                       loss = Flux.binarycrossentropy,
                       opt = Adam(0.001, (0.9, 0.999)),
-
                       )
 
         # encoder: GNN, compute node embeddings
 
-        encoder = GNNChain(
-            GATv2Conv(d_in => encoder_dims[1]),
-            (GATv2Conv(encoder_dims[i] => encoder_dims[i+1]) for i in 1:(length(encoder_dims)-1))...,
-        ) |> device
+        encoder = encoder_factory(d_in, encoder_dims) |> device
 
         # decoder from node embeddings + context embedding, used to classify node
-
-        decoder = Chain(
-            (Dense(decoder_dims[i] => decoder_dims[i+1], relu) for i in 1:(length(decoder_dims)-1))...,
-            Dense(decoder_dims[end] => 1, sigmoid)
-        ) |> device
+        decoder = decoder_factory(encoder_dims[end]*2, decoder_dims) |> device
 
         function loss_func(g::GNNGraph, S::Vector{Int}) # TODO: Batching?
-            node_embeddings = encoder(g, g.ndata.x)
-            context_embeddings = repeat(get_context_embeddings(node_embeddings, S), 1, size(node_embeddings, 2))
-            S = vec(g.ndata.in_S) .* collect(vertices(g))
-            decoder_inputs = vcat(node_embeddings, context_embeddings)
-            output = decoder(g, decoder_inputs)
-            loss( vec(output), g.ndata.y )
+            error("not implemented")
+            # node_embeddings = encoder(g, g.ndata.x)
+            # context_embeddings = repeat(get_context_embeddings(node_embeddings, S), 1, size(node_embeddings, 2))
+            # S = vec(g.ndata.in_S) .* collect(vertices(g))
+            # decoder_inputs = vcat(node_embeddings, context_embeddings)
+            # output = decoder(g, decoder_inputs)
+            # loss( vec(output), g.ndata.y )
         end
 
         new(d_in, encoder_dims, decoder_dims, encoder, decoder, node_features, loss_func, opt)

@@ -112,7 +112,7 @@ mutable struct SimpleGNN_ScoringFunction <: GNN_ScoringFunction
     scores::Vector{Float32}
     neighborhood_size::Int
 
-    function SimpleGNN_ScoringFunction(gnn, neighborhood_size)
+    function SimpleGNN_ScoringFunction(gnn::GNNModel, neighborhood_size::Int)
         new(nothing, nothing, gnn, [], [], neighborhood_size)
     end
 end
@@ -150,14 +150,14 @@ mutable struct Encoder_Decoder_ScoringFunction <: GNN_ScoringFunction
     scores::Vector{Float32}
     neighborhood_size::Int
 
-    function SimpleGNN_ScoringFunction(gnn, neighborhood_size)
+    function Encoder_Decoder_ScoringFunction(gnn::Encoder_Decoder_GNNModel, neighborhood_size::Int)
         new(nothing, nothing, gnn, nothing, [], Set(), [], neighborhood_size)
     end
 end
 
 # apply encoder each time the graph changes, otherwise just compute the context from the embedding
 function update!(sf::Encoder_Decoder_ScoringFunction, graph::SimpleGraph, S::Set{Int})
-    sf.d_S = calculate_d_S(sf.graph, S)
+    sf.d_S = calculate_d_S(graph, S)
     sf.S = copy(S)
 
     if graph != sf.graph
@@ -179,7 +179,7 @@ end
 
 function compute_context(embeddings::AbstractMatrix{Float32}, S::Set{Int}, n::Int; offset=0)
     S = [v+offset for v in S] # if embedding is of batched graph, add offset to vertex number for correct matrix columns
-    repeat(mean(NNlib.gather(embeddings, S), dims=2), 1, n)
+    repeat(mean(gather(embeddings, S), dims=2), 1, n)
 end
 
 # only apply decoder, compute context from node embeddings
@@ -193,7 +193,7 @@ function update!(sf::Encoder_Decoder_ScoringFunction, u::Int, v::Int)
     delete!(sf.S, u)
     push!(sf.S, v)
 
-    embeddings_with_context = vcat(sf.embeddings, compute_context(sf.embeddings, sf.S, nv(graph)))
+    embeddings_with_context = vcat(sf.embeddings, compute_context(sf.embeddings, sf.S, nv(sf.graph)))
 
     # compute scores by applying decoder on embeddings + context
     sf.scores = vec(sf.gnn.decoder(embeddings_with_context) |> cpu)
