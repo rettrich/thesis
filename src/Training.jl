@@ -10,7 +10,7 @@ using Flux
 using thesis.LookaheadSearch
 using thesis.Instances: generate_instance
 using thesis.LocalSearch: run_lsbmh, LocalSearchBasedMH, sample_candidate_solutions
-using thesis.GNNs: GNNModel, device, NodeFeature, get_feature_list
+using thesis.GNNs: GNNModel, device, NodeFeature, get_feature_list, batch_support
 using Printf
 using Logging, TensorBoardLogger
 
@@ -46,22 +46,20 @@ Simple replay buffer implementation realized as a FIFO Queue.
 - `min_fill`: Minimum fill which is required before training is started. 
 - `capacity`: Maximum capacity of the buffer.
 - `buffer`: A `Deque` of `TrainingSample`s
-- `lookahead_func`: 
 
 """
 struct ReplayBuffer
     min_fill::Int
     capacity::Int
     buffer::Deque{TrainingSample}
-    lookahead_search::LookaheadSearchFunction # used to compute target values when adding samples to buffer
 
-    function ReplayBuffer(min_fill::Int, capacity::Int, lookahead_search::LookaheadSearchFunction)
-        new(min_fill, capacity, Deque{TrainingSample}(), lookahead_search)
+    function ReplayBuffer(min_fill::Int, capacity::Int)
+        new(min_fill, capacity, Deque{TrainingSample}())
     end
 end
 
 """
-    add_to_buffer!(buffer, g, S, lookahead_func)
+    add_to_buffer!(buffer, g, S, lookahead_func, feature_list)
 
 Creates a training sample from `g, S` and adds it to the buffer. Target values are computed 
 by using `lookahead_func`
@@ -71,6 +69,7 @@ by using `lookahead_func`
 - `S`: The candidate solution `S ⊆ V`
 - `lookahead_func`: The lookahead search function that is used to identify the best neighboring solutions of `S` 
     in order to calculate target values. 
+- `feature_list`: List of node features to compute node features
 
 """
 function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, S::Set{Int}, lookahead_func::LookaheadSearchFunction, feature_list::Vector{<:NodeFeature})
@@ -85,7 +84,7 @@ function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, S::Set{Int}, looka
 end
 
 """
-    add_to_buffer!(buffer, g, S, lookahead_func)
+    add_to_buffer!(buffer, g, S, lookahead_func, feature_list)
 
 Creates training samples for a graph `g` and multiple candidate solutions `Ss` and adds 
 them to the buffer. 
@@ -95,6 +94,7 @@ them to the buffer.
 - `Ss`: A set of candidate solution, `S ⊆ V` for `S ∈ Ss`
 - `lookahead_func`: The lookahead search function that is used to identify the best neighboring solutions of `S` 
     in order to calculate target values. 
+- `feature_list`: List of node features to compute node features
 
 """
 function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, Ss::Vector{Set{Int}}, lookahead_func::LookaheadSearchFunction, feature_list::Vector{<:NodeFeature})
@@ -108,9 +108,9 @@ end
 
 Base.length(buffer::ReplayBuffer) = length(buffer.buffer)
 
-function get_data(buffer::ReplayBuffer)
+function get_data(buffer::ReplayBuffer; batchsize=32)
     data = map(sample -> sample.gnn_graph, collect(buffer.buffer))
-    return Flux.DataLoader(data, batchsize=32, shuffle=true, collate=true)
+    return Flux.DataLoader(data, batchsize=batchsize, shuffle=true, collate=true)
 end
 
 """
@@ -145,18 +145,18 @@ function create_sample(graph::SimpleGraph{Int},
 
     # compute target node labels
     for v in S
-    targets[v] = 1.0
+        targets[v] = 1.0
     end
 
     for (in_nodes, out_nodes) in solutions
-    # nodes that are in S and not in every best neighboring solution are scored lower
-    # so they are considered for swaps
+        # nodes that are in S and not in every best neighboring solution are scored lower
+        # so they are considered for swaps
         for u in in_nodes
-        targets[u] = 0.0
+            targets[u] = 0.0
         end
         # mark nodes that are attractive for swaps with 1
         for v in out_nodes
-        targets[v] = 1.0
+            targets[v] = 1.0
         end
     end
 
@@ -223,11 +223,16 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
                )
     capacity = 4000
     min_fill = 2000
-    buffer = ReplayBuffer(min_fill, capacity, lookahead_func)
-    ps = Flux.params(gnn.model)
+    buffer = ReplayBuffer(min_fill, capacity)
+    ps = Flux.params(gnn)
 
     t_baseline = 0
     s_base = 0
+
+    # check if gnn supports batching of graphs. for encoder / decoder it is not possible for now, as looping over graphs in batch is not possible
+    # https://github.com/CarloLucibello/GraphNeuralNetworks.jl/issues/161
+    batchsize = batch_support(gnn) ? 32 : 1     
+    num_batches = batch_support(gnn) ? num_batches : (2, 32)
 
 
     @printf("Iteration | encountered |   t_ls | t_base | t_targets | t_train | (opt)buffer | loss | V/density | solution | baseline \n")
@@ -269,19 +274,35 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
 
         before_training = time()
 
-        train_loader = get_data(buffer)
+        train_loader = get_data(buffer; batchsize) # batch data accordingly 
         # loss(g::GNNGraph) = Flux.logitbinarycrossentropy( vec(gnn(g, g.ndata.x)), g.ndata.y)
 
-        losses = []
-        for g in first(train_loader, num_batches)
-            g = g |> device
-            gs = gradient(ps) do 
-                gnn.loss(g)
+        if batch_support(gnn)
+            losses = []
+            for g in first(train_loader, num_batches)
+                g = g |> device
+                gs = gradient(ps) do 
+                    gnn.loss(g)
+                end
+                push!(losses, gnn.loss(g))
+                Flux.Optimise.update!(gnn.opt, ps, gs)
             end
-            push!(losses, gnn.loss(g))
-            Flux.Optimise.update!(gnn.opt, ps, gs)
+            iter_loss = mean(losses)
+        else
+            losses = []
+            for _ in 1:num_batches[1]
+                graphs = first(train_loader, num_batches[2]) # get batch 
+                Ss = [filter(v -> g.ndata.in_S[v]==1, 1:nv(g)) for g in graphs] # obtain candidate solution for each graph
+                graphs = [g |> device for g in graphs]
+                gs = gradient(ps) do 
+                    iter_loss = mean( gnn.loss.(graphs, Ss) )
+                    iter_loss                    
+                end
+                push!(losses, iter_loss)
+                Flux.Optimise.update!(gnn.opt, ps, gs)
+            end
+            iter_loss = mean(losses)
         end
-        iter_loss = mean(losses)
 
         t_train = time() - before_training
 

@@ -118,7 +118,7 @@ mutable struct SimpleGNN_ScoringFunction <: GNN_ScoringFunction
 end
 
 function update!(sf::SimpleGNN_ScoringFunction, graph::SimpleGraph, S::Set{Int})
-    if graph != sf.graph
+    if graph !== sf.graph
         sf.graph = graph
         sf.gnn_graph = GNNGraph(sf.graph) |> device
     end
@@ -160,7 +160,7 @@ function update!(sf::Encoder_Decoder_ScoringFunction, graph::SimpleGraph, S::Set
     sf.d_S = calculate_d_S(graph, S)
     sf.S = copy(S)
 
-    if graph != sf.graph
+    if graph !== sf.graph
         sf.graph = graph
         sf.gnn_graph = GNNGraph(sf.graph) |> device
         # compute node embeddings

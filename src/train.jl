@@ -28,8 +28,11 @@ function train_MQCP()
     
     solution_extender = MQCP_GreedySolutionExtender(γ)
 
-    gnn = SimpleGNN(2, [64, 64, 64])
-    scoring_function = SimpleGNN_ScoringFunction(gnn, 20)
+    # gnn = SimpleGNN(2, [64, 64, 64])
+    # scoring_function = SimpleGNN_ScoringFunction(gnn, 20)
+
+    gnn = Encoder_Decoder_GNNModel(1, [32, 32, 32], [20, 20])
+    scoring_function = Encoder_Decoder_ScoringFunction(gnn, 20)
 
     # compare with baseline
     baseline_scoring_function = d_S_ScoringFunction()
@@ -42,7 +45,7 @@ function train_MQCP()
     max_iter = 4000
     next_improvement = false
     record_swap_history = true
-    max_restarts = 1 # abort after more than 1 restart to save time
+    max_restarts = 3 # abort after fixed number of restarts to save time
 
     local_search = LocalSearchBasedMH(
             lower_bound_heuristic, construction_heuristic, local_search_procedure, feasibility_checker, solution_extender;
@@ -60,7 +63,7 @@ function train_MQCP()
     logdir = joinpath("./logs", run_id)
     tblogger = TBLogger(logdir)
 
-    Training.train!(local_search, instance_generator, gnn; epochs=400, baseline=baseline_local_search, logger=tblogger)
+    Training.train!(local_search, instance_generator, gnn; epochs=500, baseline=baseline_local_search, logger=tblogger)
 
     BSON.@save "$run_id.bson" gnn
 
