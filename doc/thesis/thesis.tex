@@ -23,6 +23,7 @@
 \usepackage{todonotes} % Provides tooltip-like todo notes.
 \usepackage{hyperref}  % Enables cross linking in the electronic document version. This package has to be included second to last.
 \usepackage[acronym,toc]{glossaries} % Enables the generation of glossaries and lists fo acronyms. This package has to be included last.
+\usepackage[figuresleft]{rotating}
 
 \usepackage[draft,nomargin,inline]{fixme}
 \fxsetface{inline}{\itshape}
@@ -540,16 +541,17 @@ Summarizing the previous sections, we present a flowchart visualization of the L
     \label{fig:flowchart-local-search-algorithm}
 \end{figure}
 
-\chapter{Using Graph Neural Networks in a Local Search Based Metaheuristic}\label{chp:gnn}
+\chapter{Using Graph Neural Networks in a Local Search Based Metaheuristic for Maximum Clique Relaxation Problems}\label{chp:gnn}
 
 In this chapter we extend the local search based metaheuristic presented in Chapter \ref{chp:local-search-algorithm} by utilizing a GNN in order to enhance the algorithm. 
 Section \ref{sec:gnn-local-search} presents our idea of utilizing a GNN in the previously described local search algorithm and the general structure of the training loop. 
 Section \ref{sec:gnn-training} concerns the definition of training samples, and how training data is obtained. 
 In order to obtain target values for training the GNN, in Section \ref{sec:lookahead-search} we present our idea of using a look-ahead search that takes into account the current candidate solution and returns the best neighboring solution. 
-Finally, we discuss relevant GNN models and architectures in Section \ref{sec:gnn-architecture}.
+We discuss relevant GNN models and architectures in Section \ref{sec:gnn-architecture}. 
+Finally, we analyze the effect of using a GNN as a scoring function on the runtime of the algorithm compared to the scoring function $d_S$ in Section \ref{sec:performance}. 
 
 
-\section{Using a GNN in Local Search}\label{sec:gnn-local-search}
+\section{Using a GNN in Local Search for Maximum Clique Relaxation Problems}\label{sec:gnn-local-search}
 
 In Chapter \ref{chp:local-search-algorithm} we present a swap-based metaheuristic that evaluates possible swaps relative to a candidate solution $S$ by their respective gain $\Delta_{uv}$ for $u \in S, v \in V \setminus S$ which is similar to current state-of-the-art heuristic solution approaches. 
 Here, the function $d_S$ can be seen as a scoring function over the vertices in $V$. Vertices with higher scores in $V \setminus S$ and vertices with low scores in $S$ are promising, as they maximize the gain of a swap $\Delta_{uv}$. 
@@ -557,7 +559,7 @@ Most local search based algorithms on the MQCP are based around this scoring fun
 Using $d_S$ as a scoring function to evaluate the quality of swaps has two major drawbacks:
 \begin{itemize}
     \item In each iteration of the local search procedure, potential swaps are determined greedily: Only swaps that maximize the gain $\Delta_{uv}$ are considered. As discussed in Chapter \ref{chp:local-search-algorithm}, this corresponds to only searching the neighborhood structure $\Omega_1$. It is possible however, that one or more swaps with low gain lead to an improved solution - for example, a local optimum $S$ with respect to the neighborhood structure $\Omega_1$ is not necessarily a local optimum with respect to the neighborhood structure $\Omega_5$, and in order to obtain an improving solution from $S$ with respect to $\Omega_5$, some swaps might have a negative gain when applied consecutively. 
-    \item As shown in \cite{chen_nuqclq_2021}, in most iterations there are many possible swaps with the same gain. The authors therefore propose to use a more fine-grained secondary scoring function which serves as a tiebreaker. 
+    \item As shown in \cite{chen_nuqclq_2021}, in most iterations there are many possible swaps with the same gain, but not all of them lead to the same local optima. In order to decide between swaps with equivalent gain the authors therefore propose to use a more fine-grained secondary scoring function which serves as a tiebreaker. 
 \end{itemize}
 
 In order to address these drawbacks, we propose to incorporate the GNN into the local search algorithm to replace the function $d_S$ as a scoring function for swaps: In each iteration of the local search algorithm, all vertices are evaluated by a GNN, assigning scores to vertices. The GNN can therefore be seen as a function $\mathit{gnn}_S$, where $\mathit{gnn}_S(v)$ denotes the score of vertex $v$ relative to candidate solution $S$. 
@@ -570,9 +572,10 @@ The purpose of the GNN in this approach is two-fold:
 \end{itemize}
 
 Using a GNN however imposes some other challenges: 
-Whereas the scoring function $d_S$ can be updated efficiently in $O(|V|)$ time after a swap $(u,v)$ by simply increasing $d_S(w)$ for all $w \in N_G(v)$ and decreasing $d_S(w)$ for all $w \in N(u)$, incrementally updating the scores is generally not possible with a GNN, and obtaining scores therefore is less efficient using a GNN. 
+Whereas the scoring function $d_S$ can be updated efficiently after a swap, incrementally updating the scores is generally not possible with a GNN, and obtaining scores therefore is less efficient using a GNN. 
 Furthermore, the quality of the scores predicted by the GNN depends on several determining factors, most importantly on the quality of the training data and the obtained target values and the architecture of the GNN. 
-We aim to tackle these challenges in Sections \ref{sec:gnn-training} and \ref{sec:lookahead-search} by showing how the GNN can be trained in an imitation learning setting to make high quality predictions, and in \ref{sec:gnn-architecture} by proposing suitable efficient GNN architectures.
+
+We aim to tackle these challenges in Sections \ref{sec:gnn-training} and \ref{sec:lookahead-search} by showing how the GNN can be trained in an imitation learning setting to make high quality predictions, in \ref{sec:performance} by analyzing the performance of the local search based metaheuristic with and without the GNN, and in and \ref{sec:gnn-architecture} by proposing suitable efficient GNN architectures that can be used in practice. 
 
 \section{Training the GNN}\label{sec:gnn-training}
 
@@ -646,7 +649,7 @@ Here, $\hat{y}$ denotes a vector of size $|V|$ that contains predictions given b
 
 
 \section{Look-Ahead Search}\label{sec:lookahead-search}
-\todo{überarbeiten}
+\todo{überarbeiten, hier wird weiter gemacht sobald das training mit $\Omega_1$ mit Encoder/Decoder funktioniert}
 
 In order to obtain target values for training the GNN, we need to be able to identify the best neighboring solutions in a given neighborhood structure relative to the $S$. More specifically, we want to consider the neighborhood structure(s) $\bigcup_{i=1}^d \Omega_i$ for different values of $d$. In this section, we propose different methods in order to search these neighborhood structures. 
 
@@ -657,7 +660,10 @@ When the GNN is trained successfully to imitate this look-ahead search, it will 
 
 \subsection{Beyond $\Omega_1$}
 
-In order to search the larger neighborhoods $\bigcup_{i=1}^d \Omega_i$ for $d > 1$, we propose two different methods: An exact MILP-approach, which can be used for small instances, and a heuristic approach, that should serve as an approximation of the best neighboring solution, as even for small $d$, the neighborhood structures are already too large to be searched exhaustively for bigger instances. 
+In order to search the larger neighborhoods $\bigcup_{i=1}^d \Omega_i$ for $d > 1$, we distinguish between exact approaches, and heuristic approaches. 
+As already stated in Chapter \ref{chp:local-search-algorithm}, the neighborhood structure $\Omega_d$ can be searched in time $O(|V|^{2d})$ by enumerating all possible swaps. While this might be a viable approach for small graphs and small $d$, this method quickly becomes infeasible for larger neighborhoods and graphs. 
+
+We present an exact MILP-approach, which can be used for small instances, and a heuristic approach, that should serve as an approximation of the best neighboring solution, as even for small $d$, the neighborhood structures are already too large to be searched exhaustively for bigger instances. 
 
 First, we propose a MILP formulation that is suited for small instances. 
 It is based on the formulation in \ref{milp-mqcp}, but we change it to find the neighboring solution $S'$ that can be obtained after at most $d$ swaps and maximizes the amount of edges in $G[S']$: 
@@ -711,82 +717,144 @@ Weiters ist Symmetrievermeidung/reduzierung ein wichtiger Aspekt, d.h., das Stat
     \label{alg:lookahead-beam-search}
 \end{algorithm}
 
-
-
 \section{GNN Architecture}\label{sec:gnn-architecture}
-\todo{überarbeiten}
-\begin{itemize}
-    \item first try with GCN: use vertex degrees and $d_S$ values as features. this implicitly encodes the state (the candidate solution $S$) into the vertex features. 
-    \item later: try GAT architecture
-\end{itemize}
+In this section we present the key components of the NN architecture used in our algorithm and justify our choices in designing said architecture. 
+The whole process of evaluating a graph $G = (V, E)$ and a candidate solution $S$ is presented by means of a small example in Figure \ref{fig:gnn-architecture}. 
+Initially, feature vectors $x_1, \dots, x_n$ are computed for all vertices in $V = \{v_1, \dots, v_n\}$, producing a feature matrix of dimension $\mathit{dim_{in}} \times |V|$, where $\mathit{dim_{in}}$ is the size of a feature vector. This feature matrix is used as input for the GNN based encoder, which consists of $l_e$ graph convolutional layers and outputs a node embedding matrix of dimension $\mathit{dim_{out}} \times |V|$. From these node embeddings, a context is computed by taking into account the current candidate solution $S$, and aggregating corresponding node embeddings by an aggregation function $\mathit{agg}$, generating a context embedding. The context embedding is concatenated to the node embeddings. The resulting matrix is used as input for the decoder, which can be realized as an MLP with a final layer $l_d$, which maps the values of the previous layer to a scalar output score by applying a sigmoid activation function. 
+
+In the remaining Section we will discuss feature selection, the structure of the encoder and decoder, and the context embedding in detail. 
+
+\begin{sidewaysfigure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{graphics/gnn-architecture.eps}
+    \caption{Evaluation of a graph $G = (V, E)$ with candidate solution $S = {v_2, v_5}$ by the Encoder-Decoder based architecture. }
+    \label{fig:gnn-architecture}
+\end{sidewaysfigure}
 
 \subsection{Node Features}
-Idea: For each node, do BFS with depth $d$ to calculate node features: Feature vector $x_i$ for node $v_i$ has at position $j=1,\dots,d$ the number of distinct nodes with distance $j$ from $v_i$. 
-\fxnote{GR: Derartige Information sollten ja eigentlich $d$ GNN Layers von selbst finden können. Ich denke die grundlegende Information, die wir als Feature einspeisen müssen ist Information über den State, vor allem welche Knoten aktuell in $S$ sind und auch Freq, vielleicht auch die $d_S$-Werte.}
+Since the node embeddings are only computed once per graph, it is essential that the computed node features represent the vertices in a meaningful way by extracting similarities and differences of vertices and their surrounding neighborhoods. More precisely, high quality features should map vertices with similar neighborhoods closer together in the feature space, whereas vertices that are very distant from each other and do not share many neighbors should be further apart. 
 
-\fxnote{GR: Für erste Versuche würde ich mal auf eine sehr einfache Netzstruktur setzen, vielleicht ein paar klassische GCN Layers (ohne Attention) gefolgt von softmax. 
-Eine komplexere Encoder/Decoder-Struktur basierend z.B. auf GATv2 ist natürlich interessanter und können wir dann, wenn der Ansatz mal grundsätzlich funktioniert konkreter designen und testen.}
+In \cite{Duong2019} the authors analyze the effect of different node feature initialization methods on node classification task. They distinguish between centrality based approaches (e.g. degree based initialization, number of triangles that a vertex participates in, etc), and learning-based approaches (e.g. DeepWalk \cite{Perozzi2014}, where vertices are mapped closer together, if the probability that they occur in a random walk together is higher). 
+The authors conclude that centrality-based approaches are generally not as suitable as learning-based approaches. 
+Especially DeepWalk seems to be a promising feature initialization method for our purpose, as the authors of \cite{Duong2019} obtain the best results using this method. Furthermore, DeepWalk's generalization Node2Vec \cite{GroverL16} should be of interest as well.  
 
 \subsection{Encoder}
+In general, any graph convolutional network model can be used as an encoder. We refer to Residual Gated Graph Convolutional Networks (\cite{Bresson2017}), and GATv2 networks (\cite{Velickovic2018}, \cite{Brody2021}), which we will use in our experiments. 
+
+\subsection{Context}
+The context is determined by the current candidate solution $S$ and is computed by aggregating the columns of the node embedding matrix that correspond to the vertices in $S$. In general, any order invariant aggregation function $\mathit{agg} \in \{\mathit{sum, mean, max}\}$ can be used. The context is then concatenated to the node embeddings to produce inputs for the decoder. 
 
 \subsection{Decoder}
+The decoder is a regression model that maps the inputs obtained from the node embeddings and the context embedding to scalar values representing scores for the vertices in $V$. We suggest using a simple Multi Layer Perceptron with a sigmoid activation function on the final layer, mapping the results of the previous layer to scalar values between zero and one. 
+
+\section{Performance}\label{sec:performance}
+
+Since the main difference between the algorithms presented in Chapter \ref{chp:local-search-algorithm} and \ref{chp:gnn} lies in the scoring function used to evaluate vertices during the swap based local search procedure, we want to analyze the effect of using the scoring function $\mathit{gnn}_S$ instead of the scoring function $d_S$. 
+In order to do so, we identify the three main operations during the local search procedure that are influenced by the choice of scoring function: Initialization, restricting neighborhoods, and updating the scoring function.  
+
+\subsection{Initializing the scoring function}
+At the start of the local search procedure, a construction heuristic is used to produce a new candidate solution $S$, which serves as a starting point. 
+The scoring function $d_S$ must then be initialized, as it is dependent on $S$. The initialization procedure can be seen in Algorithm \ref{alg:init-dS}.
+It starts by initializing an array of zeros of size $|V|$. For each vertex $u \in S$, increase the value $d_S[v]$ by one for each neighbor $v$ of $u$. This procedure has a worst-time-complexity of $O(|V|^2)$ time, as the size of $S$ is in $O(|V|)$, and each vertex in $S$ can have $O(|V|)$ neighbors. 
+
+\begin{algorithm}
+    \DontPrintSemicolon
+    \KwIn{Graph $G = (V,E)$, candidate solution $S$}
+    \KwOut{Initialized scoring function $d_S$}
+    $d_S \gets [0, \dots, 0]$ // Array of size $|V|$ \;
+    \For{$u \in S$}{
+        \For{$v \in N_G(u)$}{
+            $d_S[v] \gets d_S[v] + 1$
+        }
+    }
+    \Return{$d_S$}
+    \caption{Initialize scoring function $d_S$}
+    \label{alg:init-dS}
+\end{algorithm}
+
+When using the scoring function $gnn_S$, initializing the scoring function is done by computing node embeddings for each vertex in $G$. This is done by first computing node features and then computing node embeddings by passing the node features through a GNN based encoder. The time complexity of this initialization depends on the complexity of the chose node features and the structure of the GNN itself, but in general both will take $O(|V|^2)$ time on graphs that are not sparse. The argument is similar as with $d_S$, as each vertex needs to be evaluated by taking in account all its neighboring vertices. 
+The advantage when using a GNN based scoring function is that this initialization process has to be done only once per graph, and not every time a new candidate solution is generated by the construction heuristic. In subsequent restarts of the local search procedure, only the linear time decoder has to be applied. 
+
+Since initialization is only done once per graph or once per restart of the local search procedure, the runtime should not have a great impact on the performance of the algorithm. Therefore, especially with a GNN based scoring function, this time should be used by utilizing an encoder of high enough complexity to produce high quality node embeddings. 
+
+\subsection{Restricting the neighborhood}
+When using the scoring function $d_S$, the neighborhood $\Omega_1$ is searched implicitly, as only swaps that maximize the gain are considered. 
+The restricted candidate sets $X \subseteq S, Y \subseteq V \setminus S$ are generated in time $O(|V|)$, as only the minimum and maximum scores for vertices in $S$ and $V \setminus S$, respectively, have to be determined. As a reminder, the restricted candidate sets are defined as 
+\[
+    X = \{ u \mid u \in S, d_S(u) \leq d_{\min} + 1 \}, \\
+    Y = \{ v \mid v \in V \setminus S, d_S(v) \geq d_{\max} - 1 \},
+\]
+with $d_{\min} = \min_{u \in S} d_S(u), d_{\max} = \max_{v \in V \setminus S}$. 
+If the swap $u \in S,v \in V \setminus S$ maximizes the gain of the candidate solution, this method of restricting the neighborhood guarantees that $u \in X, v \in Y$.
+While this method produces restricted neighborhoods of variable size, these neighborhoods are usually small and thus can be searched efficiently in practice. In general however, the size of the sets $X, Y$ can be in $O(|V|)$ in the worst case. 
+
+Using the scoring function $\mathit{gnn}_S$, we don't have a guarantee that the swap that maximizes the gain lies among the lowest-scoring vertices in $S$ and the highest-scoring vertices in $V \setminus S$. Moreover, we might not even want to consider such a swap, as the scoring function was trained to search greater neighborhoods than $\Omega_1$, and the swap that maximizes the gain does not lead to the best neighboring solution. We therefore propose to use a restricted candidate sets $X,Y$ of a fixed size $k$, where $X$ consists of the $k$ lowest-scoring vertices in $S$, and $Y$ consists of the $k$ highest-scoring vertices in $V \setminus S$. This guarantees that searching the neighborhood takes a fixed amount of time. 
+Obtaining the $k$ highest or lowest scoring vertices can be done in time $O(k |V|)$, which is linear for fixed $k$, but is still more expensive than generating a restricted neighborhood for the scoring function $d_S$. As the restricted neighborhood is searched in every iteration of the local search procedure, its size can therefore also have a great impact on the runtime. It is therefore essential to determine a neighborhood size that strikes a good balance between efficiency and quality of neighboring solutions found in the neighborhood.  
 
 
-\section{First Approach}
-This subsection documents the first attempts at testing GNN structures and different methods of training; it will be removed or reworked later.
+\subsection{Updating the scoring function}
+After each swap of vertices $u \in S, v \in V \setminus S$ the scoring function needs to be updated, as it is dependent on the current candidate solution $S$. For $d_S$, this update can be efficiently in $O(|V|)$ time by decrementing $d_S[x]$ for $x \in N_G(u)$ and incrementing $d_S[y]$ for $y \in N_G(v)$. All other vertices remain unaffected by a single swap and their corresponding $d_S$-values do not need to be updated. 
 
-\paragraph{Collecting Training Data.} We start by trying an imitation learning approach on smaller graphs. Especially the following graphs in Table \ref{tab:first-approach} from the DIMACS benchmark set seem to have an appropriate size for a first approach. 
-These graphs can be grouped into three categories: two low density graphs ($0 < \mathit{dens}(G) \leq 0.2$), three medium density graphs ($0.4 \leq \mathit{dens}(G) \leq 0.6$), and five high density graphs ($0.75 \leq \mathit{dens}(G)$). 
+For the scoring function $gnn_S$, we can generally not update the scores incrementally, as the context embedding changes, which is part of the input of all vertices. Therefore, all vertices need to be re-evaluated by the decoder. This still takes time linear in the number of vertices, but, depending on the complexity of the decoder, it can take considerably more time than updating $d_S$ after a swap. As this operation is done in every iteration of the local search procedure, it has a great impact on the performance of the algorithm. Therefore, the complexity of the decoder should be chosen such that it is as small and efficient as possible while still providing high quality predictions. 
 
-As already discussed, a training sample consists of a graph $G = (V, E)$ and a candidate solution $S \subset V$. 
-As a first step, we collect a dataset of training samples from executing the metaheuristic local search algorithm from Chapter \ref{chp:local-search-algorithm}. Training samples are collected the following way: 
-\begin{itemize}
-    \item Generate a random graph with a number of vertices sampled from a normal distribution with $\mu = 200, \sigma = 15$ - this ensures the size of the graph will be around 200 vertices
-    \item Generate uniformly sampled random edges, with uniformly sampled density depending on graph category: 
-    \begin{itemize}
-        \item low density: $dens(G) \in (0, 0.2)$
-        \item medium density: $dens(G) \in [0.4, 0.6]$
-        \item high density: $dens(G) \in [0.75, 0.9]$
-    \end{itemize}
-    \item Run the local search algorithm from Chapter \ref{chp:local-search-algorithm} for 60 seconds and record all encountered candidate solutions. From all encountered candidate solutions, sample 100 to add to the dataset. 
-\end{itemize}
-This way, we collect $10,000$ training samples for each of the three categories: We generate 100 different graphs for each category, and collect 100 samples for each graph. 
+\subsection{Conclusion}
+When analyzing the performance aspect of the proposed scoring functions, it seems clear that a GNN based scoring function can in practice not be as fast and efficient as $d_S$. However, we hope to overcome this drawback by keeping the NN - especially the decoder - as small and efficient as possible, by determining a neighborhood size that balances efficiency and solution quality, and by training the NN to provide a better guidance through the search space than $d_S$, leading to solutions of improved quality. 
 
-\paragraph{Training the GNN.} As a first approach, we try to imitate existing local search algorithms, which try to identify the best neighbor in the $\Omega_1$ neighborhood structure: Given a training sample $(G, S)$, where $G$ is a graph instance and $S \subset V$ a candidate solution, we first obtain the best neighboring solution $S^\prime \in \Omega_1$, which is defined as the best candidate solution (= with higher objective value, which is density for the MQCP) that can be obtained by swapping a single pair of vertices $u \in S, v \in V \setminus S$. If there are multiple best neighboring solutions with equal objective value, ties are broken randomly. From this we can compute the target values for training the following way: For each vertex $v \in V$, we define the target value as $1$ if $u \in S^\prime$, and $0$ if $v \notin S^\prime$. 
+% \section{First Approach}
+% This subsection documents the first attempts at testing GNN structures and different methods of training; it will be removed or reworked later.
 
-\paragraph{GNN Architecture.} We start with a simple Graph Convolutional Network (GCN). For each vertex $v \in V = \{1,2,\dots,n\}$, we define a feature vector 
-$x_v = 
-\begin{bmatrix} deg(v) \\
-    d_S(v) 
-\end{bmatrix}$. 
-As a first approach, we simply use three Graph Convolutional Layers. As output, we obtain a scalar value for each input vector, which is the score of the vertex evaluated by the GNN. 
+% \paragraph{Collecting Training Data.} We start by trying an imitation learning approach on smaller graphs. Especially the following graphs in Table \ref{tab:first-approach} from the DIMACS benchmark set seem to have an appropriate size for a first approach. 
+% These graphs can be grouped into three categories: two low density graphs ($0 < \mathit{dens}(G) \leq 0.2$), three medium density graphs ($0.4 \leq \mathit{dens}(G) \leq 0.6$), and five high density graphs ($0.75 \leq \mathit{dens}(G)$). 
 
-\paragraph{Evaluating the approach.} 
-In principle, we can view training the network as a binary classification task for each vertex $v \in V$: The GNN should predict for each vertex, whether it is in the best neighboring solution $S^\prime$ or not. 
-In order to evaluate the effectivity of this training, we therefore propose the following: We do a $80/20$ training/validation split of the $10,000$ samples and train the network on $80\%$ of the data. Then, we evaluate each sample in the validation set the following way: The GNN is used to calculate the scores for vertices in the sample, and a swap is performed according to the scores returned by the GNN. If the resulting candidate solution has the same objective value as the (one of the) best solution(s) returned by exhaustively searching the $\Omega_1$ neighborhood, then the GNN has correctly identified the best neighboring solution, otherwise, the result is incorrect. As a first step, we will look how accurately the GNN identifies the (one of the) best neighboring solution(s). 
+% As already discussed, a training sample consists of a graph $G = (V, E)$ and a candidate solution $S \subset V$. 
+% As a first step, we collect a dataset of training samples from executing the metaheuristic local search algorithm from Chapter \ref{chp:local-search-algorithm}. Training samples are collected the following way: 
+% \begin{itemize}
+%     \item Generate a random graph with a number of vertices sampled from a normal distribution with $\mu = 200, \sigma = 15$ - this ensures the size of the graph will be around 200 vertices
+%     \item Generate uniformly sampled random edges, with uniformly sampled density depending on graph category: 
+%     \begin{itemize}
+%         \item low density: $dens(G) \in (0, 0.2)$
+%         \item medium density: $dens(G) \in [0.4, 0.6]$
+%         \item high density: $dens(G) \in [0.75, 0.9]$
+%     \end{itemize}
+%     \item Run the local search algorithm from Chapter \ref{chp:local-search-algorithm} for 60 seconds and record all encountered candidate solutions. From all encountered candidate solutions, sample 100 to add to the dataset. 
+% \end{itemize}
+% This way, we collect $10,000$ training samples for each of the three categories: We generate 100 different graphs for each category, and collect 100 samples for each graph. 
 
-Finally, if the accuracy of this approach reaches satisfactory results, we can try evaluating the approach on the benchmark instances, and compare the results to i) the local search algorithm from Chapter \ref{chp:local-search-algorithm}, and ii) the results from the literature. 
+% \paragraph{Training the GNN.} As a first approach, we try to imitate existing local search algorithms, which try to identify the best neighbor in the $\Omega_1$ neighborhood structure: Given a training sample $(G, S)$, where $G$ is a graph instance and $S \subset V$ a candidate solution, we first obtain the best neighboring solution $S^\prime \in \Omega_1$, which is defined as the best candidate solution (= with higher objective value, which is density for the MQCP) that can be obtained by swapping a single pair of vertices $u \in S, v \in V \setminus S$. If there are multiple best neighboring solutions with equal objective value, ties are broken randomly. From this we can compute the target values for training the following way: For each vertex $v \in V$, we define the target value as $1$ if $u \in S^\prime$, and $0$ if $v \notin S^\prime$. 
+
+% \paragraph{GNN Architecture.} We start with a simple Graph Convolutional Network (GCN). For each vertex $v \in V = \{1,2,\dots,n\}$, we define a feature vector 
+% $x_v = 
+% \begin{bmatrix} deg(v) \\
+%     d_S(v) 
+% \end{bmatrix}$. 
+% As a first approach, we simply use three Graph Convolutional Layers. As output, we obtain a scalar value for each input vector, which is the score of the vertex evaluated by the GNN. 
+
+% \paragraph{Evaluating the approach.} 
+% In principle, we can view training the network as a binary classification task for each vertex $v \in V$: The GNN should predict for each vertex, whether it is in the best neighboring solution $S^\prime$ or not. 
+% In order to evaluate the effectivity of this training, we therefore propose the following: We do a $80/20$ training/validation split of the $10,000$ samples and train the network on $80\%$ of the data. Then, we evaluate each sample in the validation set the following way: The GNN is used to calculate the scores for vertices in the sample, and a swap is performed according to the scores returned by the GNN. If the resulting candidate solution has the same objective value as the (one of the) best solution(s) returned by exhaustively searching the $\Omega_1$ neighborhood, then the GNN has correctly identified the best neighboring solution, otherwise, the result is incorrect. As a first step, we will look how accurately the GNN identifies the (one of the) best neighboring solution(s). 
+
+% Finally, if the accuracy of this approach reaches satisfactory results, we can try evaluating the approach on the benchmark instances, and compare the results to i) the local search algorithm from Chapter \ref{chp:local-search-algorithm}, and ii) the results from the literature. 
 
 
-\begin{table}
-\begin{center}
-    \begin{tabular}{ rrrr } 
-        Graph &   V &  E & dens \\ \hline
-        C125 &  $125$ &    $6963$ &  $0.9$ \\
-        C250 &  $250$ &   $27984$ &  $0.9$ \\
-brock200\_1 &  $200$ &   $14834$ &  $0.75$ \\
-brock200\_2 &  $200$ &    $9876$ & $0.5$ \\
-brock200\_3 &  $200$ &   $12048$ &   $0.6$ \\
-c-fat200-1 &  $200$ &    $1534$ &  $0.08$ \\
-c-fat200-2 &  $200$ &    $3235$ & $0.16$ \\
-c-fat200-5 &  $200$ &    $8473$ & $0.43$ \\
-gen200\_p0 &  $200$ &   $17910$ & $0.9$ \\
-san200\_0 &  $200$ &   $17910$ & $0.9$ \\
-    \end{tabular}
-    \caption{Small instances in DIMACS set}
-    \label{tab:first-approach}
-\end{center}
-\end{table}
+% \begin{table}
+% \begin{center}
+%     \begin{tabular}{ rrrr } 
+%         Graph &   V &  E & dens \\ \hline
+%         C125 &  $125$ &    $6963$ &  $0.9$ \\
+%         C250 &  $250$ &   $27984$ &  $0.9$ \\
+% brock200\_1 &  $200$ &   $14834$ &  $0.75$ \\
+% brock200\_2 &  $200$ &    $9876$ & $0.5$ \\
+% brock200\_3 &  $200$ &   $12048$ &   $0.6$ \\
+% c-fat200-1 &  $200$ &    $1534$ &  $0.08$ \\
+% c-fat200-2 &  $200$ &    $3235$ & $0.16$ \\
+% c-fat200-5 &  $200$ &    $8473$ & $0.43$ \\
+% gen200\_p0 &  $200$ &   $17910$ & $0.9$ \\
+% san200\_0 &  $200$ &   $17910$ & $0.9$ \\
+%     \end{tabular}
+%     \caption{Small instances in DIMACS set}
+%     \label{tab:first-approach}
+% \end{center}
+% \end{table}
 
 \chapter{Evaluation}
 
