@@ -90,54 +90,6 @@ function (construction_heuristic::Freq_GRASP_ConstructionHeuristic)(graph::Simpl
     return S
 end
 
-# """
-#     construction_heuristic(g, k, freq; α, p)
-
-# Corresponds to Algorithm 5.4 in thesis. Returns a vector of distinct vertices in `g` of size `k` that is build 
-# incrementally. In each iteration, with probability `p` a vertex with low frequency value is added, 
-# and with probability 1-p a vertex is added in a GRASP-like manner.
-
-# - `g`: Input Graph
-# - `k`: Target size of the returned vector of vertices
-# - `freq`: Frequency list with length |V|. Vertices with low frequency are preferred during construction.
-# - `α`: GRASP parameter; α=0 performs a greedy construction, α=1 performs a randomized construction
-# - `p`: Controls the balance between GRASP construction and preferring vertices with low frequency values. 
-#     `p`=0 ignores frequency values, while `p`=1 only uses frequency values.
-
-# """
-# function construction_heuristic(graph::SimpleGraph, k::Int, freq=[0 for i=1:nv(graph)]::Vector{Int}; α=0.2::Real, p=0.2::Real)
-#     freq_sorted = sortperm(freq)
-#     init_vertex = freq_sorted[1]
-#     S = [init_vertex]
-#     d_S = calculate_d_S(graph, S)
-
-#     while length(S) < k
-#         if rand() < p
-#             N_G_S = open_set_neighborhood(graph, S)
-#             if !isempty(N_G_S)
-#                 u = filter(v -> v ∈ N_G_S, freq_sorted)[1]
-#             else
-#                 V_S = setdiff(vertices(graph), S)
-#                 u = filter(v -> v ∈ V_S, freq_sorted)[1]
-#             end
-#         else
-#             V_S = setdiff(vertices(graph), S) # V ∖ candidate_solution
-#             d_S_V_S = [d_S[i] for i in V_S] # only d_S values for V_S
-#             d_max = maximum(d_S_V_S)
-#             d_min = minimum(d_S_V_S)
-#             min_val = d_max - α*(d_max - d_min)
-#             restricted_candidate_list = filter(v -> d_S[v] >= min_val, V_S)
-#             u = sample(restricted_candidate_list)
-#         end
-#         push!(S, u)
-#         for v in neighbors(graph, u)
-#             d_S[v] += 1
-#         end
-#     end
-
-#     return S
-# end
-
 """
     open_set_neighborhood(graph, vertex_list)
 

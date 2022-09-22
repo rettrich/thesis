@@ -262,8 +262,6 @@ function expand(g::AbstractGraph, candidate_solution::Set{Int},
     return expanded_children
 end
 
-####################################################################################################
-
 function calc_UB(d_S, d, k)
     UB = 0
     # max_d_v = maximum([d_S[j] for j in V_S])
@@ -379,26 +377,5 @@ function update_d_S!(g, u, v, d_S)
         d_S[w] += 1
     end
 end
-
-# function num_to_edge(num::Int, n::Int)
-#     i = 1
-#     j = 1
-#     k = n-1
-#     while num > k
-#         num -= k
-#         k -= 1
-#         i += 1
-#     end
-#     j = i + num
-#     return i, j
-# end
-
-# function edge_to_num(e::Tuple{Int, Int}, n::Int)
-#     u,v = e
-
-#     u == 1 && return v-1
-
-#     return (u-1)*(n) - sum(1:(u-1)) + v-u
-# end
 
 end

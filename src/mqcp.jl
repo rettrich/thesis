@@ -1,12 +1,15 @@
 using ArgParse
 using Graphs
-# using thesis
+using thesis
 using thesis.LocalSearch
 using thesis.Instances
 using thesis.GNNs
 using CSV
+using CUDA
 using DataFrames
 using Flux
+using BSON
+using GraphNeuralNetworks
 
 # To run, provide a graph instance and target density γ, e.g.:
 # julia --project=. .\src\mqcp.jl --graph="inst/DIMACS/brock400_1.clq" --gamma=0.999 --timelimit=60
@@ -63,6 +66,10 @@ function parse_commandline()
             help = "Write result to file if directory is specified"
             arg_type = String
             default = "-"
+        "--scoring_function"
+            help = "Load scoring function (GNN) from file"
+            arg_type = String
+            default = "-"
     end
     return parse_args(s)
 end
@@ -77,24 +84,7 @@ function get_stm(stm_string)
     end
 end
 
-# struct LocalSearchBasedMH
-#     # key components
-#     lower_bound_heuristic::LowerBoundHeuristic
-#     construction_heuristic::ConstructionHeuristic
-#     short_term_memory::ShortTermMemory
-#     scoring_function::ScoringFunction
-#     local_search_procedure::LocalSearchProcedure
-#     feasibility_checker::FeasibilityChecker
-#     solution_extender::SolutionExtender
-
-#     # settings
-#     timelimit::Float64
-#     max_iter::Int
-#     next_improvement::Bool
-#     record_swap_history::Bool
-
-function run_mqcp()
-    parsed_args = parse_commandline()
+function run_mqcp(scoring_function=nothing; parsed_args)
 
     if parsed_args["debug"]
         ENV["JULIA_DEBUG"] = "thesis"
@@ -107,7 +97,8 @@ function run_mqcp()
     
     # lower bound heuristic: beam search with GreedyCompletionHeuristic as guidance function
     guidance_func = GreedyCompletionHeuristic()
-    bs_heuristic = BeamSearch_LowerBoundHeuristic(guidance_func; β=parsed_args["beta"], γ, expansion_limit=parsed_args["expansion_limit"])
+    # lower_bound_heuristic = BeamSearch_LowerBoundHeuristic(guidance_func; β=parsed_args["beta"], γ, expansion_limit=parsed_args["expansion_limit"])
+    lower_bound_heuristic = SingleVertex_LowerBoundHeuristic()
 
     construction_heuristic = Freq_GRASP_ConstructionHeuristic(parsed_args["alpha"], parsed_args["p"])
 
@@ -118,12 +109,14 @@ function run_mqcp()
     
     solution_extender = MQCP_GreedySolutionExtender(γ)
 
-    scoring_function = d_S_ScoringFunction()
-    # gnn = ResGatedGraphConvGNN(2, [20, 20])
-    # scoring_function = GNN_ScoringFunction(gnn, 20)
+    # 
+    if isnothing(scoring_function)
+        scoring_function = d_S_ScoringFunction()
+    end
 
     # local search procedure uses short term memory and scoring function
     local_search_procedure = MQCP_LocalSearchProcedure(γ, short_term_memory, scoring_function)
+    println("ScoringFunction: $(typeof(scoring_function))")
 
     timelimit = parsed_args["timelimit"]
     max_iter = parsed_args["max_iter"]
@@ -131,7 +124,7 @@ function run_mqcp()
     record_swap_history = false
 
     local_search = LocalSearchBasedMH(
-            bs_heuristic, construction_heuristic, local_search_procedure, feasibility_checker, solution_extender;
+            lower_bound_heuristic, construction_heuristic, local_search_procedure, feasibility_checker, solution_extender;
             timelimit, max_iter, next_improvement, record_swap_history)
 
     println("Settings: ")
@@ -158,4 +151,20 @@ function run_mqcp()
 
 end
 
-run_mqcp()
+parsed_args = parse_commandline()
+scoring_function = nothing
+if parsed_args["scoring_function"] != "-"
+    if parsed_args["scoring_function"] == "random"
+        println("Using random scoring function")
+        scoring_function = Random_ScoringFunction(20)
+    elseif parsed_args["scoring_function"] == "encoder-decoder"
+        gnn = Encoder_Decoder_GNNModel(1, [64, 64, 64], [32, 32])
+        scoring_function = Encoder_Decoder_ScoringFunction(gnn, 20)
+    else
+        println("Load scoring function $(parsed_args["scoring_function"])")
+        BSON.@load parsed_args["scoring_function"] gnn
+        scoring_function = SimpleGNN_ScoringFunction(gnn, 20)
+    end
+end
+
+run_mqcp(scoring_function; parsed_args)
