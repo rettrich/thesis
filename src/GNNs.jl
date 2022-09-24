@@ -2,6 +2,7 @@ module GNNs
 
 using Flux, Graphs, GraphNeuralNetworks, CUDA
 using Statistics
+using thesis.NodeRepresentationLearning
 # using BSON
 # using thesis
 # using Statistics
@@ -10,7 +11,8 @@ using Statistics
 # using Logging
 
 export GNNModel, SimpleGNN, Encoder_Decoder_GNNModel, compute_node_features, device,
-    NodeFeature, d_S_NodeFeature, DegreeNodeFeature, get_feature_list,
+    NodeFeature, d_S_NodeFeature, DegreeNodeFeature, DeepWalkNodeFeature,
+    get_feature_list,
     GNNChainFactory, ResGatedGraphConv_GNNChainFactory, GATv2Conv_GNNChainFactory,
     batch_support
 
@@ -84,11 +86,13 @@ struct GATv2Conv_GNNChainFactory <: GNNChainFactory end
 
 function (::GATv2Conv_GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_classifier::Bool = false)::GNNChain
     @assert length(dims) >= 1
+    inner_layers_gcn = (AddResidual(GATv2Conv(dims[i] => dims[i+1])) for i in 1:(length(dims)-1))
+    inner_layers_batch_norm = (BatchNorm(dims[i+1]) for i in 1:(length(dims)-1))
+    inner_layers = collect(Iterators.flatten(zip(inner_layers_gcn, inner_layers_batch_norm)))
     
     model = GNNChain(
-            GATv2Conv(d_in => encoder_dims[1]),
-            (GATv2Conv(encoder_dims[i] => encoder_dims[i+1]) for i in 1:(length(encoder_dims)-1))...,
-            BatchNorm(dims[end]),
+            Dense(d_in, dims[1]),
+            inner_layers...,
     )
 
     if add_classifier
@@ -111,10 +115,14 @@ Simple Dense Feed Forward Network with specified dimensions and sigmoid classifi
 function (::Dense_ChainFactory)(d_in::Int, dims::Vector{Int}; add_classifier::Bool = true)::Chain
     @assert length(dims) >= 1
 
+    inner_dense = (Dense(dims[i] => dims[i+1], relu) for i in 1:(length(dims)-1))
+    inner_batchnorm = (BatchNorm(dims[i+1]) for i in 1:(length(dims)-1))
+    inner_layers = collect(Iterators.flatten(zip(inner_dense, inner_batchnorm)))
+
     model = Chain(
             Dense(d_in => dims[1]),
-            (Dense(dims[i] => dims[i+1], relu) for i in 1:(length(dims)-1))...,
-            BatchNorm(dims[end]),
+            BatchNorm(dims[1]),
+            inner_layers...,
             Dense(dims[end] => 1, sigmoid)
     )
     return model
@@ -139,12 +147,13 @@ struct SimpleGNN <: GNNModel
     loss # loss function for training
     opt
 
-    function SimpleGNN(d_in::Int, dims::Vector{Int}; 
-                                  node_features::Vector{<:NodeFeature}=[DegreeNodeFeature(), d_S_NodeFeature()],
-                                  loss = Flux.logitbinarycrossentropy,
-                                  opt=Adam(0.001, (0.9, 0.999)), 
-                                  model_factory::GNNChainFactory = ResGatedGraphConv_GNNChainFactory(),
-                                  )
+    function SimpleGNN(dims::Vector{Int}; 
+                       node_features::Vector{<:NodeFeature}=[DegreeNodeFeature(), d_S_NodeFeature()],
+                       loss = Flux.logitbinarycrossentropy,
+                       opt=Adam(0.001, (0.9, 0.999)), 
+                       model_factory::GNNChainFactory = ResGatedGraphConv_GNNChainFactory(),
+                       )
+        d_in = sum(map(x -> length(x), node_features))
         model = model_factory(d_in, dims; add_classifier=true) |> device
 
         loss_func(g::GNNGraph) = loss( vec(model(g, g.ndata.x)), g.ndata.y)
@@ -179,7 +188,7 @@ struct Encoder_Decoder_GNNModel <: GNNModel
     loss
     opt
 
-    function Encoder_Decoder_GNNModel(d_in::Int, encoder_dims::Vector{Int}, decoder_dims::Vector{Int};
+    function Encoder_Decoder_GNNModel(encoder_dims::Vector{Int}, decoder_dims::Vector{Int};
                       encoder_factory::GNNChainFactory = ResGatedGraphConv_GNNChainFactory(),
                       decoder_factory::ChainFactory = Dense_ChainFactory(),  
                       node_features::Vector{<:NodeFeature} = [DegreeNodeFeature()],
@@ -188,8 +197,10 @@ struct Encoder_Decoder_GNNModel <: GNNModel
                       batch_support = false
                       )
 
-        # encoder: GNN, compute node embeddings
+        # input dimension is sum of dimensions of node features
+        d_in = sum(map(x -> length(x), node_features))
 
+        # encoder: GNN, compute node embeddings
         encoder = encoder_factory(d_in, encoder_dims) |> device
 
         # decoder from node embeddings + context embedding, used to classify node
@@ -267,32 +278,42 @@ of length of `vertices(graph)`.
 """
 (::NodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing)::Vector{Float32} = error("NodeFeature: Abstract functor called")
 
+Base.length(::NodeFeature) = error("NodeFeature: Abstract length called")
+
 struct DegreeNodeFeature <: NodeFeature end
 
-(::DegreeNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(degree(graph))
+(::DegreeNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(degree(graph))'
+
+Base.length(::DegreeNodeFeature) = 1
 
 struct d_S_NodeFeature <: NodeFeature end
 
-(::d_S_NodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(d_S)
+(::d_S_NodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(d_S)'
+
+Base.length(::d_S_NodeFeature) = 1
+
+struct DeepWalkNodeFeature <: NodeFeature
+    rws::RandomWalkSimulator
+    walks_per_node::Int
+    embedding_size::Int
+
+    function DeepWalkNodeFeature(; rws=RandomWalkSimulator(50, 5), walks_per_node=10, embedding_size=64)
+        new(rws, walks_per_node, embedding_size)
+    end
+end
+
+function (dnf::DeepWalkNodeFeature)(graph::SimpleGraph, S = nothing, d_S_ = nothing)
+    learn_embeddings(dnf.rws, graph; dnf.walks_per_node)
+end
+
+Base.length(x::DeepWalkNodeFeature) = x.embedding_size
 
 function Base.convert(t::Type{Vector{<:NodeFeature}}, a::Vector{Any})
     res::Vector{<:NodeFeature} = [_ for _ in a]
 end
 
-struct Node2VecNodeFeature <: NodeFeature
-    p::Int
-    q::Int
-    num_walks::Int
-end
-
-function compute_node_features(graph::SimpleGraph, d_S::Vector{Int})
-    degrees = degree(graph)
-    node_features = Float32.(vcat(degrees', d_S'))
-    return node_features
-end
-
 function compute_node_features(feature_list::Vector{<:NodeFeature}, graph, S, d_S)
-    features = [node_feature(graph, S, d_S)' for node_feature in feature_list]
+    features = [node_feature(graph, S, d_S) for node_feature in feature_list]
     vcat(features...)
 end
 

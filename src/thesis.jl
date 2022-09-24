@@ -1,8 +1,9 @@
 module thesis
 
-export Instances, LookaheadSearch, Training, GNNs, LocalSearch
+export Instances, NodeRepresentationLearning, GNNs, LookaheadSearch, LocalSearch, Training
 
 include("Instances.jl")
+include("NodeRepresentationLearning.jl")
 include("GNNs.jl")
 # include("MPModels.jl")
 include("LookaheadSearch.jl")

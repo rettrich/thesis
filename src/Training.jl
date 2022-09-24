@@ -219,7 +219,7 @@ Target values for training are computed using `lookahead_func`.
 """
 function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGenerator, gnn::GNNModel; 
                epochs=200, lookahead_func=Ω_1_LookaheadSearchFunction(), baseline::Union{Nothing, LocalSearchBasedMH}=nothing,
-               num_batches=2, logger::Union{Nothing, TBLogger}=nothing
+               num_batches=4, logger::Union{Nothing, TBLogger}=nothing
                )
     capacity = 4000
     min_fill = 2000
@@ -232,7 +232,7 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
     # check if gnn supports batching of graphs. for encoder / decoder it is not possible for now, as looping over graphs in batch is not possible
     # https://github.com/CarloLucibello/GraphNeuralNetworks.jl/issues/161
     batchsize = batch_support(gnn) ? 32 : 1     
-    num_batches = batch_support(gnn) ? num_batches : (2, 32)
+    num_batches = batch_support(gnn) ? num_batches : (num_batches, 32)
 
 
     @printf("Iteration | encountered |   t_ls | t_base | t_targets | t_train | (opt)buffer | loss | V/density | solution | baseline \n")

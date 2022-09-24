@@ -31,7 +31,7 @@ function train_MQCP()
     # gnn = SimpleGNN(2, [64, 64, 64])
     # scoring_function = SimpleGNN_ScoringFunction(gnn, 20)
 
-    gnn = Encoder_Decoder_GNNModel(1, [32, 32, 32], [20, 20])
+    gnn = Encoder_Decoder_GNNModel([64, 64, 64], [32, 32]; encoder_factory=GATv2Conv_GNNChainFactory(), node_features=[DeepWalkNodeFeature()])
     scoring_function = Encoder_Decoder_ScoringFunction(gnn, 20)
 
     # compare with baseline
