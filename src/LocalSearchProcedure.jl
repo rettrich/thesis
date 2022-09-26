@@ -50,8 +50,13 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
     min_edges_needed = γ * k * (k-1) / 2
 
     reset!(short_term_memory, graph)
-    update!(scoring_function, graph, S)
+    update!(scoring_function, graph, S) 
     d_S = scoring_function.d_S
+
+    if typeof(scoring_function) <: GNN_ScoringFunction && !isnothing(swap_history)
+        # save feature matrix in swap_history
+        swap_history.node_features = scoring_function.gnn_graph.ndata.x
+    end
 
     iter_since_last_improvement = 0
 

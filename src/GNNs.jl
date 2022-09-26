@@ -18,8 +18,8 @@ export GNNModel, SimpleGNN, Encoder_Decoder_GNNModel, compute_node_features, dev
 
 # no trailing commas in export!
 
-device = CUDA.functional() ? Flux.gpu : Flux.cpu
-# device = Flux.cpu
+# device = CUDA.functional() ? Flux.gpu : Flux.cpu
+device = Flux.cpu
 
 ENV["JULIA_DEBUG"] = "thesis"
 
@@ -297,7 +297,7 @@ struct DeepWalkNodeFeature <: NodeFeature
     walks_per_node::Int
     embedding_size::Int
 
-    function DeepWalkNodeFeature(; rws=RandomWalkSimulator(50, 5), walks_per_node=10, embedding_size=64)
+    function DeepWalkNodeFeature(; rws=RandomWalkSimulator(40, 4), walks_per_node=20, embedding_size=64)
         new(rws, walks_per_node, embedding_size)
     end
 end

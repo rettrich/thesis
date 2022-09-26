@@ -158,8 +158,9 @@ if parsed_args["scoring_function"] != "-"
         println("Using random scoring function")
         scoring_function = Random_ScoringFunction(20)
     elseif parsed_args["scoring_function"] == "encoder-decoder"
-        gnn = Encoder_Decoder_GNNModel(1, [64, 64, 64], [32, 32])
+        gnn = Encoder_Decoder_GNNModel([64, 64, 64], [32, 32])
         scoring_function = Encoder_Decoder_ScoringFunction(gnn, 20)
+        BSON.@save "test-gnn.bson" gnn
     else
         println("Load scoring function $(parsed_args["scoring_function"])")
         BSON.@load parsed_args["scoring_function"] gnn

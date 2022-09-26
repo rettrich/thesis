@@ -8,13 +8,14 @@ construction heuristic as a set in `initial_solution_vec`, and then storing all 
 be reconstructed by doing the swaps in swap_list_vec in order.
 
 """
-struct SwapHistory
+mutable struct SwapHistory
     graph::SimpleGraph
     initial_solution_vec::Vector{Set{Int}}
     swap_list_vec::Vector{Vector{Tuple{Int, Int}}}
+    node_features::Union{Nothing, AbstractMatrix} # capture node features to pass them with training data to avoid recomputing
 
     function SwapHistory(graph::SimpleGraph)
-        new(graph, [], [])
+        new(graph, [], [], nothing)
     end
 
 end
@@ -45,6 +46,10 @@ end
 function Base.push!(sh::SwapHistory, u::Int, v::Int)
     idx = length(sh.initial_solution_vec)
     push!(sh.swap_list_vec[idx], (u,v))
+end
+
+function set_node_features!(sh::SwapHistory, node_features::AbstractMatrix)
+    sh.node_features = node_features
 end
 
 """
@@ -91,7 +96,7 @@ returns it as a `NamedTuple{graph::SimpleGraph, samples::Vector{Set{Int}}}`.
 
 """
 function sample_candidate_solutions(sh::SwapHistory, n::Int)
-    res = @NamedTuple{graph::SimpleGraph, samples::Vector{Set{Int}}}((sh.graph, []))
+    res = @NamedTuple{graph::SimpleGraph, samples::Vector{Set{Int}}, node_features::Union{Nothing, AbstractMatrix}}((sh.graph, [], sh.node_features))
     sample_indices = sort(sample(1:length(sh), n; replace=false))
 
     for i in sample_indices

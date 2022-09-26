@@ -59,7 +59,7 @@ struct ReplayBuffer
 end
 
 """
-    add_to_buffer!(buffer, g, S, lookahead_func, feature_list)
+    add_to_buffer!(buffer, g, S, lookahead_func, node_features)
 
 Creates a training sample from `g, S` and adds it to the buffer. Target values are computed 
 by using `lookahead_func`
@@ -69,11 +69,11 @@ by using `lookahead_func`
 - `S`: The candidate solution `S ⊆ V`
 - `lookahead_func`: The lookahead search function that is used to identify the best neighboring solutions of `S` 
     in order to calculate target values. 
-- `feature_list`: List of node features to compute node features
+- `node_features`: Feature matrix for vertices in `g`, used as inputs for training
 
 """
-function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, S::Set{Int}, lookahead_func::LookaheadSearchFunction, feature_list::Vector{<:NodeFeature})
-    sample, is_local_optimum = create_sample(g, S, lookahead_func, feature_list)
+function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, S::Set{Int}, lookahead_func::LookaheadSearchFunction, node_features::AbstractMatrix)
+    sample, is_local_optimum = create_sample(g, S, lookahead_func, node_features)
 
     pushfirst!(buffer.buffer, sample)
 
@@ -84,7 +84,7 @@ function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, S::Set{Int}, looka
 end
 
 """
-    add_to_buffer!(buffer, g, S, lookahead_func, feature_list)
+    add_to_buffer!(buffer, g, S, lookahead_func, node_features)
 
 Creates training samples for a graph `g` and multiple candidate solutions `Ss` and adds 
 them to the buffer. 
@@ -94,13 +94,13 @@ them to the buffer.
 - `Ss`: A set of candidate solution, `S ⊆ V` for `S ∈ Ss`
 - `lookahead_func`: The lookahead search function that is used to identify the best neighboring solutions of `S` 
     in order to calculate target values. 
-- `feature_list`: List of node features to compute node features
+- `node_features`: Feature matrix for vertices in `g`, used as inputs for training
 
 """
-function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, Ss::Vector{Set{Int}}, lookahead_func::LookaheadSearchFunction, feature_list::Vector{<:NodeFeature})
+function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, Ss::Vector{Set{Int}}, lookahead_func::LookaheadSearchFunction, node_features::AbstractMatrix)
     local_optima = 0
     for S in Ss
-        is_local_optimum = add_to_buffer!(buffer, g, S, lookahead_func, feature_list)
+        is_local_optimum = add_to_buffer!(buffer, g, S, lookahead_func, node_features)
         is_local_optimum && (local_optima += 1)
     end
     return local_optima
@@ -121,11 +121,16 @@ Target values are computed using `lookahead_func` to identify the best neighbori
 Returns an instance of `TrainingSample`, where the fields `gnn_graph.ndata.x` and `gnn_graph.ndata.y` 
 contain the inputs and target values for training, respectively. 
 
+- `graph`: Graph for the training sample
+- `S`: Candidate solution, used to create training sample
+- `lookahead_func`: Lookahead search function used to compute target values
+- `node_features`: Inputs for the GNN, feature matrix with node features for vertices in `graph`
+
 """
 function create_sample(graph::SimpleGraph{Int},
                        S::Union{Set{Int}, Vector{Int}},
                        lookahead_func::LookaheadSearchFunction,
-                       feature_list::Vector{<:NodeFeature}
+                       node_features::AbstractMatrix
                        )::Tuple{TrainingSample, Bool}
     if typeof(S) <: Set{Int}
         S_vec = collect(S)
@@ -134,7 +139,7 @@ function create_sample(graph::SimpleGraph{Int},
     end
     # node features
     d_S = thesis.LocalSearch.calculate_d_S(graph, S)
-    node_features = thesis.GNNs.compute_node_features(feature_list, graph, S, d_S)
+    # node_features = thesis.GNNs.compute_node_features(feature_list, graph, S, d_S)
 
     # use lookahead function to obtain best neighboring solutions
     obj_val, solutions = lookahead_func(graph, S, d_S)
@@ -187,8 +192,13 @@ struct InstanceGenerator
     end
 end
 
-Base.show(io::IO, ::MIME"text/plain", x::InstanceGenerator) = print(io, "V=$(x.nv_sampler)-dens=$(x.density_sampler)")
+Base.show(io::IO, ::MIME"text/plain", x::InstanceGenerator) = print(io, "V=$(fields_to_string(x.nv_sampler))-dens=$(fields_to_string(x.density_sampler))")
 
+function fields_to_string(x)
+    fields = fieldnames(typeof(x))
+    props = [getproperty(x, field) for field in fields]
+    join(props, "-")
+end
 
 """
     sample_graph(generator)
@@ -249,9 +259,9 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
             s_base = length(baseline_sol)
         end
 
-        _, samples = sample_candidate_solutions(swap_history, 100)
+        data = sample_candidate_solutions(swap_history, 100)
 
-        t_targets = @elapsed (local_optima = add_to_buffer!(buffer, graph, samples, lookahead_func, get_feature_list(gnn)))
+        t_targets = @elapsed (local_optima = add_to_buffer!(buffer, graph, data.samples, lookahead_func, data.node_features))
         t_train = 0
         iter_loss = NaN
 

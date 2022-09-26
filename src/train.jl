@@ -45,7 +45,7 @@ function train_MQCP()
     max_iter = 4000
     next_improvement = false
     record_swap_history = true
-    max_restarts = 3 # abort after fixed number of restarts to save time
+    max_restarts = 1 # abort after fixed number of restarts to save time
 
     local_search = LocalSearchBasedMH(
             lower_bound_heuristic, construction_heuristic, local_search_procedure, feasibility_checker, solution_extender;
@@ -63,7 +63,7 @@ function train_MQCP()
     logdir = joinpath("./logs", run_id)
     tblogger = TBLogger(logdir)
 
-    Training.train!(local_search, instance_generator, gnn; epochs=500, baseline=baseline_local_search, logger=tblogger)
+    Training.train!(local_search, instance_generator, gnn; epochs=1000, baseline=baseline_local_search, logger=tblogger)
 
     BSON.@save "$run_id.bson" gnn
 

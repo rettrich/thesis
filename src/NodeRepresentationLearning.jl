@@ -29,8 +29,8 @@ function skip_gram_model(vocabulary_size, embedding_size)::Chain
     model = Chain(
         Dense(vocabulary_size => embedding_size),
         Dense(embedding_size => vocabulary_size),
-        softmax
     )
+    return model
 end
 
 function simulate_random_walk(ws::WalkSimulator, graph::AbstractGraph, v_start::Int)
@@ -42,7 +42,7 @@ end
 function skip_gram_loss(model, nodes::Vector{Int}, context::Vector{Int}, labels::Vector{Int})
     walk = Flux.onehotbatch(nodes, labels)
     context = Flux.onehotbatch(context, labels)
-    Flux.logitbinarycrossentropy(model(walk), context)
+    Flux.logitcrossentropy(model(walk), context)
 end
 
 """

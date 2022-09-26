@@ -162,10 +162,10 @@ function update!(sf::Encoder_Decoder_ScoringFunction, graph::SimpleGraph, S::Set
 
     if graph !== sf.graph
         sf.graph = graph
-        sf.gnn_graph = GNNGraph(sf.graph) |> device
-        # compute node embeddings
         node_features = compute_node_features(get_feature_list(sf.gnn), sf.graph, S, sf.d_S)
-        sf.embeddings = sf.gnn.encoder(sf.gnn_graph, node_features |> device)
+        sf.gnn_graph = GNNGraph(sf.graph, ndata=(;x=node_features)) |> device
+        # compute node embeddings
+        sf.embeddings = sf.gnn.encoder(sf.gnn_graph, sf.gnn_graph.ndata.x)
     end
     
     # compute context from node embeddings: context is the index wise mean of all node embeddings of nodes in S
