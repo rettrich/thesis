@@ -749,7 +749,33 @@ For centrality-based features, we evaluate the following feature initialization 
 \fxnote{Learning-based features: DeepWalk und node2vec sind nicht geeignet für across-network transfer learning tasks - Experimente mit diesen Initialisierungsmethoden waren daher erfolglos. DeepGL könnte vielversprechend sein, aber ich habe keine Implementierung gefunden - da ist es die Frage ob es den Aufwand wert ist?}
 
 \subsection{Encoder}
-In general, any graph convolutional network model can be used as an encoder. We refer to Residual Gated Graph Convolutional Networks (\cite{Bresson2017}), and GATv2 networks (\cite{Velickovic2018}, \cite{Brody2021}), which we will use in our experiments. 
+In general, any graph convolutional network (GCN) model can be used as an encoder. We refer to Residual Gated Graph Convolutional Networks (\cite{Bresson2017}), and GATv2 networks (\cite{Velickovic2018}, \cite{Brody2021}), which we will use in our experiments. Based on these GCN models, we propose two architectures. In the following we denote by $dim_i$ the input dimension of layer $i, 0 \leq i \leq l_e$ of the network, where $l_e$ is the number of layers used in the encoder, $dim_0$ corresponds to the feature dimension of the node features, and for $1 \leq i \leq l_e$ $dim_i$ corresponds to the output dimension of layer $i$. 
+
+\subsubsection{Residual Gated Graph Convolutional Encoder}
+The update function of a Gated Graph Convolutional layer is defined in \cite{Bresson2017} as 
+\[
+    h_i^{l+1} = f_{\text{G-GCNN}}^l(h_i^l, \{ h_j^l \colon j \rightarrow i \}) = \text{ReLU} \Big( U^l h_i^l + \sum_{j \rightarrow i} \eta_{ij} \odot V^l h^l_j \Big),
+\]
+where $\eta_{ij} = \sigma(A^l h_i^l + B^l h_j^l)$. Here, $A^l, B^l, U^l, V^l$ are learnable parameter matrices and $\odot$ denotes the hadamard-product. 
+Furthermore, the authors define the Residual Gated Graph Convolutional layer by adding the identity operator: 
+\[
+    h_i^{l+1} = f_{\text{G-GCNN}}^l(h_i^l, \{ h_j^l \colon j \rightarrow i \}) + h_i^l
+\]
+The authors suggest that residual layers should be used on successive convolutional layers. 
+Furthermore, we add a batch normalization (\cite{IoffeS15}) layer after every GCN layer, which results in a final update function 
+
+\[
+    h_i^{l+1} = \text{BN} \Big( f_{\text{G-GCNN}}^l(h_i^l, \{ h_j^l \colon j \rightarrow i \}) + h_i^l \Big),
+\]
+where BN denotes batch normalization. 
+
+We therefore propose a GCN model \textit{RG-GCN}, which makes use of these layers and is structured as follows: 
+\begin{itemize}
+    \item Layer 1: We apply a Gated Graph Convolutional layer that maps the feature vectors of dimension $dim_0$ to embeddings of dimension $dim_1$, followed by batch normalization.
+    \item Layers 2, \dots, $l_e$: For layer $i, 2 \leq i \leq l_e$ we apply a Residual Gated Graph Convolutional layer, followed by batch normalization, mapping inputs of dimension $dim_{i-1}$ to dimension $dim_i$. 
+\end{itemize}
+
+\subsubsection{GATv2 Encoder}
 
 \subsection{Context}
 The context is determined by the current candidate solution $S$ and is computed by aggregating the columns of the node embedding matrix that correspond to the vertices in $S$. In general, any order invariant aggregation function $\mathit{agg} \in \{\mathit{sum, mean, max}\}$ can be used. The context is then concatenated to the node embeddings to produce inputs for the decoder. 
