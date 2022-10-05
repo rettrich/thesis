@@ -11,7 +11,7 @@ using thesis.NodeRepresentationLearning
 # using Logging
 
 export GNNModel, SimpleGNN, Encoder_Decoder_GNNModel, compute_node_features, device,
-    NodeFeature, d_S_NodeFeature, DegreeNodeFeature, DeepWalkNodeFeature,
+    NodeFeature, d_S_NodeFeature, DegreeNodeFeature, DeepWalkNodeFeature, EgoNetNodeFeature, PageRankNodeFeature,
     get_feature_list,
     GNNChainFactory, ResGatedGraphConv_GNNChainFactory, GATv2Conv_GNNChainFactory,
     batch_support
@@ -92,6 +92,7 @@ function (::GATv2Conv_GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_classif
     
     model = GNNChain(
             Dense(d_in, dims[1]),
+            BatchNorm(dims[1]), # ? is this needed for egonet feature???
             inner_layers...,
     )
 
@@ -278,6 +279,12 @@ of length of `vertices(graph)`.
 """
 (::NodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing)::Vector{Float32} = error("NodeFeature: Abstract functor called")
 
+"""
+    Base.length(::NodeFeature)
+
+Returns the dimension of the feature vector for a single node for this `NodeFeature`
+
+"""
 Base.length(::NodeFeature) = error("NodeFeature: Abstract length called")
 
 struct DegreeNodeFeature <: NodeFeature end
@@ -297,18 +304,62 @@ struct DeepWalkNodeFeature <: NodeFeature
     walks_per_node::Int
     embedding_size::Int
 
-    function DeepWalkNodeFeature(; rws=RandomWalkSimulator(40, 4), walks_per_node=20, embedding_size=64)
+    function DeepWalkNodeFeature(; rws=RandomWalkSimulator(50, 1), walks_per_node=100, embedding_size=64)
         new(rws, walks_per_node, embedding_size)
     end
 end
 
-function (dnf::DeepWalkNodeFeature)(graph::SimpleGraph, S = nothing, d_S_ = nothing)
+function (dnf::DeepWalkNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing)
     learn_embeddings(dnf.rws, graph; dnf.walks_per_node)
 end
 
 Base.length(x::DeepWalkNodeFeature) = x.embedding_size
 
-function Base.convert(t::Type{Vector{<:NodeFeature}}, a::Vector{Any})
+# EgoNet features of the `d`-hop neighborhood of a vertex (all vertices reachable from a node by paths of length <= d)
+# Features: 
+# - Size of egonet (nodes, edges)
+# - Number of edges to outside
+struct EgoNetNodeFeature <: NodeFeature
+    d::Int
+
+    function EgoNetNodeFeature(d::Int = 1)
+        new(d)
+    end
+end
+
+function (enf::EgoNetNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing)
+    features = []
+    for v in vertices(graph)
+        N_v = neighborhood(graph, v, enf.d)
+        egonet, _ = induced_subgraph(graph, N_v )
+        
+        num_v = nv(egonet)
+        num_e = ne(egonet)
+
+        outgoing_edges = 0
+
+        for e in edges(graph)
+            if (src(e) ∈ N_v && dst(e) ∉ N_v) || (dst(e) ∈ N_v && src(e) ∉ N_v)
+                outgoing_edges += 1
+            end
+        end
+        push!(features, [num_v, num_e, outgoing_edges])
+    end
+    feature_matrix = reduce(hcat, features)
+    return Float32.(feature_matrix)
+end
+
+Base.length(::EgoNetNodeFeature) = 3
+
+struct PageRankNodeFeature <: NodeFeature end
+
+Base.length(::PageRankNodeFeature) = 1
+
+function (::PageRankNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) 
+    Float32.(pagerank(graph)')
+end
+
+function Base.convert(::Type{Vector{<:NodeFeature}}, a::Vector{Any})
     res::Vector{<:NodeFeature} = [_ for _ in a]
 end
 
@@ -319,7 +370,8 @@ end
 
 # struct EgoNetNodeFeature <: NodeFeature end
 
-# struct PageRankNodeFeature <: NodeFeature end
+
+
 
 # function create_sample(graph::SimpleGraph{Int},
 #                        S::Union{Set{Int}, Vector{Int}},

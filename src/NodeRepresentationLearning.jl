@@ -69,6 +69,9 @@ function get_context(walk::Vector{Int}, window_size::Int)
         left = max(1, i-window_size)
         right = min(length(walk), i+window_size)
         for w in walk[left : right]
+            if w == walk[i]
+                continue
+            end
             push!(nodes, walk[i])
             push!(context, w) 
         end

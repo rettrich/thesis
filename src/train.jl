@@ -31,7 +31,7 @@ function train_MQCP()
     # gnn = SimpleGNN(2, [64, 64, 64])
     # scoring_function = SimpleGNN_ScoringFunction(gnn, 20)
 
-    gnn = Encoder_Decoder_GNNModel([64, 64, 64], [32, 32]; encoder_factory=GATv2Conv_GNNChainFactory(), node_features=[DeepWalkNodeFeature()])
+    gnn = Encoder_Decoder_GNNModel([64, 64, 64], [32, 32]; encoder_factory=ResGatedGraphConv_GNNChainFactory(), node_features=[EgoNetNodeFeature(1), EgoNetNodeFeature(2)])
     scoring_function = Encoder_Decoder_ScoringFunction(gnn, 20)
 
     # compare with baseline
@@ -63,7 +63,7 @@ function train_MQCP()
     logdir = joinpath("./logs", run_id)
     tblogger = TBLogger(logdir)
 
-    Training.train!(local_search, instance_generator, gnn; epochs=1000, baseline=baseline_local_search, logger=tblogger)
+    Training.train!(local_search, instance_generator, gnn; epochs=400, baseline=baseline_local_search, logger=tblogger)
 
     BSON.@save "$run_id.bson" gnn
 

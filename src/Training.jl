@@ -229,7 +229,7 @@ Target values for training are computed using `lookahead_func`.
 """
 function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGenerator, gnn::GNNModel; 
                epochs=200, lookahead_func=Ω_1_LookaheadSearchFunction(), baseline::Union{Nothing, LocalSearchBasedMH}=nothing,
-               num_batches=4, logger::Union{Nothing, TBLogger}=nothing
+               num_batches=2, logger::Union{Nothing, TBLogger}=nothing
                )
     capacity = 4000
     min_fill = 2000
