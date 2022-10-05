@@ -163,7 +163,9 @@ In this chapter we want to provide all necessary definitions and notations used 
 \section{Notation}\label{sec:notation}
 
 Throughout this thesis, we use standard graph theory notation. 
-We consider $G = (V, E)$ to be a graph with vertex set $V$ and edge set $E \subseteq \{\{u,v\} \mid u,v \in V\}$. We use the terms vertex, vertices interchangeably when denoting elements of $V$ in a graph $G$, and we use the terms node, nodes when denoting elements of a search graph or search tree corresponding to a search algorithm, e.g. in beam search. If not stated otherwise, $n = |V|$ denotes the number of vertices in $G$, whereas $m = |E|$ denotes the number of edges. 
+We consider $G = (V, E)$ to be a graph with vertex set $V$ and edge set $E \subseteq \{\{u,v\} \mid u,v \in V\}$. We use the terms vertex, vertices when denoting elements of $V$ in a graph $G$, and we use the terms node, nodes when denoting elements of a search graph or search tree corresponding to a search algorithm, e.g. in beam search, or nodes in a graph neural network. This distinction helps to keep formulations precise when for instance an algorithm that uses an internal graph structure is applied to a graph input, or to distinguish between vertices of a graph and the corresponding nodes of a graph neural network. 
+If not stated otherwise, $n = |V|$ denotes the number of vertices in $G$, whereas $m = |E|$ denotes the number of edges. 
+For a graph $G$ we also use $V(G), E(G)$ do denote its vertex set and edge set, respectively. 
 A graph $G$ is \emph{simple}, if it contains no self-loops (e.g.,  $\{v,v\} \in E$) or multiple edges between two vertices. In this thesis, we only consider unweighted, undirected, simple graphs, as all the considered problems are defined on such graphs. 
 A graph $G' = (V', E')$ is a subgraph of $G = (V,E)$ iff $V' \subseteq V$, $E' \subseteq E$, and $\{u,v\} \in E' \colon u,v \in V'$. Let $S \subseteq V$ be a set of vertices in $G$. The subgraph induced by $S$ in $G$, denoted as $G[S]$, is a graph with vertex set $S$ and edge set $E(S) = \{ \{u,v\} \mid \{u,v\} \in E, u,v \in S \}$. 
 The \emph{diameter} of a graph $G$ is the length of the longest shortest path between any two vertices in $G$. 
@@ -732,11 +734,19 @@ In the remaining Section we will discuss feature selection, the structure of the
 \end{sidewaysfigure}
 
 \subsection{Node Features}
-Since the node embeddings are only computed once per graph, it is essential that the computed node features represent the vertices in a meaningful way by extracting similarities and differences of vertices and their surrounding neighborhoods. More precisely, high quality features should map vertices with similar neighborhoods closer together in the feature space, whereas vertices that are very distant from each other and do not share many neighbors should be further apart. 
+Since the node embeddings are only computed once per graph, it is essential that the computed node features represent the vertices in a meaningful way by extracting similarities and differences of vertices and their surrounding neighborhoods. More precisely, high quality features should map vertices with similar neighborhoods closer together in the feature space, whereas vertices that are very distant from each other and do not share many neighbors should be further apart. Moreover, it is essential that the chosen feature initialization method is transferrable and generalizes well on unseen graphs, as the GNN used in our algorithm is trained offline on representative problem instances that differ from the instances encountered during execution. 
 
 In \cite{Duong2019} the authors analyze the effect of different node feature initialization methods on node classification task. They distinguish between centrality based approaches (e.g. degree based initialization, number of triangles that a vertex participates in, etc), and learning-based approaches (e.g. DeepWalk \cite{Perozzi2014}, where vertices are mapped closer together, if the probability that they occur in a random walk together is higher). 
-The authors conclude that centrality-based approaches are generally not as suitable as learning-based approaches. 
-Especially DeepWalk seems to be a promising feature initialization method for our purpose, as the authors of \cite{Duong2019} obtain the best results using this method. Furthermore, DeepWalk's generalization Node2Vec \cite{GroverL16} should be of interest as well.  
+The authors conclude that centrality-based approaches are generally not as suitable as learning-based approaches by evaluating different feature initialization approaches in a node classification setting. While methods like DeepWalk or its generalization node2vec \cite{GroverL16} seem promising, they are not suitable for our use case, as these methods are not suitable for across-network transfer learning tasks. DeepGL \cite{Rossi17a} is a feature learning framework for graphs that addresses this issue as it was designed to learn complex relational functions on graphs that transfer for across-network learning. 
+
+For centrality-based features, we evaluate the following feature initialization methods: 
+\begin{itemize}
+    \item Degree initialization: Each vertex is initialized by its degree.
+    \item EgoNet initialization: Given a graph $G = (V, E)$, and vertex $v \in V$, let $N(v, d)$ be the set of vertices reachable from $v$ by a path of length at most $d$. The induced subgraph $G[N(v, d)]$ is the $d$-hop-EgoNet of vertex $v$. Note that for $d=1$, $N(v, d)$ is the closed neighborhood of $v$ in $G$. We derive three features from the EgoNet of each vertex in $V$: the size $|N(v, d)|$, the number of edges in the subgraph induced by the EgoNet $|E(G[N(v, d)])|$, and the number of edges that leave $N(v, d)$, i.e. ${\{u, v\} \mid u \in N(v,d), v \notin N(v,d), \{u,v\} \in E}$.     
+    \item Pagerank initialization: The computation is done as described in \cite{page1999pagerank}. Each vertex is then initialized by its pagerank.
+\end{itemize}
+
+\fxnote{Learning-based features: DeepWalk und node2vec sind nicht geeignet für across-network transfer learning tasks - Experimente mit diesen Initialisierungsmethoden waren daher erfolglos. DeepGL könnte vielversprechend sein, aber ich habe keine Implementierung gefunden - da ist es die Frage ob es den Aufwand wert ist?}
 
 \subsection{Encoder}
 In general, any graph convolutional network model can be used as an encoder. We refer to Residual Gated Graph Convolutional Networks (\cite{Bresson2017}), and GATv2 networks (\cite{Velickovic2018}, \cite{Brody2021}), which we will use in our experiments. 
@@ -745,7 +755,7 @@ In general, any graph convolutional network model can be used as an encoder. We 
 The context is determined by the current candidate solution $S$ and is computed by aggregating the columns of the node embedding matrix that correspond to the vertices in $S$. In general, any order invariant aggregation function $\mathit{agg} \in \{\mathit{sum, mean, max}\}$ can be used. The context is then concatenated to the node embeddings to produce inputs for the decoder. 
 
 \subsection{Decoder}
-The decoder is a regression model that maps the inputs obtained from the node embeddings and the context embedding to scalar values representing scores for the vertices in $V$. We suggest using a simple Multi Layer Perceptron with a sigmoid activation function on the final layer, mapping the results of the previous layer to scalar values between zero and one. 
+The decoder is a regression model that maps the inputs obtained from the node embeddings and the context embedding to scalar values representing scores for the vertices in $V$. We suggest using a simple MLP architecture with a sigmoid activation function on the final layer, mapping the results of the previous layer to scalar values between zero and one. 
 
 \section{Performance}\label{sec:performance}
 
