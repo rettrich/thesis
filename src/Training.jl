@@ -10,12 +10,12 @@ using Flux
 using thesis.LookaheadSearch
 using thesis.Instances: generate_instance
 using thesis.LocalSearch: run_lsbmh, LocalSearchBasedMH, sample_candidate_solutions
-using thesis.GNNs: GNNModel, device, NodeFeature, get_feature_list, batch_support
+using thesis.GNNs: GNNModel, device, NodeFeature, get_feature_list, batch_support, get_decoder_features
 using Printf
 using Logging, TensorBoardLogger
 
 export TrainingSample, ReplayBuffer,
-       add_to_buffer!, get_data, compute_node_features, create_sample,
+       add_to_buffer!, get_data, create_sample,
        InstanceGenerator, sample_graph
 
 """
@@ -72,8 +72,10 @@ by using `lookahead_func`
 - `node_features`: Feature matrix for vertices in `g`, used as inputs for training
 
 """
-function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, S::Set{Int}, lookahead_func::LookaheadSearchFunction, node_features::AbstractMatrix)
-    sample, is_local_optimum = create_sample(g, S, lookahead_func, node_features)
+function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, S::Set{Int}, 
+                        lookahead_func::LookaheadSearchFunction, node_features::AbstractMatrix,
+                        decoder_features::Union{Nothing, Vector{<:NodeFeature}}=nothing)
+    sample, is_local_optimum = create_sample(g, S, lookahead_func, node_features, decoder_features)
 
     pushfirst!(buffer.buffer, sample)
 
@@ -97,10 +99,12 @@ them to the buffer.
 - `node_features`: Feature matrix for vertices in `g`, used as inputs for training
 
 """
-function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, Ss::Vector{Set{Int}}, lookahead_func::LookaheadSearchFunction, node_features::AbstractMatrix)
+function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, Ss::Vector{Set{Int}}, 
+                        lookahead_func::LookaheadSearchFunction, node_features::AbstractMatrix,
+                        decoder_features::Union{Nothing, Vector{<:NodeFeature}}=nothing)
     local_optima = 0
     for S in Ss
-        is_local_optimum = add_to_buffer!(buffer, g, S, lookahead_func, node_features)
+        is_local_optimum = add_to_buffer!(buffer, g, S, lookahead_func, node_features, decoder_features)
         is_local_optimum && (local_optima += 1)
     end
     return local_optima
@@ -119,7 +123,8 @@ end
 Creates a training sample consisting of a graph `graph` and a candidate solution `S`. 
 Target values are computed using `lookahead_func` to identify the best neighboring solution(s).
 Returns an instance of `TrainingSample`, where the fields `gnn_graph.ndata.x` and `gnn_graph.ndata.y` 
-contain the inputs and target values for training, respectively. 
+contain the inputs and target values for training, respectively, and a boolean indicating whether the 
+sample is a local optimum with respect to the given lookahead search. 
 
 - `graph`: Graph for the training sample
 - `S`: Candidate solution, used to create training sample
@@ -130,7 +135,8 @@ contain the inputs and target values for training, respectively.
 function create_sample(graph::SimpleGraph{Int},
                        S::Union{Set{Int}, Vector{Int}},
                        lookahead_func::LookaheadSearchFunction,
-                       node_features::AbstractMatrix
+                       node_features::AbstractMatrix,
+                       decoder_features::Union{Nothing, Vector{<:NodeFeature}}=nothing,
                        )::Tuple{TrainingSample, Bool}
     if typeof(S) <: Set{Int}
         S_vec = collect(S)
@@ -139,7 +145,7 @@ function create_sample(graph::SimpleGraph{Int},
     end
     # node features
     d_S = thesis.LocalSearch.calculate_d_S(graph, S)
-    # node_features = thesis.GNNs.compute_node_features(feature_list, graph, S, d_S)
+
 
     # use lookahead function to obtain best neighboring solutions
     obj_val, solutions = lookahead_func(graph, S, d_S)
@@ -165,10 +171,19 @@ function create_sample(graph::SimpleGraph{Int},
         end
     end
 
-    # create GNNGraph
-    gnn_graph = GNNGraph(graph,
-        ndata=(; x = node_features, y = targets, in_S = in_S)
+    if !isnothing(decoder_features)
+        decoder_in = thesis.GNNs.compute_node_features(decoder_features, graph, S, d_S)
+        
+        # create GNNGraph
+        gnn_graph = GNNGraph(graph,
+            ndata=(; x = node_features, y = targets, in_S = in_S, decoder_features = decoder_in)
         )
+    else
+        gnn_graph = GNNGraph(graph,
+            ndata=(; x = node_features, y = targets, in_S = in_S)
+        )
+    end
+
     gnn_graph = add_self_loops(gnn_graph) # add self loops for message passing
 
     # return training sample and a boolean indicating whether this sample is a local optimum wrt lookahead search
@@ -245,7 +260,7 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
     num_batches = batch_support(gnn) ? num_batches : (num_batches, 32)
 
 
-    @printf("Iteration | encountered |   t_ls | t_base | t_targets | t_train | (opt)buffer | loss | V/density | solution | baseline \n")
+    @printf("Iteration | encountered |   t_ls | t_base | t_targets | t_train | (opt)buffer | loss | V/density | solution | baseline |   gap \n")
 
     for i = 1:epochs
         
@@ -257,25 +272,26 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
         if !isnothing(baseline)
             t_baseline = @elapsed baseline_sol, _ = run_lsbmh(baseline, graph)
             s_base = length(baseline_sol)
+            gap = (s_ls - s_base) / s_base
         end
 
         data = sample_candidate_solutions(swap_history, 100)
 
-        t_targets = @elapsed (local_optima = add_to_buffer!(buffer, graph, data.samples, lookahead_func, data.node_features))
+        t_targets = @elapsed (local_optima = add_to_buffer!(buffer, graph, data.samples, lookahead_func, data.node_features, get_decoder_features(gnn)))
         t_train = 0
         iter_loss = NaN
 
         if length(buffer) < buffer.min_fill
-            @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i\n", 
+            @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i %7.3f\n", 
                     i, length(swap_history),
                     t_ls, t_baseline, t_targets, 0, 
                     local_optima, length(buffer), 
                     iter_loss, 
                     nv(graph), density(graph), 
-                    s_ls, s_base)
+                    s_ls, s_base, gap)
             if !isnothing(logger)
                 with_logger(logger) do 
-                    @info("thesis", t_ls, t_baseline, t_targets, t_train, iter_loss, V=nv(graph), dens=density(graph), s_ls, s_base)
+                    @info("thesis", t_ls, t_baseline, t_targets, t_train, iter_loss, V=nv(graph), dens=density(graph), s_ls, s_base, gap)
                 end
             end
             continue
@@ -316,17 +332,17 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
 
         t_train = time() - before_training
 
-        @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i\n", 
+        @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i %6.3f\n", 
                     i, length(swap_history),
                     t_ls, t_baseline, t_targets, t_train, 
                     local_optima, length(buffer), 
                     iter_loss, 
                     nv(graph), density(graph), 
-                    s_ls, s_base)
+                    s_ls, s_base, gap)
 
         if !isnothing(logger)
             with_logger(logger) do 
-                @info("thesis", t_ls, t_baseline, t_targets, t_train, iter_loss, V=nv(graph), dens=density(graph), s_ls, s_base)
+                @info("thesis", t_ls, t_baseline, t_targets, t_train, iter_loss, V=nv(graph), dens=density(graph), s_ls, s_base, gap)
             end
         end
 

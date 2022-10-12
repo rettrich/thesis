@@ -12,7 +12,7 @@ using thesis.NodeRepresentationLearning
 
 export GNNModel, SimpleGNN, Encoder_Decoder_GNNModel, compute_node_features, device,
     NodeFeature, d_S_NodeFeature, DegreeNodeFeature, DeepWalkNodeFeature, EgoNetNodeFeature, PageRankNodeFeature,
-    get_feature_list,
+    get_feature_list, get_decoder_features,
     GNNChainFactory, ResGatedGraphConv_GNNChainFactory, GATv2Conv_GNNChainFactory,
     batch_support
 
@@ -35,6 +35,7 @@ batch_support(gnn::GNNModel)::Bool = gnn.batch_support
 abstract type NodeFeature end
 
 get_feature_list(gnn::GNNModel) = gnn.node_features
+get_decoder_features(gnn::GNNModel) = nothing
 get_loss(gnn::GNNModel) = gnn.loss
 
 AddResidual(l) = Parallel(+, Base.identity, l) # residual connection
@@ -63,9 +64,13 @@ struct ResGatedGraphConv_GNNChainFactory <: GNNChainFactory end
 
 function (::ResGatedGraphConv_GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_classifier::Bool = false)::GNNChain
     @assert length(dims) >= 1
+
     inner_layers_gcn = (AddResidual(ResGatedGraphConv(dims[i] => dims[i+1], relu)) for i in 1:(length(dims)-1))
+
     inner_layers_batch_norm = (BatchNorm(dims[i+1]) for i in 1:(length(dims)-1))
+
     inner_layers = collect(Iterators.flatten(zip(inner_layers_gcn, inner_layers_batch_norm)))
+    
     model = GNNChain(
         ResGatedGraphConv(d_in => dims[1], relu),
         BatchNorm(dims[1]),
@@ -84,15 +89,25 @@ end
 
 struct GATv2Conv_GNNChainFactory <: GNNChainFactory end
 
-function (::GATv2Conv_GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_classifier::Bool = false)::GNNChain
+"""
+    (::GATv2Conv_GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_classifier::Bool = false, ff_dim::Int = 512, heads=8)
+
+Implementation of the GNN architecture from Kool et al 2019 paper "Attention, learn to solve routing problems"
+"""
+function (::GATv2Conv_GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_classifier::Bool = false, ff_dim::Int = 512, heads=1)::GNNChain
     @assert length(dims) >= 1
-    inner_layers_gcn = (AddResidual(GATv2Conv(dims[i] => dims[i+1])) for i in 1:(length(dims)-1))
-    inner_layers_batch_norm = (BatchNorm(dims[i+1]) for i in 1:(length(dims)-1))
-    inner_layers = collect(Iterators.flatten(zip(inner_layers_gcn, inner_layers_batch_norm)))
+
+    gatv2_layers = (AddResidual(GATv2Conv(dims[i] => dims[i+1]; heads)) for i in 1:(length(dims)-1))
+    
+    feed_forward_sublayers = (AddResidual(Chain(Dense(dims[i+1] => ff_dim, relu), Dense(ff_dim => dims[i+1]))) for i in 1:length(dims)-1)
+    
+    batch_norm_layers = (BatchNorm(dims[i+1]) for i in 1:(length(dims)-1))
+    
+    inner_layers = collect(Iterators.flatten(zip(gatv2_layers, feed_forward_sublayers, batch_norm_layers)))
     
     model = GNNChain(
             Dense(d_in, dims[1]),
-            BatchNorm(dims[1]), # ? is this needed for egonet feature???
+            # BatchNorm(dims[1]), 
             inner_layers...,
     )
 
@@ -184,6 +199,7 @@ struct Encoder_Decoder_GNNModel <: GNNModel
     encoder::GNNChain # more expensive gnn chain
     decoder::Chain    # linear time decoder 
     node_features::Vector{<:NodeFeature}
+    decoder_features::Union{Nothing, Vector{<:NodeFeature}}
     gnn_type::String
     batch_support::Bool
     loss
@@ -193,6 +209,7 @@ struct Encoder_Decoder_GNNModel <: GNNModel
                       encoder_factory::GNNChainFactory = ResGatedGraphConv_GNNChainFactory(),
                       decoder_factory::ChainFactory = Dense_ChainFactory(),  
                       node_features::Vector{<:NodeFeature} = [DegreeNodeFeature()],
+                      decoder_features::Union{Nothing, Vector{<:NodeFeature}} = nothing,
                       loss = Flux.binarycrossentropy,
                       opt = Adam(0.001, (0.9, 0.999)),
                       batch_support = false
@@ -204,15 +221,23 @@ struct Encoder_Decoder_GNNModel <: GNNModel
         # encoder: GNN, compute node embeddings
         encoder = encoder_factory(d_in, encoder_dims) |> device
 
+        # compute decoder input dimensions
+        decoder_in = !isnothing(decoder_features) ? sum(map(x -> length(x), decoder_features)) : 0
+        decoder_in += encoder_dims[end]*2
+
         # decoder from node embeddings + context embedding, used to classify node
-        decoder = decoder_factory(encoder_dims[end]*2, decoder_dims) |> device
+        decoder = decoder_factory(decoder_in, decoder_dims) |> device
 
         gnn_type = "$(split(string(typeof(encoder_factory)), "_")[1])-$(split(string(typeof(decoder_factory)), "_")[1])"
 
         function loss_func_unbatched(unbatched_g::GNNGraph, S::Vector{Int})
             node_embeddings = encoder(unbatched_g, unbatched_g.ndata.x)
             context = repeat(mean(NNlib.gather(node_embeddings, S), dims=2), 1, nv(unbatched_g))
-            decoder_input = vcat(node_embeddings, context)
+            if isnothing(decoder_features)
+                decoder_input = vcat(node_embeddings, context)
+            else
+                decoder_input = vcat(node_embeddings, context, unbatched_g.ndata.decoder_features)
+            end
             output = decoder(decoder_input) 
             loss(vec(output), unbatched_g.ndata.y)
         end
@@ -246,9 +271,11 @@ struct Encoder_Decoder_GNNModel <: GNNModel
 
         loss_func = batch_support ? loss_func_batched : loss_func_unbatched
 
-        new(d_in, encoder_dims, decoder_dims, encoder, decoder, node_features, gnn_type, batch_support, loss_func, opt)
+        new(d_in, encoder_dims, decoder_dims, encoder, decoder, node_features, decoder_features, gnn_type, batch_support, loss_func, opt)
     end
 end
+
+get_decoder_features(gnn::Encoder_Decoder_GNNModel) = gnn.decoder_features
 
 Flux.params(gnn::Encoder_Decoder_GNNModel) = Flux.params(gnn.encoder, gnn.decoder)
 
@@ -293,11 +320,27 @@ struct DegreeNodeFeature <: NodeFeature end
 
 Base.length(::DegreeNodeFeature) = 1
 
-struct d_S_NodeFeature <: NodeFeature end
+struct d_S_NodeFeature <: NodeFeature 
+    add_mean::Bool
+    add_std::Bool
 
-(::d_S_NodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(d_S)'
+    function d_S_NodeFeature(; add_mean=true, add_std=true)
+        new(add_mean, add_std)
+    end
+end
 
-Base.length(::d_S_NodeFeature) = 1
+function (d_S_nf::d_S_NodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing)  
+    features = d_S'
+    if d_S_nf.add_mean
+        features = vcat(features, repeat([mean(d_S)], 1, length(d_S)))
+    end
+    if d_S_nf.add_std
+        features = vcat(features, repeat([std(d_S)], 1, length(d_S)))
+    end
+    Float32.(features)
+end
+
+Base.length(d_S_nf::d_S_NodeFeature) = 1 + Int(d_S_nf.add_mean) + Int(d_S_nf.add_std)
 
 struct DeepWalkNodeFeature <: NodeFeature
     rws::RandomWalkSimulator
@@ -321,14 +364,18 @@ Base.length(x::DeepWalkNodeFeature) = x.embedding_size
 # - Number of edges to outside
 struct EgoNetNodeFeature <: NodeFeature
     d::Int
+    normalize::Bool
 
-    function EgoNetNodeFeature(d::Int = 1)
-        new(d)
+    function EgoNetNodeFeature(d::Int = 1; normalize=true)
+        new(d, normalize)
     end
 end
 
 function (enf::EgoNetNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing)
     features = []
+    n = nv(graph)
+    m = ne(graph)
+
     for v in vertices(graph)
         N_v = neighborhood(graph, v, enf.d)
         egonet, _ = induced_subgraph(graph, N_v )
@@ -343,6 +390,13 @@ function (enf::EgoNetNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing
                 outgoing_edges += 1
             end
         end
+
+        if enf.normalize
+            num_v /= n
+            num_e /= m
+            outgoing_edges /= m
+        end
+
         push!(features, [num_v, num_e, outgoing_edges])
     end
     feature_matrix = reduce(hcat, features)
@@ -367,11 +421,6 @@ function compute_node_features(feature_list::Vector{<:NodeFeature}, graph, S, d_
     features = [node_feature(graph, S, d_S) for node_feature in feature_list]
     vcat(features...)
 end
-
-# struct EgoNetNodeFeature <: NodeFeature end
-
-
-
 
 # function create_sample(graph::SimpleGraph{Int},
 #                        S::Union{Set{Int}, Vector{Int}},

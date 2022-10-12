@@ -1,5 +1,5 @@
 
-using thesis.GNNs: GNNModel, SimpleGNN, Encoder_Decoder_GNNModel, compute_node_features, device, get_feature_list
+using thesis.GNNs: GNNModel, SimpleGNN, Encoder_Decoder_GNNModel, compute_node_features, device, get_feature_list, get_decoder_features
 using Flux: gpu, cpu, NNlib.gather
 using GraphNeuralNetworks
 using DataStructures: PriorityQueue, enqueue!, dequeue!
@@ -162,7 +162,7 @@ function update!(sf::Encoder_Decoder_ScoringFunction, graph::SimpleGraph, S::Set
 
     if graph !== sf.graph
         sf.graph = graph
-        node_features = compute_node_features(get_feature_list(sf.gnn), sf.graph, S, sf.d_S)
+        node_features = compute_node_features(get_feature_list(sf.gnn), sf.graph, sf.S, sf.d_S)
         sf.gnn_graph = GNNGraph(sf.graph, ndata=(;x=node_features)) |> device
         # compute node embeddings
         sf.embeddings = sf.gnn.encoder(sf.gnn_graph, sf.gnn_graph.ndata.x)
@@ -170,6 +170,8 @@ function update!(sf::Encoder_Decoder_ScoringFunction, graph::SimpleGraph, S::Set
     
     # compute context from node embeddings: context is the index wise mean of all node embeddings of nodes in S
     embeddings_with_context = vcat(sf.embeddings, compute_context(sf.embeddings, sf.S, nv(graph)))
+
+    embeddings_with_context = add_decoder_features(embeddings_with_context, sf.graph, sf.gnn, sf.S, sf.d_S)
 
     # compute scores by applying decoder on embeddings + context
     sf.scores = vec(sf.gnn.decoder(embeddings_with_context) |> cpu)
@@ -180,6 +182,15 @@ end
 function compute_context(embeddings::AbstractMatrix{Float32}, S::Set{Int}, n::Int; offset=0)
     S = [v+offset for v in S] # if embedding is of batched graph, add offset to vertex number for correct matrix columns
     repeat(mean(gather(embeddings, S), dims=2), 1, n)
+end
+
+function add_decoder_features(embeddings::AbstractMatrix{Float32}, graph::SimpleGraph, gnn::Encoder_Decoder_GNNModel, S::Set{Int}, d_S::Vector{Int})
+    decoder_feature_list = get_decoder_features(gnn)
+    if !isnothing(decoder_feature_list)
+        decoder_features = compute_node_features(decoder_feature_list, graph, S, d_S)
+        embeddings = vcat(embeddings, decoder_features)
+    end
+    embeddings
 end
 
 # only apply decoder, compute context from node embeddings
@@ -194,6 +205,8 @@ function update!(sf::Encoder_Decoder_ScoringFunction, u::Int, v::Int)
     push!(sf.S, v)
 
     embeddings_with_context = vcat(sf.embeddings, compute_context(sf.embeddings, sf.S, nv(sf.graph)))
+
+    embeddings_with_context = add_decoder_features(embeddings_with_context, sf.graph, sf.gnn, sf.S, sf.d_S)
 
     # compute scores by applying decoder on embeddings + context
     sf.scores = vec(sf.gnn.decoder(embeddings_with_context) |> cpu)
