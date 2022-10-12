@@ -347,7 +347,7 @@ struct DeepWalkNodeFeature <: NodeFeature
     walks_per_node::Int
     embedding_size::Int
 
-    function DeepWalkNodeFeature(; rws=RandomWalkSimulator(50, 1), walks_per_node=100, embedding_size=64)
+    function DeepWalkNodeFeature(; rws=RandomWalkSimulator(50, 3), walks_per_node=30, embedding_size=64)
         new(rws, walks_per_node, embedding_size)
     end
 end

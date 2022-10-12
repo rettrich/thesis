@@ -4,10 +4,47 @@ using Dates
 using BSON
 using TensorBoardLogger: TBLogger
 using Logging
+using ArgParse
 
 # ENV["JULIA_DEBUG"] = "thesis"
 
-function train_MQCP()
+settings = ArgParseSettings()
+@add_arg_table settings begin
+    "--feature_set"
+        help = "Define input features. Possible values: EgoNet-%d , Degree, Pagerank, DeepWalk. " * 
+               "Multiple features can be specified, separated by a comma."
+        arg_type = String
+        default = "EgoNet-1"
+end
+
+parsed_args = parse_args(
+    [
+        ARGS..., 
+        "--feature_set=EgoNet-1,EgoNet-2"
+    ], 
+    settings)
+
+function parse_feature_set(feature_string)::Vector{<:NodeFeature}
+    features = split(feature_string, ",")
+    feature_set = []
+    for feature in features
+        if startswith(feature, "EgoNet")
+            d = parse(Int, feature[end])
+            push!(feature_set, EgoNetNodeFeature(d))
+        elseif startswith(feature, "Degree")
+            push!(feature_set, DegreeNodeFeature())
+        elseif startswith(feature, "Pagerank")
+            push!(feature_set, PageRankNodeFeature())
+        elseif startswith(feature, "DeepWalk")
+            push!(feature_set, DeepWalkNodeFeature())
+        else
+            error("Unknown feature '$feature'")
+        end
+    end
+    feature_set
+end
+
+function train_MQCP(parsed_args::Dict{String, Any})
     start_time = time()
     γ = 0.999
 
@@ -31,9 +68,11 @@ function train_MQCP()
     # gnn = SimpleGNN(2, [64, 64, 64])
     # scoring_function = SimpleGNN_ScoringFunction(gnn, 20)
 
+    feature_set = parse_feature_set(parsed_args["feature_set"])
+
     gnn = Encoder_Decoder_GNNModel([128, 128, 128], [32, 32]; 
                                    encoder_factory=GATv2Conv_GNNChainFactory(), 
-                                   node_features=[EgoNetNodeFeature(1), EgoNetNodeFeature(2)], 
+                                   node_features=feature_set, 
                                    decoder_features=[d_S_NodeFeature()]
                                    )
     scoring_function = Encoder_Decoder_ScoringFunction(gnn, 20)
@@ -67,13 +106,14 @@ function train_MQCP()
     logdir = joinpath("./logs", run_id)
     tblogger = TBLogger(logdir)
 
-    Training.train!(local_search, instance_generator, gnn; epochs=250, baseline=baseline_local_search, logger=tblogger)
+    Training.train!(local_search, instance_generator, gnn; epochs=10, baseline=baseline_local_search, logger=tblogger)
 
-    BSON.@save "$run_id.bson" gnn
+    BSON.@save "$run_id-feature_set=$(parsed_args["feature_set"]).bson" gnn
 
     println("Total duration: $(time()- start_time)")
     
     nothing
 end
 
-train_MQCP()
+train_MQCP(parsed_args)
+# parse_feature_set(parsed_args["feature_set"])
