@@ -782,10 +782,10 @@ We build upon the work of \cite{Kool2019}, in which the authors also use the Gra
 \begin{itemize}
     \item Layer 1: We apply a linear transformation $A_1 x_i + b_1$ with learnable parameters $A_1, b_1$ for each feature vector $x_i, 1 \leq i \leq n$.
     \item Layers 2, \dots, $l_e$: Following the GCN model used by \cite{Kool2019}, each attention layer consists of two sub-layers: A multi-head attention (MHA) layer and a dense, fully connected feed-forward (FF) layer. Each sub-layer also applies a skip-connection and batch-normalization. The following sub-layer definitions are given by the authors: 
-    \begin{align}
+    \begin{align*}
         \hat{h}_i &= \text{BN}^l(h_i^{(l-1)} + \text{MHA}_i^l (h_1^{(l-1)}, \dots , h_n^{(l-1)}) ) \\
         h_i^{(l)} &= \text{BN}^l(\hat{h}_i + FF^l(\hat{h}_i))
-    \end{align}
+    \end{align*}
 \end{itemize}
 
 \subsection{Context}
@@ -793,6 +793,8 @@ The context is determined by the current candidate solution $S$ and is computed 
 
 \subsection{Decoder}
 The decoder is a regression model that maps the inputs obtained from the node embeddings and the context embedding to scalar values representing scores for the vertices in $V$. We suggest using a simple MLP architecture with a sigmoid activation function on the final layer, mapping the results of the previous layers to scalar values between zero and one. 
+
+As an addition to the node embeddings and the context embedding, the current $d_S$-values can also be used as decoder inputs. Furthermore, as the decoder evaluates each vertex independently, it might also be relevant to add information about the distribution of the $d_S$ values, e.g. mean and standard deviation. 
 
 \fxnote{RE: in \cite{Kool2019} wird im Decoder auch ein Attention layer verwendet, vermutlich gibt es hier noch bessere Varianten}
 
@@ -848,6 +850,14 @@ For the scoring function $gnn_S$, we can generally not update the scores increme
 
 \subsection{Conclusion}
 When analyzing the performance aspect of the proposed scoring functions, it seems clear that a GNN based scoring function can in practice not be as fast and efficient as $d_S$. However, we hope to overcome this drawback by keeping the NN - especially the decoder - as small and efficient as possible, by determining a neighborhood size that balances efficiency and solution quality, and by training the NN to provide a better guidance through the search space than $d_S$, leading to solutions of improved quality. 
+
+\section{Alternative Approach}
+
+A GNN could also be trained to predict which vertices are in an optimal solution. 
+Here we would need to obtain vertex labels by obtaining optimal or high quality solutions, and labeling the vertices in these solutions with one whereas remaining vertices are labeled with zero. The GNN is then trained on this data. 
+
+The GNN will then be applied only once at the beginning of the local search algorithm. The output of the GNN could be used as a secondary scoring function: When there are two or more swaps with the same gain, the swap that has a higher probability of adding a vertex from the optimal solution will be preferred. 
+
 
 % \section{First Approach}
 % This subsection documents the first attempts at testing GNN structures and different methods of training; it will be removed or reworked later.
