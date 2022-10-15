@@ -25,16 +25,14 @@ Contains all relevant data used for a training sample:
 
 - `gnn_graph`: A `GNNGraph` that can be used to train the GNN. Node features and targets are 
     contained as `gnn_graph.ndata.x` and `gnn_graph.ndata.y`, respectively
-- `graph`: The original graph used to create the sample. 
 - `S`: The candidate solution used to create the sample. 
 """
 struct TrainingSample
     gnn_graph::GNNGraph
-    graph::SimpleGraph
     S::Union{Vector{Int}, Set{Int}}
 
-    function TrainingSample(gnn_graph::GNNGraph, graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}})
-        new(gnn_graph, graph, S)
+    function TrainingSample(gnn_graph::GNNGraph, S::Union{Vector{Int}, Set{Int}})
+        new(gnn_graph, S)
     end
 end
 
@@ -80,7 +78,7 @@ function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, S::Set{Int},
     pushfirst!(buffer.buffer, sample)
 
     if length(buffer) > buffer.capacity
-        pop!(buffer.buffer)
+        _ = pop!(buffer.buffer)
     end
     return is_local_optimum
 end
@@ -141,18 +139,17 @@ function create_sample(graph::SimpleGraph{Int},
     if typeof(S) <: Set{Int}
         S_vec = collect(S)
     else
-        S_vec = S
+        S_vec = copy(S)
     end
-    # node features
-    d_S = thesis.LocalSearch.calculate_d_S(graph, S)
 
+    d_S = thesis.LocalSearch.calculate_d_S(graph, S)
 
     # use lookahead function to obtain best neighboring solutions
     obj_val, solutions = lookahead_func(graph, S, d_S)
     targets = fill(0.0f0, nv(graph))
 
     in_S = fill(0, nv(graph))
-    in_S[S_vec] .= 1
+    in_S[S_vec] .= 1 # mark vertices in S for later computation of context
 
     # compute target node labels
     for v in S
@@ -187,7 +184,7 @@ function create_sample(graph::SimpleGraph{Int},
     gnn_graph = add_self_loops(gnn_graph) # add self loops for message passing
 
     # return training sample and a boolean indicating whether this sample is a local optimum wrt lookahead search
-    return TrainingSample(gnn_graph, graph, S), isempty(solutions)
+    return TrainingSample(gnn_graph, S), isempty(solutions)
 end
 
 """
@@ -244,7 +241,7 @@ Target values for training are computed using `lookahead_func`.
 """
 function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGenerator, gnn::GNNModel; 
                epochs=200, lookahead_func=Ω_1_LookaheadSearchFunction(), baseline::Union{Nothing, LocalSearchBasedMH}=nothing,
-               num_batches=2, logger::Union{Nothing, TBLogger}=nothing
+               num_batches=4, logger::Union{Nothing, TBLogger}=nothing
                )
     capacity = 4000
     min_fill = 2000
@@ -256,11 +253,11 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
 
     # check if gnn supports batching of graphs. for encoder / decoder it is not possible for now, as looping over graphs in batch is not possible
     # https://github.com/CarloLucibello/GraphNeuralNetworks.jl/issues/161
-    batchsize = batch_support(gnn) ? 32 : 1     
-    num_batches = batch_support(gnn) ? num_batches : (num_batches, 32)
+    batchsize = batch_support(gnn) ? 16 : 1     
+    num_batches = batch_support(gnn) ? num_batches : (num_batches, 16)
 
 
-    @printf("Iteration | encountered |   t_ls | t_base | t_targets | t_train | (opt)buffer | loss | V/density | solution | baseline |   gap \n")
+    @printf("Iteration | encountered |   t_ls | t_base | t_targets | t_train | (opt)buffer | loss | V/density | solution | baseline |   gap | free/total memory\n")
 
     for i = 1:epochs
         
@@ -281,17 +278,21 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
         t_train = 0
         iter_loss = NaN
 
+        free_mem = Int(Sys.free_memory()) / 2^30
+        total_mem = Int(Sys.total_memory()) / 2^30
+
         if length(buffer) < buffer.min_fill
-            @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i %7.3f\n", 
+            @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i %7.3f   %5.3f/%5.3f\n", 
                     i, length(swap_history),
                     t_ls, t_baseline, t_targets, 0, 
                     local_optima, length(buffer), 
                     iter_loss, 
                     nv(graph), density(graph), 
-                    s_ls, s_base, gap)
+                    s_ls, s_base, gap,
+                    free_mem, total_mem)
             if !isnothing(logger)
                 with_logger(logger) do 
-                    @info("thesis", t_ls, t_baseline, t_targets, t_train, iter_loss, V=nv(graph), dens=density(graph), s_ls, s_base, gap)
+                    @info("thesis", t_ls, t_baseline, t_targets, t_train, iter_loss, V=nv(graph), dens=density(graph), s_ls, s_base, gap, free_mem, total_mem)
                 end
             end
             continue
@@ -332,19 +333,22 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
 
         t_train = time() - before_training
 
-        @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i %6.3f\n", 
+        @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i %7.3f   %5.3f/%5.3f\n", 
                     i, length(swap_history),
                     t_ls, t_baseline, t_targets, t_train, 
                     local_optima, length(buffer), 
                     iter_loss, 
                     nv(graph), density(graph), 
-                    s_ls, s_base, gap)
+                    s_ls, s_base, gap,
+                    free_mem, total_mem)
 
         if !isnothing(logger)
             with_logger(logger) do 
-                @info("thesis", t_ls, t_baseline, t_targets, t_train, iter_loss, V=nv(graph), dens=density(graph), s_ls, s_base, gap)
+                @info("thesis", t_ls, t_baseline, t_targets, t_train, iter_loss, V=nv(graph), dens=density(graph), s_ls, s_base, gap, free_mem, total_mem)
             end
         end
+
+        GC.gc() # maybe this helps with memory errors?
 
     end
 end

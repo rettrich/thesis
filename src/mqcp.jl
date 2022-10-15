@@ -131,22 +131,25 @@ function run_mqcp(scoring_function=nothing; parsed_args)
     for (arg,val) in parsed_args
         println("  $arg  =>  $val")
     end
-    solution, swap_history = run_lsbmh(local_search, graph)
-
-    println(solution)
-    println("size of solution: $(length(solution))")
+    solutions = []
+    for i = 1:10
+        solution, swap_history = run_lsbmh(local_search, graph)
+        push!(solutions, solution)
+        println(solution)
+        println("size of solution: $(length(solution))")
+    end
 
     if parsed_args["write_result"] != "-"
-        df = DataFrame(GraphID=String[], V=Int[], E=Int[], Dens=Real[], γ=Real[], Result=Int[])
+        df = DataFrame(GraphID=String[], V=Int[], E=Int[], Dens=Real[], γ=Real[], Result=Real[])
         push!(df, (
             parsed_args["graph"],
             nv(graph),
             ne(graph),
             density(graph),
             γ,
-            length(solution)
+            length(sum(solutions) / length(solutions)))
         ))
-        CSV.write("$(parsed_args["write_result"])/$(split(parsed_args["graph"], "/")[end]).csv", df)
+        CSV.write("$(parsed_args["write_result"])/$(parsed_args["scoring_function"])-$(split(parsed_args["graph"], "/")[end]).csv", df)
     end
 
 end

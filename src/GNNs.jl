@@ -97,13 +97,11 @@ Implementation of the GNN architecture from Kool et al 2019 paper "Attention, le
 function (::GATv2Conv_GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_classifier::Bool = false, ff_dim::Int = 512, heads=1)::GNNChain
     @assert length(dims) >= 1
 
-    gatv2_layers = (AddResidual(GATv2Conv(dims[i] => dims[i+1]; heads)) for i in 1:(length(dims)-1))
+    gatv2_layers = (GNNChain(AddResidual(GATv2Conv(dims[i] => dims[i+1]; heads)), BatchNorm(dims[i+1])) for i in 1:(length(dims)-1))
     
-    feed_forward_sublayers = (AddResidual(Chain(Dense(dims[i+1] => ff_dim, relu), Dense(ff_dim => dims[i+1]))) for i in 1:length(dims)-1)
+    feed_forward_sublayers = (GNNChain(AddResidual(GNNChain(Dense(dims[i+1] => ff_dim, relu), Dense(ff_dim => dims[i+1]))), BatchNorm(dims[i+1])) for i in 1:length(dims)-1)
     
-    batch_norm_layers = (BatchNorm(dims[i+1]) for i in 1:(length(dims)-1))
-    
-    inner_layers = collect(Iterators.flatten(zip(gatv2_layers, feed_forward_sublayers, batch_norm_layers)))
+    inner_layers = collect(Iterators.flatten(zip(gatv2_layers, feed_forward_sublayers)))
     
     model = GNNChain(
             Dense(d_in, dims[1]),
@@ -316,7 +314,7 @@ Base.length(::NodeFeature) = error("NodeFeature: Abstract length called")
 
 struct DegreeNodeFeature <: NodeFeature end
 
-(::DegreeNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(degree(graph))'
+(::DegreeNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(degree(graph)./nv(graph))'
 
 Base.length(::DegreeNodeFeature) = 1
 

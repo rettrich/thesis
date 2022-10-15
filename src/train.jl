@@ -11,21 +11,25 @@ using ArgParse
 settings = ArgParseSettings()
 @add_arg_table settings begin
     "--feature_set"
-        help = "Define input features. Possible values: EgoNet-%d , Degree, Pagerank, DeepWalk. " * 
-               "Multiple features can be specified, separated by a comma."
+        help = "Define input features. Possible values: EgoNet%d , Degree, Pagerank, DeepWalk. " * 
+               "Multiple features can be specified, separated by a '-' (e.g. Degree-EgoNet1-DeepWalk)."
         arg_type = String
-        default = "EgoNet-1"
+        default = "EgoNet1"
+    "--dir"
+        help = "Directory where logs and models are stored"
+        arg_type = String
+        default = "logs"
 end
 
 parsed_args = parse_args(
     [
         ARGS..., 
-        "--feature_set=EgoNet-1,EgoNet-2"
+        # "--feature_set=EgoNet-1,EgoNet-2"
     ], 
     settings)
 
 function parse_feature_set(feature_string)::Vector{<:NodeFeature}
-    features = split(feature_string, ",")
+    features = split(feature_string, "-")
     feature_set = []
     for feature in features
         if startswith(feature, "EgoNet")
@@ -84,16 +88,18 @@ function train_MQCP(parsed_args::Dict{String, Any})
     local_search_procedure = MQCP_LocalSearchProcedure(γ, short_term_memory, scoring_function)
     baseline_local_search_procedure = MQCP_LocalSearchProcedure(γ, short_term_memory, baseline_scoring_function)
 
-    timelimit = 100.0
+    timelimit = 120.0
     max_iter = 4000
     next_improvement = false
     record_swap_history = true
     max_restarts = 1 # abort after fixed number of restarts to save time
 
+    # local search with gnn
     local_search = LocalSearchBasedMH(
             lower_bound_heuristic, construction_heuristic, local_search_procedure, feasibility_checker, solution_extender;
             timelimit, max_iter, next_improvement, record_swap_history, max_restarts)
 
+    # baseline for comparison
     baseline_local_search = LocalSearchBasedMH(
         lower_bound_heuristic, construction_heuristic, baseline_local_search_procedure, feasibility_checker, solution_extender;
         timelimit, max_iter, next_improvement, record_swap_history=false, max_restarts)
@@ -101,14 +107,16 @@ function train_MQCP(parsed_args::Dict{String, Any})
     instance_generator = Training.InstanceGenerator(Normal(200, 15), Uniform(0.4, 0.6))
 
     tblogger = nothing
-    run_id = replace("MQCP-$(repr(MIME"text/plain"(), gnn))-$(repr(MIME"text/plain"(), instance_generator))-" * 
+    run_id = replace("MQCP-$(repr(MIME"text/plain"(), gnn))-feature_set=$(parsed_args["feature_set"])-$(repr(MIME"text/plain"(), instance_generator))-" * 
                         string(now()) * tempname(".")[3:end], ":"=>"-")
-    logdir = joinpath("./logs", run_id)
+    logdir = joinpath("./$(parsed_args["dir"])", run_id)
     tblogger = TBLogger(logdir)
 
-    Training.train!(local_search, instance_generator, gnn; epochs=10, baseline=baseline_local_search, logger=tblogger)
+    println("$run_id")
 
-    BSON.@save "$run_id-feature_set=$(parsed_args["feature_set"]).bson" gnn
+    Training.train!(local_search, instance_generator, gnn; epochs=300, baseline=baseline_local_search, logger=tblogger)
+
+    BSON.@save "./$(parsed_args["dir"])/$run_id.bson" gnn
 
     println("Total duration: $(time()- start_time)")
     
