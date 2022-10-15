@@ -11,7 +11,7 @@ using ArgParse
 settings = ArgParseSettings()
 @add_arg_table settings begin
     "--feature_set"
-        help = "Define input features. Possible values: EgoNet%d , Degree, Pagerank, DeepWalk. " * 
+        help = "Define input features. Possible values: EgoNet_%d , Degree, Pagerank, DeepWalk, Node2Vec_%f_%f" * 
                "Multiple features can be specified, separated by a '-' (e.g. Degree-EgoNet1-DeepWalk)."
         arg_type = String
         default = "EgoNet1"
@@ -24,7 +24,7 @@ end
 parsed_args = parse_args(
     [
         ARGS..., 
-        # "--feature_set=EgoNet-1,EgoNet-2"
+        "--feature_set=Node2Vec_2_0.25"
     ], 
     settings)
 
@@ -41,6 +41,10 @@ function parse_feature_set(feature_string)::Vector{<:NodeFeature}
             push!(feature_set, PageRankNodeFeature())
         elseif startswith(feature, "DeepWalk")
             push!(feature_set, DeepWalkNodeFeature())
+        elseif startswith(feature, "Node2Vec")
+            p = parse(Float32, split(feature, "_")[2])
+            q = parse(Float32, split(feature, "_")[3])
+            push!(feature_set, Node2VecNodeFeature(p, q))
         else
             error("Unknown feature '$feature'")
         end
@@ -74,8 +78,8 @@ function train_MQCP(parsed_args::Dict{String, Any})
 
     feature_set = parse_feature_set(parsed_args["feature_set"])
 
-    gnn = Encoder_Decoder_GNNModel([128, 128, 128], [32, 32]; 
-                                   encoder_factory=GATv2Conv_GNNChainFactory(), 
+    gnn = Encoder_Decoder_GNNModel([64, 64, 64], [32, 32]; 
+                                   encoder_factory=GATv2Conv_GNNChainFactory(128), 
                                    node_features=feature_set, 
                                    decoder_features=[d_S_NodeFeature()]
                                    )

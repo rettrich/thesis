@@ -23,7 +23,15 @@ struct SecondOrderRandomWalkSimulator <: WalkSimulator
     window_size::Int
     p::Real
     q::Real
+    transition_probs::Dict{Tuple{Int, Int}, Vector{Float32}}
+
+    function SecondOrderRandomWalkSimulator(walk_length::Int, window_size::Int, p::Real, q::Real)
+        new(walk_length, window_size, p, q, Dict())
+    end
 end
+
+init_walk_simulator(rws::WalkSimulator) = nothing
+init_walk_simulator(rws::SecondOrderRandomWalkSimulator) = empty!(rws.transition_probs)
 
 function skip_gram_model(vocabulary_size, embedding_size)::Chain
     model = Chain(
@@ -62,6 +70,41 @@ function random_walk(rws::RandomWalkSimulator, graph::AbstractGraph, v_start::In
     return walk
 end
 
+function random_walk(rws::SecondOrderRandomWalkSimulator, graph::AbstractGraph, v_start::Int)::Vector{Int}
+    walk = [v_start]
+    curr = sample(neighbors(graph, v_start))
+    prev = v_start
+    p = rws.p
+    q = rws.q
+
+    for _=3:rws.walk_length
+        # current edge is always prev -> curr
+        neighboring_nodes = neighbors(graph, curr)
+
+        # if this edge has not been traversed yet, compute unnormalized probabilities
+        if !haskey(rws.transition_probs, (prev, curr))
+            weights = Float32[]
+            for x in neighboring_nodes
+                if prev == x
+                    push!(weights, 1/p)
+                elseif has_edge(graph, prev, x)
+                    push!(weights, 1)
+                else
+                    push!(weights, 1/q)
+                end
+            end
+            rws.transition_probs[(prev, curr)] = weights
+        end
+
+        weights = rws.transition_probs[(prev, curr)]
+            
+        prev = curr
+        curr = sample(neighboring_nodes, Weights(weights))
+        push!(walk, curr)
+    end
+    return walk
+end
+
 function get_context(walk::Vector{Int}, window_size::Int)
     nodes = Int[]
     context = Int[]
@@ -80,6 +123,7 @@ function get_context(walk::Vector{Int}, window_size::Int)
 end
 
 function learn_embeddings(ws::WalkSimulator, graph::AbstractGraph; embedding_size::Int=64, walks_per_node::Int=1)::AbstractMatrix{Float32}
+    init_walk_simulator(ws)
     model = skip_gram_model(nv(graph), embedding_size)
     loss = (nodes, context, labels) -> skip_gram_loss(model, nodes, context, labels)
     labels = collect(vertices(graph))

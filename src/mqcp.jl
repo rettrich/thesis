@@ -148,7 +148,7 @@ function run_mqcp(scoring_function=nothing; parsed_args)
             density(graph),
             γ,
             length(sum(solutions) / length(solutions)))
-        ))
+        )
         CSV.write("$(parsed_args["write_result"])/$(parsed_args["scoring_function"])-$(split(parsed_args["graph"], "/")[end]).csv", df)
     end
 
