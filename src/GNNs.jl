@@ -11,7 +11,8 @@ using thesis.NodeRepresentationLearning
 # using Logging
 
 export GNNModel, SimpleGNN, Encoder_Decoder_GNNModel, compute_node_features, device,
-    NodeFeature, d_S_NodeFeature, DegreeNodeFeature, DeepWalkNodeFeature, EgoNetNodeFeature, PageRankNodeFeature, Node2VecNodeFeature,
+    NodeFeature, d_S_NodeFeature, DegreeNodeFeature, DeepWalkNodeFeature, EgoNetNodeFeature, 
+    PageRankNodeFeature, Node2VecNodeFeature, Struct2VecNodeFeature, 
     get_feature_list, get_decoder_features,
     GNNChainFactory, ResGatedGraphConv_GNNChainFactory, GATv2Conv_GNNChainFactory,
     batch_support

@@ -11,7 +11,7 @@ using ArgParse
 settings = ArgParseSettings()
 @add_arg_table settings begin
     "--feature_set"
-        help = "Define input features. Possible values: EgoNet_%d , Degree, Pagerank, DeepWalk, Node2Vec_%f_%f" * 
+        help = "Define input features. Possible values: EgoNet_%d , Degree, Pagerank, DeepWalk, Node2Vec_%f_%f, Struct2Vec" * 
                "Multiple features can be specified, separated by a '-' (e.g. Degree-EgoNet1-DeepWalk)."
         arg_type = String
         default = "EgoNet1"
@@ -24,7 +24,7 @@ end
 parsed_args = parse_args(
     [
         ARGS..., 
-        "--feature_set=Node2Vec_2_0.25"
+        "--feature_set=EgoNet1-Struct2Vec"
     ], 
     settings)
 
@@ -45,6 +45,8 @@ function parse_feature_set(feature_string)::Vector{<:NodeFeature}
             p = parse(Float32, split(feature, "_")[2])
             q = parse(Float32, split(feature, "_")[3])
             push!(feature_set, Node2VecNodeFeature(p, q))
+        elseif startswith(feature, "Struct2Vec")
+            push!(feature_set, Struct2VecNodeFeature())
         else
             error("Unknown feature '$feature'")
         end

@@ -52,7 +52,7 @@ struct DeepWalkNodeFeature <: RepresentationLearningNodeFeature
     walks_per_node::Int
     embedding_size::Int
 
-    function DeepWalkNodeFeature(; walk_length=50, window_size=3, walks_per_node=30, embedding_size=64)
+    function DeepWalkNodeFeature(; walk_length=80, window_size=5, walks_per_node=20, embedding_size=64)
         rws = RandomWalkSimulator(walk_length, window_size)
         new(rws, walks_per_node, embedding_size)
     end
@@ -63,14 +63,29 @@ struct Node2VecNodeFeature <: RepresentationLearningNodeFeature
     walks_per_node::Int
     embedding_size::Int
     
-    function Node2VecNodeFeature(p=1, q=1; walk_length=50, window_size=3, walks_per_node=30, embedding_size=64)
+    function Node2VecNodeFeature(p=1, q=1; walk_length=80, window_size=5, walks_per_node=20, embedding_size=64)
         rws = SecondOrderRandomWalkSimulator(walk_length, window_size, p, q)
         new(rws, walks_per_node, embedding_size)
     end
 end
 
+struct Struct2VecNodeFeature <: RepresentationLearningNodeFeature
+    rws::Struct2VecWalkSimulator
+    walks_per_node::Int
+    embedding_size::Int
+
+    function Struct2VecNodeFeature(q=0.3, k′=10; walk_length=80, window_size=5, walks_per_node=20, embedding_size=64)
+        rws = Struct2VecWalkSimulator(walk_length, window_size, k′, q)
+        new(rws, walks_per_node, embedding_size)
+    end
+end
+
 function (nf::RepresentationLearningNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing)
-    learn_embeddings(nf.rws, graph; nf.embedding_size, nf.walks_per_node)
+    if Sys.iswindows()
+        learn_embeddings(nf.rws, graph; nf.embedding_size, nf.walks_per_node)
+    else
+        Float32.(learn_embeddings_word2vec(nf.rws, graph; nf.embedding_size, nf.walks_per_node))
+    end
 end
 
 Base.length(x::RepresentationLearningNodeFeature) = x.embedding_size
