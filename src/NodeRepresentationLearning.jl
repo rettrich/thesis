@@ -13,7 +13,7 @@ export WalkSimulator, RandomWalkSimulator, SecondOrderRandomWalkSimulator, Struc
 # Thanks @ Dan Saattrup Nielsen for his explanation of deepwalk: https://saattrupdan.github.io/2020-08-24-deepwalk/
 # Deepwalk implementation is inspired by his explanation and code 
 
-const TMP_DIR = mktempdir()
+const TMP_DIR = mktempdir(; cleanup=false)
 
 abstract type WalkSimulator end
 
