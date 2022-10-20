@@ -3,8 +3,9 @@ module LookaheadSearch
 # using thesis.MPModels
 using Graphs
 using StatsBase
+using Combinatorics
 
-export LookaheadSearchFunction, Ω_1_LookaheadSearchFunction
+export LookaheadSearchFunction, Ω_1_LookaheadSearchFunction, Ω_d_LookaheadSearchFunction
 
 abstract type LookaheadSearchFunction end
 
@@ -20,7 +21,8 @@ in order to be space efficient; a neighboring solution can be reconstructed by
 swapping the nodes in `in_nodes ∈ S` with the nodes in `out_nodes ∈ V ∖ S`.
 
 """
-(::LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Set{Int}, d_S::Union{Vector{Int}, Nothing}=nothing, num_solutions=typemax(Int)::Int)::Tuple{Int, Vector{Tuple}} =
+(::LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
+                            d_S::Union{Vector{Int}, Nothing}=nothing, num_solutions=typemax(Int)::Int)::Tuple{Int, Vector{Tuple}} =
     error("Abstract (::LookaheadSearchFunction)(graph::SimpleGraph, S::Set{Int}) called")
 
 """
@@ -34,7 +36,7 @@ struct Ω_1_LookaheadSearchFunction <: LookaheadSearchFunction end
 
 Base.show(io::IO, ::Ω_1_LookaheadSearchFunction) = print(io, "Ω_1_LookaheadSearchFunction")
 
-function (::Ω_1_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Set{Int}, 
+function (::Ω_1_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
                                          d_S::Union{Vector{Int}, Nothing}=nothing, 
                                          num_solutions=typemax(Int)::Int
                                          )::Tuple{Int, Vector{Tuple}}
@@ -67,6 +69,47 @@ function (::Ω_1_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Set{Int},
     if Δuv_best == 0
         return obj_val, [] # S is local optimum, therefore do not return any neighboring solutions
     else
+        return obj_val + Δuv_best, solutions
+    end
+end
+
+"""
+    Ω_d_LookaheadSearchFunction
+
+Searches the neighborhoods Ω_1, ... , Ω_d exhaustively and returns the neighboring solutions with
+the highest objective value. For Ω_1 neighborhood, use
+`Ω_1_LookaheadSearchFunction`, as it is optimized for that specific neighborhood.
+
+"""
+struct Ω_d_LookaheadSearchFunction <: LookaheadSearchFunction
+    d::Int
+
+    function Ω_d_LookaheadSearchFunction(d::Int)
+        new(d)
+    end
+end
+
+function (lookahead_search::Ω_d_LookaheadSearchFunction)(
+                                        graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
+                                        d_S::Union{Vector{Int}, Nothing}=nothing, 
+                                        num_solutions=typemax(Int)::Int
+                                        )::Tuple{Int, Vector{Tuple}}
+    d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
+    obj_val = calculate_obj(graph, S, d_S)
+
+    V_S = filter(v -> v ∉ S, vertices(graph))
+
+    Δuv_best = 0
+
+    solutions = []
+
+    for i = 1:lookahead_search.d
+        Δuv_best, solutions = search_neighborhood_Ω_d(graph, d_S, S, V_S, i, Δuv_best, solutions)
+    end
+
+    if Δuv_best == 0
+        return obj_val, [] # S is local optimum, therefore do not return any neighboring solutions
+    else
         if num_solutions < length(solutions)
             solutions = sample(1:length(solutions), num_solutions; replace=false)
         end
@@ -74,21 +117,36 @@ function (::Ω_1_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Set{Int},
     end
 end
 
-# """
-#     Ω_d_LookaheadSearchFunction
+function search_neighborhood_Ω_d(graph, initial_d_S, X, Y, d=1, current_best=0, solutions=[], num_solutions=typemax(Int)::Int)    
+    for inside in combinations(X, d), outside in combinations(Y, d)    
+        d_S = copy(initial_d_S)
+        gain = 0
 
-# Searches the Ω_d neighborhood exhaustively and returns the neighboring solution with
-# the highest objective value, ties are broken randomly. For Ω_1 neighborhood, use
-# `Ω_1_LookaheadSearchFunction`, as it is optimized for that specific neighborhood.
+        #swap vertices, update d_S
+        for i in 1:d
+            gain += d_S[outside[i]] - d_S[inside[i]] - Int(has_edge(graph, inside[i], outside[i]))
+            if i < d
+                for w in neighbors(graph, inside[i])
+                    d_S[w] -= 1
+                end
+                for w in neighbors(graph, outside[i])
+                    d_S[w] += 1
+                end
+            end
+        end
 
-# """
-# struct Ω_d_LookaheadSearchFunction <: LookaheadSearchFunction
-#     d::Int
-
-#     function Ω_d_LookaheadSearchFunction(d::Int)
-#         new(d)
-#     end
-# end
+        if gain >= current_best
+            if gain > current_best
+                current_best = gain
+                solutions = [] # discard worse solutions
+            end
+            if length(solutions) < num_solutions
+                push!(solutions, (inside, outside)) # store solution as pair of nodes that need to be swapped
+            end
+        end
+    end
+    return current_best, solutions
+end
 
 # # TODO: revisit recursive search?
 # function (::Ω_d_LookaheadSearchFunction)(graph::SimpleGraph, S::Set{Int})::Tuple{Int, Vector{Tuple{Vector{Int}, Vector{Int}}}}
