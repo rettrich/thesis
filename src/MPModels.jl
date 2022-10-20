@@ -8,7 +8,7 @@ using Gurobi
 export get_MDCP_model, 
        get_MQCP_model, get_MQCP_neighborhood_model, check_MQCP_solution, 
        get_MPP_model, 
-       solve_model!
+       solve_milp_model!, solve_lp_model
 
 #################################### Private Methods ################################################
 
@@ -71,7 +71,7 @@ end
 
 """
 
-    get_MQCP_model(g, γ; opt, verbosity, eps_int, timelimit)
+    get_MQCP_model_F1(g, γ; opt, verbosity, eps_int, timelimit)
 
 Create a JuMP MILP model for the Maximum γ-Quasi Clique Problem for given graph `g` and `γ` ∈ (0,1].
 Model from 'On the Maximum Quasi-Clique Problem', Pattillo et al. 2013, variables and constraints quadratic in 
@@ -85,7 +85,7 @@ size of vertices in graph `g`.
 - `timelimit`: Timelimit for solver
 
 """
-function get_MQCP_model(g::SimpleGraph, γ::Real;
+function get_MQCP_model_F1(g::SimpleGraph, γ::Real;
                         opt::String="Gurobi", 
                         verbosity::Int=0, eps_int::Real=1e-6, timelimit::Real=Inf)
     n = nv(g)
@@ -106,6 +106,65 @@ function get_MQCP_model(g::SimpleGraph, γ::Real;
     end
     
     @constraint(model, sum(((γ - a(g,i,j))*w[i,j]) for i=1:n, j=(i+1):n) ≤ 0)
+
+    return model
+end
+
+"""
+
+    get_MQCP_model_F1(g, γ; opt, verbosity, eps_int, timelimit)
+
+Create a JuMP MILP model for the Maximum γ-Quasi Clique Problem for given graph `g` and `γ` ∈ (0,1].
+Model F3 from 'Exact MIP-based approaches for finding maximum quasi-cliques and dense subgraphs', Veremyev et al., 2016, variables and constraints quadratic in 
+size of vertices in graph `g`. 
+
+- `g`: Input graph
+- `γ`: Problem parameter for the Maximum γ-Quasi Clique Problem
+- `verbosity`: Verbosity of solver output
+- `opt`: Set optimizer ∈ ["CPLEX", "Gurobi"]
+- `eps_int`: Machine epsilon for integer accuracy
+- `timelimit`: Timelimit for solver
+
+"""
+function get_MQCP_model_F3(g::SimpleGraph, γ::Real; 
+                        lower_bound::Int=1, upper_bound::Int=nv(g),
+                        opt::String="Gurobi", 
+                        verbosity::Int=0, eps_int::Real=1e-6, timelimit::Real=Inf,
+                        lp_relaxation=false)
+    n = nv(g)
+
+    model = get_empty_model(opt; verbosity, eps_int, timelimit)
+    range_z_k = length(lower_bound:upper_bound)
+
+    # 6e in paper
+    # variables x[i] indicate whether node i is in solution
+    if lp_relaxation
+        @variable(model, 0 ≤ x[i=1:n] ≤ 1) # lp relaxation of the model
+    else
+        @variable(model, x[i=1:n], Bin) # milp formulation
+    end
+    # variables y[i,j] = x[i]*x[j] indicate edges in solution
+    @variable(model, y[i=1:n, j=(i+1):n; has_edge(g, i, j)] ≥ 0)
+    # variable z[i] guesses the size of the solution
+    @variable(model, z[i=1:range_z_k] ≥ 0)
+
+    f(k) = (k+lower_bound- 1) # helper function to deal with indexing
+
+    @objective(model, Max, sum(x[i] for i in 1:n)) # 6a in paper
+
+    @constraint(model, sum(y) ≥ γ * sum( (f(k)*(f(k)-1)/2)*z[k] for k=1:range_z_k)) # 6b in paper
+
+    # 6c in paper
+    for i=1:n, j=(i+1):n
+        if has_edge(g, i, j)
+            @constraint(model, y[i,j] ≤ x[i])
+            @constraint(model, y[i,j] ≤ x[j])
+        end
+    end
+    
+    # 6d in paper
+    @constraint(model, sum(x[i] for i=1:n) == sum(f(k)*z[k] for k=1:range_z_k))
+    @constraint(model, sum(z[k] for k=1:range_z_k) == 1)
 
     return model
 end
@@ -202,7 +261,7 @@ Solve JuMP MILP model and return the set of nodes in solution
 
 - `model`: JuMP MILP model
 """
-function solve_model!(model::Model, g::SimpleGraph) :: Union{Nothing, Vector{Int}}
+function solve_milp_model!(model::Model, g::SimpleGraph) :: Union{Nothing, Vector{Int}}
     optimize!(model)
     if primal_status(model) != JuMP.MathOptInterface.FEASIBLE_POINT
         @debug "No feasible solution found"
@@ -223,6 +282,17 @@ function solve_model!(model::Model, g::SimpleGraph) :: Union{Nothing, Vector{Int
         end
     end
     return solution
+end
+
+function solve_lp_model!(model::Model, g::SimpleGraph)
+    optimize!(model)
+    if primal_status(model) != JuMP.MathOptInterface.FEASIBLE_POINT
+        @debug "No feasible solution found"
+        return Nothing
+    end
+    @debug "Termination status: $(termination_status(model))"
+    @debug "Primal status: $(primal_status(model))"
+    return value.(model[:x])
 end
 
 end
