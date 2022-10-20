@@ -13,6 +13,8 @@ export WalkSimulator, RandomWalkSimulator, SecondOrderRandomWalkSimulator, Struc
 # Thanks @ Dan Saattrup Nielsen for his explanation of deepwalk: https://saattrupdan.github.io/2020-08-24-deepwalk/
 # Deepwalk implementation is inspired by his explanation and code 
 
+const TMP_DIR = mktempdir()
+
 abstract type WalkSimulator end
 
 struct RandomWalkSimulator <: WalkSimulator
@@ -317,8 +319,8 @@ function learn_embeddings_word2vec(ws::WalkSimulator, graph::AbstractGraph; embe
         end
     end
     str_walks = map(x -> string.(x), walks)
-    walks_file = joinpath("/tmp", "str_walks.txt")
-    vecs_file = joinpath("/tmp", "str_walk-vec.txt")
+    walks_file = tempname(TMP_DIR)
+    vecs_file = tempname(TMP_DIR)
     writedlm(walks_file, str_walks)
     # suppress word2vec logs
     redirect_stdout(()->word2vec(walks_file, vecs_file; verbose=false, debug=0, size=embedding_size, window=ws.window_size), open("/dev/null", "w"))

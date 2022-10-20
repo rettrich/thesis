@@ -1,3 +1,4 @@
+using Revise
 using thesis, thesis.LocalSearch, thesis.GNNs, thesis.LookaheadSearch
 using Distributions
 using Dates
@@ -29,7 +30,7 @@ parsed_args = parse_args(
     [
         ARGS..., 
         "--feature_set=EgoNet1-Struct2Vec",
-        "--neighborhood_size"
+        "--neighborhood_size=1"
     ], 
     settings)
 
