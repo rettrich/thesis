@@ -1,4 +1,4 @@
-using thesis, thesis.LocalSearch, thesis.GNNs
+using thesis, thesis.LocalSearch, thesis.GNNs, thesis.LookaheadSearch
 using Distributions
 using Dates
 using BSON
@@ -15,6 +15,10 @@ settings = ArgParseSettings()
                "Multiple features can be specified, separated by a '-' (e.g. Degree-EgoNet1-DeepWalk)."
         arg_type = String
         default = "EgoNet1"
+    "--neighborhood_size"
+        help = "Set neighborhood size for training. Neighborhood will be searched exhaustively. Only feasible for values 1, 2"
+        arg_type = Int
+        default = 1
     "--dir"
         help = "Directory where logs and models are stored"
         arg_type = String
@@ -24,7 +28,8 @@ end
 parsed_args = parse_args(
     [
         ARGS..., 
-        "--feature_set=EgoNet1-Struct2Vec"
+        "--feature_set=EgoNet1-Struct2Vec",
+        "--neighborhood_size"
     ], 
     settings)
 
@@ -52,6 +57,16 @@ function parse_feature_set(feature_string)::Vector{<:NodeFeature}
         end
     end
     feature_set
+end
+
+function parse_neighborhood_size(parsed_args)
+    if parsed_args["neighborhood_size"] == 1
+        lookahead_search = Ω_1_LookaheadSearchFunction()
+    elseif parsed_args["neighborhood_size"] == 2
+        lookahead_search = Ω_d_LookaheadSearchFunction(2)
+    else
+        error("Neighborhood size $(parsed_args["neighborhood_size"]) not supported")
+    end
 end
 
 function train_MQCP(parsed_args::Dict{String, Any})
@@ -120,7 +135,9 @@ function train_MQCP(parsed_args::Dict{String, Any})
 
     println("$run_id")
 
-    Training.train!(local_search, instance_generator, gnn; epochs=300, baseline=baseline_local_search, logger=tblogger)
+    lookahead_func = parse_neighborhood_size(parsed_args)
+
+    Training.train!(local_search, instance_generator, gnn; lookahead_func, epochs=300, baseline=baseline_local_search, logger=tblogger)
 
     BSON.@save "./$(parsed_args["dir"])/$run_id.bson" gnn
 
