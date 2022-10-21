@@ -64,7 +64,7 @@ function parse_neighborhood_size(parsed_args)
     if parsed_args["neighborhood_size"] == 1
         lookahead_search = Ω_1_LookaheadSearchFunction()
     elseif parsed_args["neighborhood_size"] == 2
-        lookahead_search = Ω_d_LookaheadSearchFunction(2)
+        lookahead_search = Ω_d_LookaheadSearchFunction_B(2)
     else
         error("Neighborhood size $(parsed_args["neighborhood_size"]) not supported")
     end
