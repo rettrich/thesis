@@ -5,7 +5,7 @@ using Graphs
 using StatsBase
 using Combinatorics
 
-export LookaheadSearchFunction, Ω_1_LookaheadSearchFunction, Ω_d_LookaheadSearchFunction
+export LookaheadSearchFunction, Ω_1_LookaheadSearchFunction, Ω_d_LookaheadSearchFunction, Ω_d_LookaheadSearchFunction_B
 
 abstract type LookaheadSearchFunction end
 
@@ -89,6 +89,14 @@ struct Ω_d_LookaheadSearchFunction <: LookaheadSearchFunction
     end
 end
 
+struct Ω_d_LookaheadSearchFunction_B <: LookaheadSearchFunction
+    d::Int
+
+    function Ω_d_LookaheadSearchFunction_B(d::Int)
+        new(d)
+    end
+end
+
 function (lookahead_search::Ω_d_LookaheadSearchFunction)(
                                         graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
                                         d_S::Union{Vector{Int}, Nothing}=nothing, 
@@ -105,6 +113,49 @@ function (lookahead_search::Ω_d_LookaheadSearchFunction)(
 
     for i = 1:lookahead_search.d
         Δuv_best, solutions = search_neighborhood_Ω_d(graph, d_S, S, V_S, i, Δuv_best, solutions)
+    end
+
+    if Δuv_best == 0
+        return obj_val, [] # S is local optimum, therefore do not return any neighboring solutions
+    else
+        if num_solutions < length(solutions)
+            solutions = sample(1:length(solutions), num_solutions; replace=false)
+        end
+        return obj_val + Δuv_best, solutions
+    end
+end
+
+function (lookahead_search::Ω_d_LookaheadSearchFunction_B)(
+    graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
+    d_S::Union{Vector{Int}, Nothing}=nothing, 
+    num_solutions=typemax(Int)::Int
+    )::Tuple{Int, Vector{Tuple}}
+    
+    d = lookahead_search.d
+    
+    d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
+    obj_val = calculate_obj(graph, S, d_S)
+
+    S = collect(S)
+
+    V_S = filter(v -> v ∉ S, vertices(graph))
+
+    d_min_vals = partialsort([d_S[i] for i in S], 1:d)
+    d_max_vals = partialsort([d_S[i] for i in V_S], 1:d; rev=true)
+    
+    lower_bound = sum(d_max_vals) - sum(d_min_vals) - d^2
+    upper_bound = lower_bound + d^2 + 2*binomial(d, 2)
+
+    if upper_bound <= 0
+        return obj_val, [] # S is local optimum, therefore do not return any neighboring solutions
+    end
+
+    Δuv_best = 0
+
+    solutions = []
+
+    for i = 1:d
+        Δuv_best, solutions = search_neighborhood_Ω_d_variant_b(graph, d_S, S, V_S, lower_bound, i, Δuv_best, solutions)
     end
 
     if Δuv_best == 0
@@ -146,6 +197,54 @@ function search_neighborhood_Ω_d(graph, initial_d_S, X, Y, d=1, current_best=0,
         end
     end
     return current_best, solutions
+end
+
+function search_neighborhood_Ω_d_variant_b(graph, d_S, X, Y, lower_bound, d=1, current_best=0, solutions=[], num_solutions=typemax(Int)::Int)    
+    total_amount = binomial(length(X), d) * binomial(length(Y), d)
+    count = 0
+    for inside in combinations(X, d), outside in combinations(Y, d)
+        count += 1
+        if  count % round(Int, total_amount / 100) == 0
+            @debug "$(round(Int, count / total_amount * 100))% done"
+        end
+        sum_outside = sum(d_S[outside[i]] for i in 1:d)
+        sum_inside = sum(d_S[inside[i]] for i in 1:d)
+        if sum_outside - sum_inside + 2*binomial(d, 2) < lower_bound
+            continue
+        end
+
+        edges_X = edges_between(graph, inside)
+        edges_Y = edges_between(graph, outside)
+        edges_X_Y = edges_between(graph, inside, outside)
+        gain = sum_outside - sum_inside + edges_Y + edges_X - edges_X_Y
+
+        if gain >= current_best
+            if gain > current_best
+                current_best = gain
+                solutions = [] # discard worse solutions
+            end
+            if length(solutions) < num_solutions
+                push!(solutions, (inside, outside)) # store solution as pair of nodes that need to be swapped
+            end
+        end
+    end
+    return current_best, solutions
+end
+
+function edges_between(graph, nodes)::Int
+    count = 0
+    for (u ,v) in combinations(nodes, 2)
+        count += Int(has_edge(graph, u, v))
+    end
+    return count
+end
+
+function edges_between(graph, nodes_1, nodes_2)::Int
+    count = 0
+    for u in nodes_1, v in nodes_2
+        count += Int(has_edge(graph, u, v))
+    end
+    return count
 end
 
 # # TODO: revisit recursive search?
