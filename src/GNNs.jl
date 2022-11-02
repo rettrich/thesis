@@ -104,7 +104,7 @@ function (factory::GATv2Conv_GNNChainFactory)(d_in::Int, dims::Vector{Int}; add_
     ff_dim = factory.ff_dim
     heads = factory.heads
 
-    gatv2_layers = (GNNChain(AddResidual(GATv2Conv(dims[i] => dims[i+1]; heads)), BatchNorm(dims[i+1])) for i in 1:(length(dims)-1))
+    gatv2_layers = (GNNChain(AddResidual(GATv2Conv(dims[i] => dims[i+1]; heads, concat=false)), BatchNorm(dims[i+1])) for i in 1:(length(dims)-1))
     
     feed_forward_sublayers = (GNNChain(AddResidual(GNNChain(Dense(dims[i+1] => ff_dim, relu), Dense(ff_dim => dims[i+1]))), BatchNorm(dims[i+1])) for i in 1:length(dims)-1)
     
@@ -203,8 +203,8 @@ struct Encoder_Decoder_GNNModel <: GNNModel
     decoder_dims::Vector{Int}
     encoder::GNNChain # more expensive gnn chain
     decoder::Chain    # linear time decoder 
-    node_features::Vector{<:NodeFeature}
-    decoder_features::Union{Nothing, Vector{<:NodeFeature}}
+    node_features::Vector{<:NodeFeature} # encoder features
+    decoder_features::Union{Nothing, Vector{<:NodeFeature}} # decoder features
     gnn_type::String
     batch_support::Bool
     loss
@@ -227,51 +227,60 @@ struct Encoder_Decoder_GNNModel <: GNNModel
         encoder = encoder_factory(d_in, encoder_dims) |> device
 
         # compute decoder input dimensions
-        decoder_in = !isnothing(decoder_features) ? sum(map(x -> length(x), decoder_features)) : 0
-        decoder_in += encoder_dims[end]*2
+        decoder_feature_len = !isnothing(decoder_features) ? sum(map(x -> length(x), decoder_features)) : 0
+        decoder_in = decoder_feature_len + encoder_dims[end]*2
 
         # decoder from node embeddings + context embedding, used to classify node
         decoder = decoder_factory(decoder_in, decoder_dims) |> device
 
         gnn_type = "$(split(string(typeof(encoder_factory)), "_")[1])-$(split(string(typeof(decoder_factory)), "_")[1])"
 
-        function loss_func_unbatched(unbatched_g::GNNGraph, S::Vector{Int})
-            node_embeddings = encoder(unbatched_g, unbatched_g.ndata.x)
-            context = repeat(mean(NNlib.gather(node_embeddings, S), dims=2), 1, nv(unbatched_g))
+        function loss_func_unbatched(g::GNNGraph, S::Vector{Int})
+            node_embeddings = encoder(g, g.ndata.x)
+            context = repeat(mean(NNlib.gather(node_embeddings, S), dims=2), 1, nv(g))
             if isnothing(decoder_features)
                 decoder_input = vcat(node_embeddings, context)
             else
-                decoder_input = vcat(node_embeddings, context, unbatched_g.ndata.decoder_features)
+                decoder_input = vcat(node_embeddings, context, g.ndata.decoder_features)
             end
             output = decoder(decoder_input) 
-            loss(vec(output), unbatched_g.ndata.y)
+            loss(vec(output), g.ndata.y)
         end
 
-        # This does not work for now, as `getgraph` is not gpu friendly at the moment: https://github.com/CarloLucibello/GraphNeuralNetworks.jl/issues/161
-        function loss_func_batched(batched_g::GNNGraph) # graphs are batched by taking union of several graphs which are all disconnected          
-            node_embeddings = encoder(batched_g, batched_g.ndata.x) # compute node embeddings for all graphs in g
+        # This does not work on the GPU for now, as `getgraph` is not gpu friendly at the moment: 
+        # https://github.com/CarloLucibello/GraphNeuralNetworks.jl/issues/161
+        function loss_func_batched(batch::GNNGraph) # graphs are batched by taking union of several graphs which are all disconnected          
+            node_embeddings = encoder(batch, batch.ndata.x) # compute node embeddings for all graphs in g
 
             offset = 0
-            context_embeddings = fill(0f0, size(node_embeddings)) # context embeddings have same size as node embeddings
+            context_size = (size(node_embeddings, 1) + decoder_feature_len, size(node_embeddings, 2))
+            context_embeddings = fill(0f0, context_size) # context embeddings have same size as node embeddings
             
-            for i in 1:batched_g.num_graphs 
-                # loop over graphs that are batched in g and compute context for each graph
+            for i in 1:batch.num_graphs 
+                g = GNNGraph(0) # make g available in current scope
+
+                # loop over graphs that are batched and compute context for each graph
                 # context is the mean of all node embeddings of vertices in candidate solution S
-                g = getgraph(batched_g, [i])
+                Flux.ChainRulesCore.@ignore_derivatives g = getgraph(batch, [i])
                 
                 # obtain column indices for features of vertices in S
-                S = filter(v -> g.in_S[v], 1:nv(g))
+                S = filter(v -> g.ndata.in_S[v]==1, 1:nv(g))
 
                 # gather mean from corresponding columns in embeddings and repeat for each node in g
-                context = repeat(mean(gather(embeddings[:, (1+offset):(nv(g)+offset)], S), dims=2), 1, nv(g))
+                context = repeat(mean(NNlib.gather(node_embeddings[:, (1+offset):(nv(g)+offset)], S), dims=2), 1, nv(g))
+
+                # append decoder features
+                if !isnothing(decoder_features)
+                    context = vcat(context, g.ndata.decoder_features)
+                end
                 
                 # write back to context embedding matrix
                 NNlib.scatter!(+, context_embeddings, context, collect((1+offset):(nv(g)+offset)))
-                offset += nv(batched_g) # increase offset, as vertices are always numbered from 1
+                offset += nv(g) # increase offset, as vertices are always numbered from 1
             end
             decoder_input = vcat(node_embeddings, context_embeddings)
             output = decoder(decoder_input) 
-            loss(vec(output), batched_g.ndata.y) 
+            loss(vec(output), batch.ndata.y) 
         end
 
         loss_func = batch_support ? loss_func_batched : loss_func_unbatched
