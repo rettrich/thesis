@@ -770,9 +770,9 @@ This process is continued, until a fixed depth $d$ is reached in the search tree
 \end{algorithm}
 
 \section{GNN Architecture}\label{sec:gnn-architecture}
-In this section we present the key components of the NN architecture used in our algorithm and justify our choices in designing said architecture. 
+In this section we present the key components of the GNN architecture used in our algorithm and justify our choices in designing said architecture. 
 The whole process of evaluating a graph $G = (V, E)$ and a candidate solution $S$ is presented by means of a small example in Figure \ref{fig:gnn-architecture}. 
-Initially, feature vectors $x_1, \dots, x_n$ are computed for all vertices in $V = \{v_1, \dots, v_n\}$, producing a feature matrix of dimension $\mathit{dim_{in}} \times |V|$, where $\mathit{dim_{in}}$ is the size of a feature vector. This feature matrix is used as input for the GNN based encoder, which consists of $l_e$ graph convolutional layers and outputs a node embedding matrix of dimension $\mathit{dim_{out}} \times |V|$. From these node embeddings, a context is computed by taking into account the current candidate solution $S$, and aggregating corresponding node embeddings by an aggregation function $\mathit{agg}$, generating a context embedding. The context embedding is concatenated to the node embeddings. The resulting matrix is used as input for the decoder, which can be realized as an MLP with a final layer $l_d$, which maps the values of the previous layer to a scalar output score by applying a sigmoid activation function. 
+Initially, feature vectors $x_1, \dots, x_n$ are computed for all vertices in $V = \{v_1, \dots, v_n\}$, producing a feature matrix of dimension $\mathit{dim_{in}} \times |V|$, where $\mathit{dim_{in}}$ is the size of a feature vector. This feature matrix is used as input for the GNN based encoder, which consists of $l_e$ graph convolutional layers and outputs a node embedding matrix of dimension $\mathit{dim_{out}} \times |V|$. From these node embeddings, a context is computed by taking into account the current candidate solution $S$, and aggregating corresponding node embeddings by an aggregation function $\mathit{agg}$, generating a context embedding. The context embedding and the $d_S$-values for the vertices in $V$ are then concatenated to the node embeddings. The resulting matrix is used as input for the decoder, which can be realized as an MLP with a final layer $l_d$, which maps the values of the previous layer to a scalar output score by applying a sigmoid activation function. 
 
 In the remaining Section we will discuss feature selection, the structure of the encoder and decoder, and the context embedding in detail. 
 
@@ -784,19 +784,19 @@ In the remaining Section we will discuss feature selection, the structure of the
 \end{sidewaysfigure}
 
 \subsection{Node Features}
-Since the node embeddings are only computed once per graph, it is essential that the computed node features represent the vertices in a meaningful way by extracting similarities and differences of vertices and their surrounding neighborhoods. More precisely, high quality features should map vertices with similar neighborhoods closer together in the feature space, whereas vertices that are very distant from each other and do not share many neighbors should be further apart. Moreover, it is essential that the chosen feature initialization method is transferrable and generalizes well on unseen graphs, as the GNN used in our algorithm is trained offline on representative problem instances that differ from the instances encountered during execution. 
+Since the node embeddings are only computed once per graph, it is essential that the computed node features represent the vertices in a meaningful way by extracting similarities and differences of vertices and their surrounding neighborhoods. More precisely, high quality features should map vertices with similar neighborhoods closer together in the feature space, whereas vertices that are very distant from each other and do not share any structural similarities should be further apart. Moreover, it is essential that the chosen feature initialization method is generalizes well on unseen graphs, as the GNN used in our algorithm is trained offline on representative problem instances that differ from the instances encountered during execution. 
 
 In \cite{Duong2019} the authors analyze the effect of different node feature initialization methods on node classification task. They distinguish between centrality based approaches (e.g. degree based initialization, number of triangles that a vertex participates in, etc), and learning-based approaches (e.g. DeepWalk \cite{Perozzi2014}, where vertices are mapped closer together, if the probability that they occur in a random walk together is higher). 
-The authors conclude that centrality-based approaches are generally not as suitable as learning-based approaches by evaluating different feature initialization approaches in a node classification setting. While methods like DeepWalk or its generalization node2vec \cite{GroverL16} seem promising, they are not suitable for our use case, as these methods are not suitable for across-network transfer learning tasks. DeepGL \cite{Rossi17a} is a feature learning framework for graphs that addresses this issue as it was designed to learn complex relational functions on graphs that transfer for across-network learning. 
+The authors conclude that centrality-based approaches are generally not as suitable as learning-based approaches by evaluating different feature initialization approaches in a node classification setting. 
 
+We therefore investigate both the application of centrality-based and learning-based feature initialization methods. 
 For centrality-based features, we evaluate the following feature initialization methods: 
 \begin{itemize}
     \item Degree initialization: Each vertex is initialized by its degree.
     \item EgoNet initialization: Given a graph $G = (V, E)$, and vertex $v \in V$, let $N(v, d)$ be the set of vertices reachable from $v$ by a path of length at most $d$. The induced subgraph $G[N(v, d)]$ is the $d$-hop-EgoNet of vertex $v$. Note that for $d=1$, $N(v, d)$ is the closed neighborhood of $v$ in $G$. We derive three features from the EgoNet of each vertex in $V$: the size $|N(v, d)|$, the number of edges in the subgraph induced by the EgoNet $|E(G[N(v, d)])|$, and the number of edges that leave $N(v, d)$, i.e. ${\{u, v\} \mid u \in N(v,d), v \notin N(v,d), \{u,v\} \in E}$.     
-    \item Pagerank initialization: The computation is done as described in \cite{page1999pagerank}. Each vertex is then initialized by its pagerank.
 \end{itemize}
 
-\fxnote{RE: Learning-based features: DeepWalk und node2vec sind nicht geeignet für across-network transfer learning tasks - Experimente mit diesen Initialisierungsmethoden waren daher erfolglos. DeepGL könnte vielversprechend sein, aber ich habe keine Implementierung gefunden - da ist es die Frage ob es den Aufwand wert ist?}
+Learning-based feature initialization models are mostly based on generating variations of random walks on the original graph or a derived graph, and then mapping vertices closer together in the feature space that often occur in these random walks together at a certain distance. Notable methods are DeepWalk \cite{Perozzi2014}, its generalization Node2Vec \cite{GroverL16} that introduces hyperparameters for the random walks, and Struct2Vec \cite{FigueiredoRS17}. Whereas DeepWalk and Node2Vec take locality and distance between vertices into account, Struct2Vec is focused on structural similarities, i.e. vertices with structurally similar neighborhoods are mapped closer together, even though they can be at a great distance in the actual graph. We therefore propose to evaluate different parameterizations of Node2Vec and Struct2Vec in the context of our algorithm. 
 
 \subsection{Encoder}
 In general, any graph convolutional network (GCN) model can be used as an encoder. We refer to Residual Gated Graph Convolutional Networks (\cite{Bresson2017}), and GATv2 networks (\cite{Velickovic2018}, \cite{Brody2021}), which we will use in our experiments. Based on these GCN models, we propose two architectures. In the following we denote by $dim_i$ the input dimension of layer $i, 0 \leq i \leq l_e$ of the network, where $l_e$ is the number of layers used in the encoder, $dim_0$ corresponds to the feature dimension of the node features, and for $1 \leq i \leq l_e$ $dim_i$ corresponds to the output dimension of layer $i$. 
@@ -821,11 +821,10 @@ where BN denotes batch normalization.
 
 We therefore propose a GCN model \textit{RG-GCN}, which makes use of these layers and is structured as follows: 
 \begin{itemize}
+    \item Layer 0: We apply a learnable linear transformation with weight matrix $A_0$ and bias vector $b_0$, these weights are shared among all vertices. 
     \item Layer 1: We apply a Gated Graph Convolutional layer that maps the feature vectors of dimension $dim_0$ to embeddings of dimension $dim_1$, followed by batch normalization.
     \item Layers 2, \dots, $l_e$: For layer $i, 2 \leq i \leq l_e$ we apply a Residual Gated Graph Convolutional layer, followed by batch normalization, mapping inputs of dimension $dim_{i-1}$ to dimension $dim_i$. 
 \end{itemize}
-
-\fxnote{RE: Vielleicht noch eine lineare Transformation (Dense layer), vor layer 1 einfügen?}
 
 \subsubsection{GATv2 Encoder}
 We build upon the work of \cite{Kool2019}, in which the authors also use the Graph Attention Network architecture:
@@ -837,16 +836,15 @@ We build upon the work of \cite{Kool2019}, in which the authors also use the Gra
         h_i^{(l)} &= \text{BN}^l(\hat{h}_i + FF^l(\hat{h}_i))
     \end{align*}
 \end{itemize}
+The authors in \cite{Kool2019} use as the MHA layer an attention mechanism which is based on the transformer architecture in \cite{VaswaniSPUJGKP17}, which we replace by the newer GATv2 layer from \cite{Brody2021}
 
 \subsection{Context}
-The context is determined by the current candidate solution $S$ and is computed by aggregating the columns of the node embedding matrix that correspond to the vertices in $S$. In general, any order invariant aggregation function $\mathit{agg} \in \{\mathit{sum, mean, max}\}$ can be used. The context is then concatenated to the node embeddings to produce inputs for the decoder. 
+The context is determined by the current candidate solution $S$ and is computed by aggregating the columns of the node embedding matrix that correspond to the vertices in $S$. In general, any order invariant aggregation function $\mathit{agg} \in \{\mathit{sum, mean, max}\}$ can be used. Furthermore, we derive features from the function $d_S$ (the $d_S$-values can of course be used, but also the mean and standard deviation of all $d_S$-values might be valuable information) and append them to the context embeddings, creating feature vectors $e_i ||c_i$ for $v_i, 1 \leq i \leq |V|$ by concatenating the context and the node embeddings. These final embeddings are used as inputs for the decoder. 
 
 \subsection{Decoder}
 The decoder is a regression model that maps the inputs obtained from the node embeddings and the context embedding to scalar values representing scores for the vertices in $V$. We suggest using a simple MLP architecture with a sigmoid activation function on the final layer, mapping the results of the previous layers to scalar values between zero and one. 
 
 As an addition to the node embeddings and the context embedding, the current $d_S$-values can also be used as decoder inputs. Furthermore, as the decoder evaluates each vertex independently, it might also be relevant to add information about the distribution of the $d_S$ values, e.g. mean and standard deviation. 
-
-\fxnote{RE: in \cite{Kool2019} wird im Decoder auch ein Attention layer verwendet, vermutlich gibt es hier noch bessere Varianten}
 
 \section{Performance}\label{sec:performance}
 
@@ -873,7 +871,7 @@ It starts by initializing an array of zeros of size $|V|$. For each vertex $u \i
     \label{alg:init-dS}
 \end{algorithm}
 
-When using the scoring function $gnn_S$, initializing the scoring function is done by computing node embeddings for each vertex in $G$. This is done by first computing node features and then computing node embeddings by passing the node features through a GNN based encoder. The time complexity of this initialization depends on the complexity of the chose node features and the structure of the GNN itself, but in general both will take $O(|V|^2)$ time on graphs that are not sparse. The argument is similar as with $d_S$, as each vertex needs to be evaluated by taking in account all its neighboring vertices. 
+When using the scoring function $gnn_S$, initializing the scoring function is done by computing node embeddings for each vertex in $G$. This is done by first computing node features and then computing node embeddings by passing the node features through a GNN based encoder. The time complexity of this initialization depends on the complexity of the chose node features and the structure of the GNN itself, but in general both will take $O(|V|^2)$ time on graphs that are not sparse. The argument is similar as with $d_S$, as each vertex needs to be evaluated by taking into account all its neighboring vertices. 
 The advantage when using a GNN based scoring function is that this initialization process has to be done only once per graph, and not every time a new candidate solution is generated by the construction heuristic. In subsequent restarts of the local search procedure, only the linear time decoder has to be applied. 
 
 Since initialization is only done once per graph or once per restart of the local search procedure, the runtime should not have a great impact on the performance of the algorithm. Therefore, especially with a GNN based scoring function, this time should be used by utilizing an encoder of high enough complexity to produce high quality node embeddings. 
@@ -889,7 +887,7 @@ with $d_{\min} = \min_{u \in S} d_S(u), d_{\max} = \max_{v \in V \setminus S}$.
 If the swap $u \in S,v \in V \setminus S$ maximizes the gain of the candidate solution, this method of restricting the neighborhood guarantees that $u \in X, v \in Y$.
 While this method produces restricted neighborhoods of variable size, these neighborhoods are usually small and thus can be searched efficiently in practice. In general however, the size of the sets $X, Y$ can be in $O(|V|)$ in the worst case. 
 
-Using the scoring function $\mathit{gnn}_S$, we don't have a guarantee that the swap that maximizes the gain lies among the lowest-scoring vertices in $S$ and the highest-scoring vertices in $V \setminus S$. Moreover, we might not even want to consider such a swap, as the scoring function was trained to search greater neighborhoods than $\Omega_1$, and the swap that maximizes the gain does not lead to the best neighboring solution. We therefore propose to use a restricted candidate sets $X,Y$ of a fixed size $k$, where $X$ consists of the $k$ lowest-scoring vertices in $S$, and $Y$ consists of the $k$ highest-scoring vertices in $V \setminus S$. This guarantees that searching the neighborhood takes a fixed amount of time. 
+Using the scoring function $\mathit{gnn}_S$, we do not have a guarantee that the swap that maximizes the gain lies among the lowest-scoring vertices in $S$ and the highest-scoring vertices in $V \setminus S$. Moreover, we might not even want to consider such a swap, as the scoring function was trained to search greater neighborhoods than $\Omega_1$, and the swap that maximizes the gain does not lead to the best neighboring solution. We therefore propose to use restricted candidate sets $X,Y$ of a fixed size $k$, where $X$ consists of the $k$ lowest-scoring vertices in $S$, and $Y$ consists of the $k$ highest-scoring vertices in $V \setminus S$. This guarantees that searching the neighborhood takes a fixed amount of time. 
 Obtaining the $k$ highest or lowest scoring vertices can be done in time $O(k |V|)$, which is linear for fixed $k$, but is still more expensive than generating a restricted neighborhood for the scoring function $d_S$. As the restricted neighborhood is searched in every iteration of the local search procedure, its size can therefore also have a great impact on the runtime. It is therefore essential to determine a neighborhood size that strikes a good balance between efficiency and quality of neighboring solutions found in the neighborhood.  
 
 
