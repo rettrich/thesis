@@ -97,9 +97,9 @@ function train_MQCP(parsed_args::Dict{String, Any})
     feature_set = parse_feature_set(parsed_args["feature_set"])
 
     gnn = Encoder_Decoder_GNNModel([64, 64, 64], [32, 32]; 
-                                   encoder_factory=GATv2Conv_GNNChainFactory(128), 
+                                   encoder_factory=GATv2Conv_GNNChainFactory(128, 4), 
                                    node_features=feature_set, 
-                                   decoder_features=[d_S_NodeFeature()]
+                                   decoder_features=[d_S_NodeFeature()],
                                    )
     scoring_function = Encoder_Decoder_ScoringFunction(gnn, 20)
 
@@ -138,7 +138,7 @@ function train_MQCP(parsed_args::Dict{String, Any})
 
     lookahead_func = parse_neighborhood_size(parsed_args)
 
-    Training.train!(local_search, instance_generator, gnn; lookahead_func, epochs=300, baseline=baseline_local_search, logger=tblogger)
+    Training.train!(local_search, instance_generator, gnn; lookahead_func, epochs=200, baseline=baseline_local_search, logger=tblogger)
 
     BSON.@save "./$(parsed_args["dir"])/$run_id.bson" gnn
 

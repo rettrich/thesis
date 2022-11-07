@@ -5,7 +5,8 @@ using Graphs
 using StatsBase
 using Combinatorics
 
-export LookaheadSearchFunction, Ω_1_LookaheadSearchFunction, Ω_d_LookaheadSearchFunction, Ω_d_LookaheadSearchFunction_B
+export LookaheadSearchFunction, Ω_1_LookaheadSearchFunction, Ω_d_LookaheadSearchFunction, Ω_d_LookaheadSearchFunction_B,
+        BeamSearch_LookaheadSearchFunction, use_scoring_vector
 
 abstract type LookaheadSearchFunction end
 
@@ -26,6 +27,14 @@ swapping the nodes in `in_nodes ∈ S` with the nodes in `out_nodes ∈ V ∖ S`
     error("Abstract (::LookaheadSearchFunction)(graph::SimpleGraph, S::Set{Int}) called")
 
 """
+    use_scoring_vector(::LookaheadSearchFunction)
+
+Returns a boolean indicating whether a scoring vector should be supplied when evaluating a candidate solution. 
+For now only used in `BeamSearch_LookaheadSearchFunction`, when the order of node expansion is determined by a scoring vector. 
+"""
+use_scoring_vector(::LookaheadSearchFunction) = false
+
+"""
     Ω_1_LookaheadSearchFunction
 
 Searches the Ω_1 neighborhood exhaustively and returns the neighboring solution(s) with
@@ -38,7 +47,7 @@ Base.show(io::IO, ::Ω_1_LookaheadSearchFunction) = print(io, "Ω_1_LookaheadSea
 
 function (::Ω_1_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
                                          d_S::Union{Vector{Int}, Nothing}=nothing, 
-                                         num_solutions=typemax(Int)::Int
+                                         num_solutions::Int=typemax(Int)
                                          )::Tuple{Int, Vector{Tuple}}
     d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
     obj_val = calculate_obj(graph, S, d_S)
@@ -62,7 +71,9 @@ function (::Ω_1_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vect
                 Δuv_best = Δuv
                 solutions = [] # discard worse solutions
             end
-            push!(solutions, ([u], [v])) # store solution as pair of nodes that need to be swapped, (u ∈ S, v ∈ V∖S)
+            if length(solutions) < num_solutions
+                push!(solutions, ([u], [v])) # store solution as pair of nodes that need to be swapped, (u ∈ S, v ∈ V∖S)
+            end
         end
     end
 
@@ -100,7 +111,7 @@ end
 function (lookahead_search::Ω_d_LookaheadSearchFunction)(
                                         graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
                                         d_S::Union{Vector{Int}, Nothing}=nothing, 
-                                        num_solutions=typemax(Int)::Int
+                                        num_solutions::Int=typemax(Int)
                                         )::Tuple{Int, Vector{Tuple}}
     d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
     obj_val = calculate_obj(graph, S, d_S)
@@ -128,7 +139,7 @@ end
 function (lookahead_search::Ω_d_LookaheadSearchFunction_B)(
     graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
     d_S::Union{Vector{Int}, Nothing}=nothing, 
-    num_solutions=typemax(Int)::Int
+    num_solutions::Int=typemax(Int)
     )::Tuple{Int, Vector{Tuple}}
     
     d = lookahead_search.d
@@ -204,7 +215,7 @@ function search_neighborhood_Ω_d_variant_b(graph, d_S, X, Y, lower_bound, d=1, 
     count = 0
     for inside in combinations(X, d), outside in combinations(Y, d)
         count += 1
-        if  count % round(Int, total_amount / 100) == 0
+        if  count % round(Int, total_amount / 10) == 0
             @debug "$(round(Int, count / total_amount * 100))% done"
         end
         sum_outside = sum(d_S[outside[i]] for i in 1:d)
@@ -252,27 +263,46 @@ end
 #     error("Not implemented")
 # end
 
-# """
-#     BeamSearch_LookaheadSearchFunction
+"""
+    BeamSearch_LookaheadSearchFunction
 
-# Interface for beam search lookahead search
+Interface for beam search lookahead search
 
-# """
-# struct BeamSearch_LookaheadSearchFunction <: LookaheadSearchFunction
-#     d::Int
-#     α::Int
-#     β::Int
+- `d`: Maximum depth of the beam search tree
+- `α`: Each node is expanded into at most α² nodes
+- `β`: Beam width
+- `use_scoring_vector`: Determine visited child nodes by evaluating only nodes with 
+    high scores according to a scoring vector
 
-#     function BeamSearch_LookaheadSearchFunction(d::Int, α::Int, β::Int)
-#         new(d, α, β)
-#     end
-# end
+"""
+struct BeamSearch_LookaheadSearchFunction <: LookaheadSearchFunction
+    d::Int
+    α::Int
+    β::Int
+    use_scoring_vector::Bool
 
-# (bs::BeamSearch_LookaheadSearchFunction)(graph::SimpleGraph, S::Set{Int}) =
-#     beam_search(graph, S, bs.d; bs.α, bs.β)
 
-##################################    Beam Search    ###############################################
+    function BeamSearch_LookaheadSearchFunction(d::Int, α::Int, β::Int; use_scoring_vector::Bool=false)
+        new(d, α, β, use_scoring_vector)
+    end
+end
 
+use_scoring_vector(x::BeamSearch_LookaheadSearchFunction) = x.use_scoring_vector
+
+# (lookahead_search::Ω_d_LookaheadSearchFunction_B)(
+#     graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
+#     d_S::Union{Vector{Int}, Nothing}=nothing, 
+#     num_solutions=typemax(Int)::Int
+#     )::Tuple{Int, Vector{Tuple}}
+
+function (bs::BeamSearch_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}},
+                                                  d_S::Union{Vector{Int}, Nothing}=nothing, 
+                                                  num_solutions::Int=10
+                                                  )::Tuple{Int, Vector{Tuple}}
+    scores = nothing
+    (bs.use_scoring_vector && isnothing(scores)) && error("use_scoring_vector is $(bs.use_scoring_vector) but scores is $scores")
+    return beam_search(graph, S, bs.d, d_S; bs.α, bs.β, scores, num_solutions)
+end
 """
     Node
 
@@ -310,53 +340,50 @@ Performs a beam search to find a neighboring solution that (approximately) maxim
 - `α`: A node is expanded into at most `α`² child nodes: The worst α nodes in the candidate_solution
         and the best α nodes outside the candidate solution are considered for swapping
 - `β`: Beam width. On each level of the beam search tree, only the best β nodes are kept.
+- `scores`: If this optional score vector for vertices in `g` is given, the swaps for expansion into child nodes 
+        are chosen according to these scores instead of d_S.
+- `num_solutions`: Return up to `num_solutions` best solutions if there are multiple best solutions with 
+        equal objective value. 
 
 """
-function beam_search(g::SimpleGraph, candidate_solution::Set{Int}, d::Int; α::Int=10, β::Int=10)
-    candidate_solution = copy(candidate_solution) # set of nodes in candidate solution
+function beam_search(g::SimpleGraph, candidate_solution::Union{Vector{Int}, Set{Int}}, d::Int, d_S::Union{Nothing, Vector{Int}}=nothing; 
+                     α::Int=10, β::Int=10, scores::Union{Nothing, Vector{Float32}}=nothing, num_solutions::Int = 10)
+    if typeof(candidate_solution) <: Vector
+        candidate_solution = Set(candidate_solution) # set of nodes in candidate solution
+    end
     V_S = Set(setdiff(vertices(g), candidate_solution)) # remaining vertices in V(G)
-    d_S = calculate_d_S(g, candidate_solution) # number of neighbors in candidate solution for each node
+    d_S = isnothing(d_S) ? calculate_d_S(g, candidate_solution) : d_S
     obj = calculate_obj(g, candidate_solution, d_S) # objective value of candidate solution
 
     # to prevent duplicate solutions during search, store each node (defined by node.in and node.out) in hash map
     visited_solutions = Set{Node}()
 
     root = Node(obj, Set(), Set()) # root of BS tree
-    max_node = root
+    max_nodes = [root]
     beam = [root]
 
     while !isempty(beam) && d > 0
         d -= 1
         children = Node[]
         for node in beam
-            children = vcat(children, expand(g, candidate_solution, V_S, node, visited_solutions; α))
+            new_children, max_nodes = expand(g, candidate_solution, d_S, max_nodes, V_S, node, visited_solutions; α, scores, num_solutions)
+            children = vcat(children, new_children)
         end
 
         beam = partialsort(children, 1:min(β, length(children)), rev=true)
-
-        if !isempty(beam)
-            max_beam = beam[1]
-            if max_beam > max_node
-                max_node = max_beam
-            end
-        end
     end
 
     @debug "visited $(length(visited_solutions)) solutions"
 
     # obtain solution from node
-    return get_solution(candidate_solution, max_node)
+    return max_nodes[1].obj_val, map(x -> get_solution(x), max_nodes)
 end
 
-function get_solution(candidate_solution::Set{Int}, node::Node)
-    for (u,v) in zip(node.in, node.out)
-        push!(candidate_solution, u)
-        delete!(candidate_solution, v)
-    end
-    return node.obj_val, candidate_solution
+function get_solution(node::Node)
+    return (collect(node.in), collect(node.out))
 end
 
-function update_candidate_solution!(candidate_solution::Set{Int}, V_S::Set{Int}, node::Node; rev::Bool=false)
+function update_candidate_solution!(g::SimpleGraph, candidate_solution::Set{Int}, d_S::Vector{Int}, V_S::Set{Int}, node::Node; rev::Bool=false)
     if !rev
         swap_history = zip(node.in, node.out)
     else
@@ -364,10 +391,11 @@ function update_candidate_solution!(candidate_solution::Set{Int}, V_S::Set{Int},
     end
 
     for (u,v) in swap_history
-        push!(candidate_solution, u)
-        push!(V_S, v)
-        delete!(V_S, u)
-        delete!(candidate_solution, v)
+        push!(candidate_solution, v)
+        push!(V_S, u)
+        delete!(V_S, v)
+        delete!(candidate_solution, u)
+        update_d_S!(g, u, v, d_S)
     end
 end
 
@@ -386,37 +414,51 @@ a node in the solution that corresponds to the node with a node outside of the s
 - `α`: Considere only up to α² swaps: Swap α worst nodes in current candidate solution with α
     best nodes outside
 """
-function expand(g::AbstractGraph, candidate_solution::Set{Int},
+function expand(g::AbstractGraph, candidate_solution::Set{Int}, d_S::Vector{Int}, max_nodes::Vector{Node},
                 V_S::Set{Int}, node::Node, visited_solutions::Set{Node};
-                α::Int=10) :: Vector{Node}
+                α::Int=10, scores::Union{Nothing, Vector{Float32}}=nothing, num_solutions::Int=10) :: Tuple{Vector{Node}, Vector{Node}}
     # step into candidate solution
-    update_candidate_solution!(candidate_solution, V_S, node)
-    d_S = calculate_d_S(g, candidate_solution)
+    update_candidate_solution!(g, candidate_solution, d_S, V_S, node)
 
-    restricted_V_S = filter(v -> v ∉ node.out, V_S)
-    restricted_candidate_solution = filter(v -> v ∉ node.in, candidate_solution)
+    restricted_V_S = collect(filter(v -> v ∉ node.in, V_S)) # remove vertices that have already been swapped out
+    restricted_S = collect(filter(v -> v ∉ node.out, candidate_solution)) # remove vertices already swapped in
 
-    d_S_V_S = [((i in restricted_V_S) ? d_S[i] : -1) for i=vertices(g)]
-    d_S_candidate_solution = [((i in restricted_candidate_solution) ? d_S[i] : nv(g)) for i=vertices(g)]
+    # select candidates for expansion according to d_S if no gnn scores are given, otherwise use gnn scores
+    if isnothing(scores)
+        scores_V_S = [(d_S[i], i) for i in restricted_V_S]
+        scores_S = [(d_S[i], i) for i in restricted_S]
+    else
+        scores_V_S = [(scores[i], i) for i in restricted_V_S]
+        scores_S = [(scores[i], i) for i in restricted_S]
+    end
 
-    candidates_V_S = partialsortperm(d_S_V_S, 1:min(α, length(restricted_V_S)); rev=true)
-    candidates_c_s = partialsortperm(d_S_candidate_solution, 1:min(α, length(restricted_candidate_solution)))
+    candidates_V_S = map(x -> x[2], partialsort(scores_V_S, 1:min(α, length(scores_V_S)); by=first, rev=true))
+    candidates_S = map(x -> x[2], partialsort(scores_S, 1:min(α, length(scores_S)); by=first))
 
     expanded_children = Node[]
 
-    for u in candidates_c_s, v in candidates_V_S
+    # expand into all possible swaps that are not visited yet
+    for u in candidates_S, v in candidates_V_S
         gain = d_S[v] - d_S[u] - has_edge(g, u, v)
-        in_set = Set([copy(node.in)..., v])
-        out_set = Set([copy(node.out)..., u])
+        in_set = Set([copy(node.in)..., u])
+        out_set = Set([copy(node.out)..., v])
         child_node = Node(node.obj_val + gain, in_set, out_set)
         if child_node ∉ visited_solutions
-            push!(visited_solutions, child_node)
-            push!(expanded_children, child_node)
+            push!(visited_solutions, child_node) # add to visited solutions, so it is not expanded again
+            push!(expanded_children, child_node) # add to next level of beam search
+            if child_node >= max_nodes[1]
+                if child_node > max_nodes[1]
+                    max_nodes = []
+                end
+                if length(max_nodes) < num_solutions
+                    push!(max_nodes, child_node)
+                end
+            end
         end
     end
 
-    update_candidate_solution!(candidate_solution, V_S, node; rev=true)
-    return expanded_children
+    update_candidate_solution!(g, candidate_solution, d_S, V_S, node; rev=true) # reverse effects of computation 
+    return expanded_children, max_nodes
 end
 
 function calc_UB(d_S, d, k)

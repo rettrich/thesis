@@ -1,13 +1,13 @@
 abstract type NodeFeature end
 
 """
-    (::NodeFeature)(graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}, Nothing} = nothing)
+    (::NodeFeature)(graph::AbstractGraph, S::Union{Vector{Int}, Set{Int}, Nothing} = nothing)
 
 Compute some node feature of a `graph` and optional candidate solution `S` and return it as a vector 
 of length of `vertices(graph)`. 
 
 """
-(::NodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing)::Vector{Float32} = error("NodeFeature: Abstract functor called")
+(::NodeFeature)(graph::AbstractGraph, S = nothing, d_S = nothing)::Vector{Float32} = error("NodeFeature: Abstract functor called")
 
 """
     Base.length(::NodeFeature)
@@ -19,7 +19,7 @@ Base.length(::NodeFeature) = error("NodeFeature: Abstract length called")
 
 struct DegreeNodeFeature <: NodeFeature end
 
-(::DegreeNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) = Float32.(degree(graph)./nv(graph))'
+(::DegreeNodeFeature)(graph::AbstractGraph, S = nothing, d_S = nothing) = Float32.(degree(graph)./nv(graph))'
 
 Base.length(::DegreeNodeFeature) = 1
 
@@ -32,7 +32,7 @@ struct d_S_NodeFeature <: NodeFeature
     end
 end
 
-function (d_S_nf::d_S_NodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing)  
+function (d_S_nf::d_S_NodeFeature)(graph::AbstractGraph, S = nothing, d_S = nothing)  
     features = d_S'
     if d_S_nf.add_mean
         features = vcat(features, repeat([mean(d_S)], 1, length(d_S)))
@@ -80,7 +80,7 @@ struct Struct2VecNodeFeature <: RepresentationLearningNodeFeature
     end
 end
 
-function (nf::RepresentationLearningNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing)
+function (nf::RepresentationLearningNodeFeature)(graph::AbstractGraph, S = nothing, d_S = nothing)
     if Sys.iswindows()
         learn_embeddings(nf.rws, graph; nf.embedding_size, nf.walks_per_node)
     else
@@ -103,7 +103,7 @@ struct EgoNetNodeFeature <: NodeFeature
     end
 end
 
-function (enf::EgoNetNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing)
+function (enf::EgoNetNodeFeature)(graph::AbstractGraph, S = nothing, d_S = nothing)
     features = []
     n = nv(graph)
     m = ne(graph)
@@ -141,7 +141,7 @@ struct PageRankNodeFeature <: NodeFeature end
 
 Base.length(::PageRankNodeFeature) = 1
 
-function (::PageRankNodeFeature)(graph::SimpleGraph, S = nothing, d_S = nothing) 
+function (::PageRankNodeFeature)(graph::AbstractGraph, S = nothing, d_S = nothing) 
     Float32.(pagerank(graph)')
 end
 

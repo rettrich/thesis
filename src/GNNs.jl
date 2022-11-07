@@ -15,7 +15,7 @@ export GNNModel, SimpleGNN, Encoder_Decoder_GNNModel, compute_node_features, dev
     PageRankNodeFeature, Node2VecNodeFeature, Struct2VecNodeFeature, 
     get_feature_list, get_decoder_features,
     GNNChainFactory, ResGatedGraphConv_GNNChainFactory, GATv2Conv_GNNChainFactory,
-    batch_support
+    batch_support, evaluate
 
 # no trailing commas in export!
 
@@ -295,6 +295,43 @@ Flux.params(gnn::Encoder_Decoder_GNNModel) = Flux.params(gnn.encoder, gnn.decode
 
 Base.show(io::IO, ::MIME"text/plain", x::Encoder_Decoder_GNNModel) = 
     print(io, "$(x.gnn_type)-$(x.d_in)-$(join(x.encoder_dims, "-"))-$(join(x.decoder_dims, "-"))")
+
+encode(gnn::Encoder_Decoder_GNNModel, graph::GNNGraph, embeddings::AbstractMatrix) = gnn.encoder(graph, embeddings)
+
+add_context(embeddings::AbstractMatrix, S) = vcat(embeddings, repeat(mean(gather(embeddings, S), dims=2), 1, size(embeddings, 2)))
+
+function decode(gnn::Encoder_Decoder_GNNModel, graph::GNNGraph, embeddings::AbstractMatrix, S, d_S)
+    decoder_feature_list = get_decoder_features(gnn)
+    if !isnothing(decoder_feature_list)
+        decoder_features = compute_node_features(decoder_feature_list, graph, S, d_S)
+        embeddings = vcat(embeddings, decoder_features)
+    end
+    return gnn.decoder(embeddings)
+end
+
+"""
+    evaluate(gnn::GNNModel, graph, embeddings, S, d_S)
+
+Simulates a run through the GNN by providing node embeddings and a candidate solution for a graph.
+
+"""
+evaluate(gnn::GNNModel, graph::GNNGraph, embeddings::AbstractMatrix, S::Union{Vector{Int}, Set{Int}}, d_S::Vector{Int}) = 
+    error("Evaluate called on abstract GNNModel")
+
+
+"""
+    evaluate(gnn::Encoder_Decoder_GNNModel, graph, embeddings, S, d_S)
+
+Simulates a run through the entire Encoder/Decoder architecture: The encoder is run on the feature embeddings, then the context is computed 
+and finally the decoder features are added and the embeddings are run evaluated by the decoder. 
+Returns a vector of scores for the vertices in the graph. 
+
+"""
+function evaluate(gnn::Encoder_Decoder_GNNModel, graph::GNNGraph, embeddings::AbstractMatrix, S::Union{Vector{Int}, Set{Int}}, d_S::Vector{Int})
+    node_embeddings = add_context(encode(gnn, graph, embeddings), S)
+    return decode(gnn, graph, node_embeddings, S, d_S)
+end
+
 
 """
 

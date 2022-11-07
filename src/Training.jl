@@ -6,13 +6,15 @@ using thesis
 using Distributions
 using DataStructures
 using Statistics
+using StatsBase
 using Flux
 using thesis.LookaheadSearch
 using thesis.Instances: generate_instance
 using thesis.LocalSearch: run_lsbmh, LocalSearchBasedMH, sample_candidate_solutions
-using thesis.GNNs: GNNModel, device, NodeFeature, get_feature_list, batch_support, get_decoder_features
+using thesis.GNNs: GNNModel, device, NodeFeature, get_feature_list, batch_support, get_decoder_features, evaluate
 using Printf
 using Logging, TensorBoardLogger
+using BSON
 
 export TrainingSample, ReplayBuffer,
        add_to_buffer!, get_data, create_sample,
@@ -72,8 +74,9 @@ by using `lookahead_func`
 """
 function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, S::Set{Int}, 
                         lookahead_func::LookaheadSearchFunction, node_features::AbstractMatrix,
-                        decoder_features::Union{Nothing, Vector{<:NodeFeature}}=nothing)
-    sample, is_local_optimum = create_sample(g, S, lookahead_func, node_features, decoder_features)
+                        decoder_features::Union{Nothing, Vector{<:NodeFeature}}=nothing,
+                        gnn::Union{GNNModel, Nothing}=nothing)
+    sample, is_local_optimum = create_sample(g, S, lookahead_func, node_features, decoder_features, gnn)
 
     pushfirst!(buffer.buffer, sample)
 
@@ -99,10 +102,11 @@ them to the buffer.
 """
 function add_to_buffer!(buffer::ReplayBuffer, g::SimpleGraph, Ss::Vector{Set{Int}}, 
                         lookahead_func::LookaheadSearchFunction, node_features::AbstractMatrix,
-                        decoder_features::Union{Nothing, Vector{<:NodeFeature}}=nothing)
+                        decoder_features::Union{Nothing, Vector{<:NodeFeature}}=nothing,
+                        gnn::Union{GNNModel, Nothing}=nothing)
     local_optima = 0
     for S in Ss
-        is_local_optimum = add_to_buffer!(buffer, g, S, lookahead_func, node_features, decoder_features)
+        is_local_optimum = add_to_buffer!(buffer, g, S, lookahead_func, node_features, decoder_features, gnn)
         is_local_optimum && (local_optima += 1)
     end
     return local_optima
@@ -135,6 +139,7 @@ function create_sample(graph::SimpleGraph{Int},
                        lookahead_func::LookaheadSearchFunction,
                        node_features::AbstractMatrix,
                        decoder_features::Union{Nothing, Vector{<:NodeFeature}}=nothing,
+                       gnn::Union{GNNModel, Nothing}=nothing,
                        )::Tuple{TrainingSample, Bool}
     if typeof(S) <: Set{Int}
         S_vec = collect(S)
@@ -145,7 +150,15 @@ function create_sample(graph::SimpleGraph{Int},
     d_S = thesis.LocalSearch.calculate_d_S(graph, S)
 
     # use lookahead function to obtain best neighboring solutions
-    obj_val, solutions = lookahead_func(graph, S, d_S)
+    if isnothing(gnn)
+        obj_val, solutions = lookahead_func(graph, S, d_S)
+    else
+        gnn_g = GNNGraph(graph)
+        gnn_g = add_self_loops(gnn_g)
+        scores = evaluate(gnn, gnn_g, embeddings, S, d_S)
+        obj_val, solutions = lookahead_func(graph, S, d_S; scores)
+    end
+    
     targets = fill(0.0f0, nv(graph))
 
     in_S = fill(0, nv(graph))
@@ -351,6 +364,13 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
         GC.gc() # maybe this helps with memory errors?
 
     end
+
+
+    # idxs = sample(1:length(buffer), 1000; replace=false)
+    # training_samples = collect(buffer.buffer)[idxs] # write samples to file
+    # BSON.@save "training_samples.bson" training_samples
+    
+
 end
 
 
