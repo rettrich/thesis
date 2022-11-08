@@ -165,7 +165,7 @@ function (lookahead_search::Ω_d_LookaheadSearchFunction_B)(
     )::Tuple{Int, Vector{Tuple}}
     
     d = lookahead_search.d
-    k′ = lookahead_search.k′
+    k′ = (lookahead_search.k′ > 0) ? lookahead_search.k′ : typemax(Int)
     
     d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
     obj_val = calculate_obj(graph, S, d_S)
@@ -175,18 +175,18 @@ function (lookahead_search::Ω_d_LookaheadSearchFunction_B)(
 
     # select candidates for expansion according to d_S if no gnn scores are given, otherwise use gnn scores
     if isnothing(scores)
-        scores_V_S = [(d_S[i], i) for i in S]
-        scores_S = [(d_S[i], i) for i in V_S]
+        scores_V_S = [(d_S[i], i) for i in V_S]
+        scores_S = [(d_S[i], i) for i in S]
     else
-        scores_V_S = [(scores[i], i) for i in restricted_V_S]
-        scores_S = [(scores[i], i) for i in restricted_S]
+        scores_V_S = [(scores[i], i) for i in V_S]
+        scores_S = [(scores[i], i) for i in S]
     end
 
     candidates_V_S = map(x -> x[2], partialsort(scores_V_S, 1:min(k′, length(scores_V_S)); by=first, rev=true))
     candidates_S = map(x -> x[2], partialsort(scores_S, 1:min(k′, length(scores_S)); by=first))
 
-    d_min_vals = partialsort([d_S[i] for i in candidates_S], 1:min(d, length(candidates_S)))
-    d_max_vals = partialsort([d_S[i] for i in candidates_V_S], 1:min(d, length(candidates_V_S)); rev=true)
+    d_min_vals = partialsort([d_S[i] for i in S], 1:min(d, length(S)))
+    d_max_vals = partialsort([d_S[i] for i in V_S], 1:min(d, length(V_S)); rev=true)
 
     Δuv_best = 0
 
