@@ -21,9 +21,16 @@ Neighboring solutions are returned as a vector of tuples `(in_nodes, out_nodes)`
 in order to be space efficient; a neighboring solution can be reconstructed by
 swapping the nodes in `in_nodes ∈ S` with the nodes in `out_nodes ∈ V ∖ S`.
 
+- `graph`: The input graph
+- `S`: The current candidate solution
+- `d_S`: d_S values for vertices in `graph` (optional)
+- `num_solutions`: Return at most `num_solutions` solutions if there are more than one
+- `scores`: Optional scoring vector of vertices in `graph` to restrict neighborhood based on best scoring vertices
+
 """
 (::LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
-                            d_S::Union{Vector{Int}, Nothing}=nothing, num_solutions=typemax(Int)::Int)::Tuple{Int, Vector{Tuple}} =
+                            d_S::Union{Vector{Int}, Nothing}=nothing, num_solutions=typemax(Int)::Int, 
+                            scores::Union{Nothing, Vector{Float32}}=nothing)::Tuple{Int, Vector{Tuple}} =
     error("Abstract (::LookaheadSearchFunction)(graph::SimpleGraph, S::Set{Int}) called")
 
 """
@@ -47,7 +54,8 @@ Base.show(io::IO, ::Ω_1_LookaheadSearchFunction) = print(io, "Ω_1_LookaheadSea
 
 function (::Ω_1_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
                                          d_S::Union{Vector{Int}, Nothing}=nothing, 
-                                         num_solutions::Int=typemax(Int)
+                                         num_solutions::Int=typemax(Int),
+                                         scores::Union{Nothing, Vector{Float32}}=nothing
                                          )::Tuple{Int, Vector{Tuple}}
     d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
     obj_val = calculate_obj(graph, S, d_S)
@@ -100,18 +108,31 @@ struct Ω_d_LookaheadSearchFunction <: LookaheadSearchFunction
     end
 end
 
+"""
+    Ω_d_LookaheadSearchFunction
+
+Searches the neighborhoods Ω_1, ... , Ω_d exhaustively and returns the neighboring solutions with
+the highest objective value. For Ω_1 neighborhood, use
+`Ω_1_LookaheadSearchFunction`, as it is optimized for that specific neighborhood.
+
+- `d`: Maximum size of the neighborhood (inspect neighboring solutions at a distance of at most `d` swaps)
+- `k′`: Restrict the neigborhoods to sets X ⊆ S, Y ⊆ V∖S with |X| ≤ `k′`, |Y| ≤ `k′`. Disabled if k′ < 1.
+
+"""
 struct Ω_d_LookaheadSearchFunction_B <: LookaheadSearchFunction
     d::Int
+    k′::Int
 
-    function Ω_d_LookaheadSearchFunction_B(d::Int)
-        new(d)
+    function Ω_d_LookaheadSearchFunction_B(d::Int, k′::Int=0)
+        new(d, k′)
     end
 end
 
 function (lookahead_search::Ω_d_LookaheadSearchFunction)(
                                         graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
                                         d_S::Union{Vector{Int}, Nothing}=nothing, 
-                                        num_solutions::Int=typemax(Int)
+                                        num_solutions::Int=typemax(Int),
+                                        scores::Union{Nothing, Vector{Float32}}=nothing
                                         )::Tuple{Int, Vector{Tuple}}
     d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
     obj_val = calculate_obj(graph, S, d_S)
@@ -139,34 +160,45 @@ end
 function (lookahead_search::Ω_d_LookaheadSearchFunction_B)(
     graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
     d_S::Union{Vector{Int}, Nothing}=nothing, 
-    num_solutions::Int=typemax(Int)
+    num_solutions::Int=typemax(Int), 
+    scores::Union{Nothing, Vector{Float32}}=nothing,
     )::Tuple{Int, Vector{Tuple}}
     
     d = lookahead_search.d
+    k′ = lookahead_search.k′
     
     d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
     obj_val = calculate_obj(graph, S, d_S)
 
     S = collect(S)
-
     V_S = filter(v -> v ∉ S, vertices(graph))
 
-    d_min_vals = partialsort([d_S[i] for i in S], 1:d)
-    d_max_vals = partialsort([d_S[i] for i in V_S], 1:d; rev=true)
-    
-    lower_bound = sum(d_max_vals) - sum(d_min_vals) - d^2
-    upper_bound = lower_bound + d^2 + 2*binomial(d, 2)
-
-    if upper_bound <= 0
-        return obj_val, [] # S is local optimum, therefore do not return any neighboring solutions
+    # select candidates for expansion according to d_S if no gnn scores are given, otherwise use gnn scores
+    if isnothing(scores)
+        scores_V_S = [(d_S[i], i) for i in S]
+        scores_S = [(d_S[i], i) for i in V_S]
+    else
+        scores_V_S = [(scores[i], i) for i in restricted_V_S]
+        scores_S = [(scores[i], i) for i in restricted_S]
     end
+
+    candidates_V_S = map(x -> x[2], partialsort(scores_V_S, 1:min(k′, length(scores_V_S)); by=first, rev=true))
+    candidates_S = map(x -> x[2], partialsort(scores_S, 1:min(k′, length(scores_S)); by=first))
+
+    d_min_vals = partialsort([d_S[i] for i in candidates_S], 1:min(d, length(candidates_S)))
+    d_max_vals = partialsort([d_S[i] for i in candidates_V_S], 1:min(d, length(candidates_V_S)); rev=true)
 
     Δuv_best = 0
 
     solutions = []
 
     for i = 1:d
-        Δuv_best, solutions = search_neighborhood_Ω_d_variant_b(graph, d_S, S, V_S, lower_bound, i, Δuv_best, solutions)
+        lower_bound = sum(d_max_vals[1:i]) - sum(d_min_vals[1:i]) - i^2
+        upper_bound = lower_bound + i^2 + 2*binomial(i, 2)
+        if upper_bound <= 0
+            continue # S is local optimum with respect to Ω_i, therefore skip searching the neighborhood
+        end
+        Δuv_best, solutions = search_neighborhood_Ω_d_variant_b(graph, d_S, candidates_S, candidates_V_S, lower_bound, i, Δuv_best, solutions)
     end
 
     if Δuv_best == 0
@@ -210,9 +242,10 @@ function search_neighborhood_Ω_d(graph, initial_d_S, X, Y, d=1, current_best=0,
     return current_best, solutions
 end
 
-function search_neighborhood_Ω_d_variant_b(graph, d_S, X, Y, lower_bound, d=1, current_best=0, solutions=[], num_solutions=typemax(Int)::Int)    
+function search_neighborhood_Ω_d_variant_b(graph, d_S, X, Y, initial_lower_bound, d=1, current_best=0, solutions=[], num_solutions=typemax(Int)::Int)    
     total_amount = binomial(length(X), d) * binomial(length(Y), d)
     count = 0
+    lower_bound = initial_lower_bound
     for inside in combinations(X, d), outside in combinations(Y, d)
         count += 1
         if  count % round(Int, total_amount / 10) == 0
@@ -233,6 +266,7 @@ function search_neighborhood_Ω_d_variant_b(graph, d_S, X, Y, lower_bound, d=1, 
             if gain > current_best
                 current_best = gain
                 solutions = [] # discard worse solutions
+                lower_bound = current_best # new lower bound for best neighboring solution
             end
             if length(solutions) < num_solutions
                 push!(solutions, (inside, outside)) # store solution as pair of nodes that need to be swapped
