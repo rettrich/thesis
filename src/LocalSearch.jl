@@ -2,7 +2,7 @@ module LocalSearch
 
 using StatsBase
 using Graphs
-# using thesis.LookaheadSearch
+using Combinatorics
 
 export calculate_d_S, calculate_num_edges,
     LocalSearchBasedMH,
@@ -15,6 +15,7 @@ export calculate_d_S, calculate_num_edges,
     ScoringFunction, d_S_ScoringFunction, SimpleGNN_ScoringFunction, Random_ScoringFunction, Encoder_Decoder_ScoringFunction,
     SolutionExtender, MQCP_GreedySolutionExtender,
     FeasibilityChecker, MQCP_FeasibilityChecker,
+    NeighborhoodSearch, VariableNeighborhoodDescent, VariableNeighborhoodDescent_SparseEvaluation, 
     run_lsbmh
 
 include("LowerBoundHeuristic.jl")
@@ -36,6 +37,7 @@ Type for the Local Search Based Metaheuristic. Consists of these key components 
 - a `LocalSearchProcedure` that performs a (swap-based) local search, and includes a `ShortTermMemory` and `ScoringFunction`
 - a `FeasibilityChecker` that checks the (problem specific) feasibility of a candidate solution 
 - a `SolutionExtender` that tries to extend an already feasible solution into one of greater cardinality
+- a `NeighborhoodSearch` that searches the neighborhoods of candidate solutions during the local search procedure (e.g. VariableNeighborhoodDescent)
 
 Furthermore, the following settings are customisable: 
 - `timelimit`: Timelimit for search in seconds
@@ -53,6 +55,7 @@ struct LocalSearchBasedMH
     local_search_procedure::LocalSearchProcedure
     feasibility_checker::FeasibilityChecker
     solution_extender::SolutionExtender
+    neighborhood_search::NeighborhoodSearch
 
     # settings
     timelimit::Float64
@@ -65,14 +68,15 @@ struct LocalSearchBasedMH
                                 construction_heuristic::ConstructionHeuristic,
                                 local_search_procedure::LocalSearchProcedure,
                                 feasibility_checker::FeasibilityChecker,
-                                solution_extender::SolutionExtender;
+                                solution_extender::SolutionExtender; 
+                                neighborhood_search = VariableNeighborhoodDescent(1),
                                 timelimit::Float64 = 600.0, # 10 minutes
-                                max_iter::Int = 4000, 
-                                next_improvement::Bool = false,
+                                max_iter::Int = 1000, 
+                                next_improvement::Bool = true,
                                 record_swap_history::Bool = false,
                                 max_restarts = Inf,
                                 )
-        new(lower_bound_heuristic, construction_heuristic, local_search_procedure, feasibility_checker, solution_extender, 
+        new(lower_bound_heuristic, construction_heuristic, local_search_procedure, feasibility_checker, solution_extender, neighborhood_search,
             timelimit, max_iter, next_improvement, record_swap_history, max_restarts)
     end
 end
@@ -101,7 +105,7 @@ function run_lsbmh(local_search::LocalSearchBasedMH, graph::SimpleGraph)::@Named
 
         @debug "Starting local search with candidate solution of density $(density_of_subgraph(graph, S))"
         S, freq, swap_history = local_search.local_search_procedure(graph, S, freq;
-                    timelimit, local_search.max_iter, local_search.next_improvement, swap_history)
+                    local_search.neighborhood_search, timelimit, local_search.max_iter, local_search.next_improvement, swap_history)
         
         @debug "Found solution with density $(density_of_subgraph(graph, S))"
 

@@ -5,7 +5,7 @@ using Graphs
 using StatsBase
 using Combinatorics
 
-export LookaheadSearchFunction, Ω_1_LookaheadSearchFunction, Ω_d_LookaheadSearchFunction, Ω_d_LookaheadSearchFunction_B,
+export LookaheadSearchFunction, Ω_1_LookaheadSearchFunction, Ω_d_LookaheadSearchFunction, 
         BeamSearch_LookaheadSearchFunction, use_scoring_vector
 
 abstract type LookaheadSearchFunction end
@@ -29,7 +29,7 @@ swapping the nodes in `in_nodes ∈ S` with the nodes in `out_nodes ∈ V ∖ S`
 
 """
 (::LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
-                            d_S::Union{Vector{Int}, Nothing}=nothing, num_solutions=typemax(Int)::Int, 
+                            d_S::Union{Vector{Int}, Nothing}=nothing, num_solutions=typemax(Int)::Int; 
                             scores::Union{Nothing, Vector{Float32}}=nothing)::Tuple{Int, Vector{Tuple}} =
     error("Abstract (::LookaheadSearchFunction)(graph::SimpleGraph, S::Set{Int}) called")
 
@@ -37,9 +37,10 @@ swapping the nodes in `in_nodes ∈ S` with the nodes in `out_nodes ∈ V ∖ S`
     use_scoring_vector(::LookaheadSearchFunction)
 
 Returns a boolean indicating whether a scoring vector should be supplied when evaluating a candidate solution. 
-For now only used in `BeamSearch_LookaheadSearchFunction`, when the order of node expansion is determined by a scoring vector. 
+The scoring vector is used to restrict the neighborhood to the most promising vertices. 
+
 """
-use_scoring_vector(::LookaheadSearchFunction) = false
+use_scoring_vector(::LookaheadSearchFunction)::Bool = false
 
 """
     Ω_1_LookaheadSearchFunction
@@ -54,7 +55,7 @@ Base.show(io::IO, ::Ω_1_LookaheadSearchFunction) = print(io, "Ω_1_LookaheadSea
 
 function (::Ω_1_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
                                          d_S::Union{Vector{Int}, Nothing}=nothing, 
-                                         num_solutions::Int=typemax(Int),
+                                         num_solutions::Int=typemax(Int);
                                          scores::Union{Nothing, Vector{Float32}}=nothing
                                          )::Tuple{Int, Vector{Tuple}}
     d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
@@ -99,73 +100,32 @@ Searches the neighborhoods Ω_1, ... , Ω_d exhaustively and returns the neighbo
 the highest objective value. For Ω_1 neighborhood, use
 `Ω_1_LookaheadSearchFunction`, as it is optimized for that specific neighborhood.
 
-"""
-struct Ω_d_LookaheadSearchFunction <: LookaheadSearchFunction
-    d::Int
-
-    function Ω_d_LookaheadSearchFunction(d::Int)
-        new(d)
-    end
-end
-
-"""
-    Ω_d_LookaheadSearchFunction
-
-Searches the neighborhoods Ω_1, ... , Ω_d exhaustively and returns the neighboring solutions with
-the highest objective value. For Ω_1 neighborhood, use
-`Ω_1_LookaheadSearchFunction`, as it is optimized for that specific neighborhood.
-
 - `d`: Maximum size of the neighborhood (inspect neighboring solutions at a distance of at most `d` swaps)
 - `k′`: Restrict the neigborhoods to sets X ⊆ S, Y ⊆ V∖S with |X| ≤ `k′`, |Y| ≤ `k′`. Disabled if k′ < 1.
 
 """
-struct Ω_d_LookaheadSearchFunction_B <: LookaheadSearchFunction
+struct Ω_d_LookaheadSearchFunction <: LookaheadSearchFunction
     d::Int
-    k′::Int
+    k′_in::Int
+    k′_out::Int
 
-    function Ω_d_LookaheadSearchFunction_B(d::Int, k′::Int=0)
-        new(d, k′)
+    function Ω_d_LookaheadSearchFunction(d::Int, k′_in::Int=0, k′_out::Int=0)
+        new(d, k′_in, k′_out)
     end
 end
+
+use_scoring_vector(x::Ω_d_LookaheadSearchFunction)::Bool = x.k′ > 0
 
 function (lookahead_search::Ω_d_LookaheadSearchFunction)(
-                                        graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
-                                        d_S::Union{Vector{Int}, Nothing}=nothing, 
-                                        num_solutions::Int=typemax(Int),
-                                        scores::Union{Nothing, Vector{Float32}}=nothing
-                                        )::Tuple{Int, Vector{Tuple}}
-    d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
-    obj_val = calculate_obj(graph, S, d_S)
-
-    V_S = filter(v -> v ∉ S, vertices(graph))
-
-    Δuv_best = 0
-
-    solutions = []
-
-    for i = 1:lookahead_search.d
-        Δuv_best, solutions = search_neighborhood_Ω_d(graph, d_S, S, V_S, i, Δuv_best, solutions)
-    end
-
-    if Δuv_best == 0
-        return obj_val, [] # S is local optimum, therefore do not return any neighboring solutions
-    else
-        if num_solutions < length(solutions)
-            solutions = sample(1:length(solutions), num_solutions; replace=false)
-        end
-        return obj_val + Δuv_best, solutions
-    end
-end
-
-function (lookahead_search::Ω_d_LookaheadSearchFunction_B)(
     graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
     d_S::Union{Vector{Int}, Nothing}=nothing, 
-    num_solutions::Int=typemax(Int), 
+    num_solutions::Int=typemax(Int); 
     scores::Union{Nothing, Vector{Float32}}=nothing,
     )::Tuple{Int, Vector{Tuple}}
     
     d = lookahead_search.d
-    k′ = (lookahead_search.k′ > 0) ? lookahead_search.k′ : typemax(Int)
+    k′_in = (lookahead_search.k′_in > 0) ? lookahead_search.k′_in : typemax(Int)
+    k′_out = (lookahead_search.k′_out > 0) ? lookahead_search.k′_out : typemax(Int)
     
     d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
     obj_val = calculate_obj(graph, S, d_S)
@@ -182,8 +142,8 @@ function (lookahead_search::Ω_d_LookaheadSearchFunction_B)(
         scores_S = [(scores[i], i) for i in S]
     end
 
-    candidates_V_S = map(x -> x[2], partialsort(scores_V_S, 1:min(k′, length(scores_V_S)); by=first, rev=true))
-    candidates_S = map(x -> x[2], partialsort(scores_S, 1:min(k′, length(scores_S)); by=first))
+    candidates_V_S = map(x -> x[2], partialsort(scores_V_S, 1:min(k′_out, length(scores_V_S)); by=first, rev=true))
+    candidates_S = map(x -> x[2], partialsort(scores_S, 1:min(k′_in, length(scores_S)); by=first))
 
     d_min_vals = partialsort([d_S[i] for i in S], 1:min(d, length(S)))
     d_max_vals = partialsort([d_S[i] for i in V_S], 1:min(d, length(V_S)); rev=true)
@@ -193,12 +153,15 @@ function (lookahead_search::Ω_d_LookaheadSearchFunction_B)(
     solutions = []
 
     for i = 1:d
+        if i > length(candidates_S) ||i > length(candidates_V_S)
+            break
+        end
         lower_bound = sum(d_max_vals[1:i]) - sum(d_min_vals[1:i]) - i^2
         upper_bound = lower_bound + i^2 + 2*binomial(i, 2)
         if upper_bound <= 0
             continue # S is local optimum with respect to Ω_i, therefore skip searching the neighborhood
         end
-        Δuv_best, solutions = search_neighborhood_Ω_d_variant_b(graph, d_S, candidates_S, candidates_V_S, lower_bound, i, Δuv_best, solutions)
+        Δuv_best, solutions = search_neighborhood_Ω_d(graph, d_S, candidates_S, candidates_V_S, lower_bound, i, Δuv_best, solutions, num_solutions)
     end
 
     if Δuv_best == 0
@@ -211,46 +174,15 @@ function (lookahead_search::Ω_d_LookaheadSearchFunction_B)(
     end
 end
 
-function search_neighborhood_Ω_d(graph, initial_d_S, X, Y, d=1, current_best=0, solutions=[], num_solutions=typemax(Int)::Int)    
-    for inside in combinations(X, d), outside in combinations(Y, d)    
-        d_S = copy(initial_d_S)
-        gain = 0
-
-        #swap vertices, update d_S
-        for i in 1:d
-            gain += d_S[outside[i]] - d_S[inside[i]] - Int(has_edge(graph, inside[i], outside[i]))
-            if i < d
-                for w in neighbors(graph, inside[i])
-                    d_S[w] -= 1
-                end
-                for w in neighbors(graph, outside[i])
-                    d_S[w] += 1
-                end
-            end
-        end
-
-        if gain >= current_best
-            if gain > current_best
-                current_best = gain
-                solutions = [] # discard worse solutions
-            end
-            if length(solutions) < num_solutions
-                push!(solutions, (inside, outside)) # store solution as pair of nodes that need to be swapped
-            end
-        end
-    end
-    return current_best, solutions
-end
-
-function search_neighborhood_Ω_d_variant_b(graph, d_S, X, Y, initial_lower_bound, d=1, current_best=0, solutions=[], num_solutions=typemax(Int)::Int)    
-    total_amount = binomial(length(X), d) * binomial(length(Y), d)
-    count = 0
+function search_neighborhood_Ω_d(graph, d_S, X, Y, initial_lower_bound, d=1, current_best=0, solutions=[], num_solutions=typemax(Int)::Int)    
+    # total_amount = binomial(length(X), d) * binomial(length(Y), d)
+    # count = 0
     lower_bound = initial_lower_bound
     for inside in combinations(X, d), outside in combinations(Y, d)
-        count += 1
-        if  count % round(Int, total_amount / 10) == 0
-            @debug "$(round(Int, count / total_amount * 100))% done"
-        end
+        # count += 1
+        # if  count % round(Int, total_amount / 10) == 0
+        #     @debug "$(round(Int, count / total_amount * 100))% done"
+        # end
         sum_outside = sum(d_S[outside[i]] for i in 1:d)
         sum_inside = sum(d_S[inside[i]] for i in 1:d)
         if sum_outside - sum_inside + 2*binomial(d, 2) < lower_bound
@@ -321,7 +253,7 @@ struct BeamSearch_LookaheadSearchFunction <: LookaheadSearchFunction
     end
 end
 
-use_scoring_vector(x::BeamSearch_LookaheadSearchFunction) = x.use_scoring_vector
+use_scoring_vector(x::BeamSearch_LookaheadSearchFunction)::Bool = x.use_scoring_vector
 
 # (lookahead_search::Ω_d_LookaheadSearchFunction_B)(
 #     graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
@@ -331,9 +263,9 @@ use_scoring_vector(x::BeamSearch_LookaheadSearchFunction) = x.use_scoring_vector
 
 function (bs::BeamSearch_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}},
                                                   d_S::Union{Vector{Int}, Nothing}=nothing, 
-                                                  num_solutions::Int=10
+                                                  num_solutions::Int=10;
+                                                  scores::Union{Nothing, Vector{Float32}}=nothing,
                                                   )::Tuple{Int, Vector{Tuple}}
-    scores = nothing
     (bs.use_scoring_vector && isnothing(scores)) && error("use_scoring_vector is $(bs.use_scoring_vector) but scores is $scores")
     return beam_search(graph, S, bs.d, d_S; bs.α, bs.β, scores, num_solutions)
 end

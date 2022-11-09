@@ -20,7 +20,7 @@ It provides a simple interface:
 abstract type ScoringFunction end
 
 update!(sf::ScoringFunction, graph::SimpleGraph, S::Set{Int}) = error("ScoringFunction: Abstract update!(sf, graph, S) called")
-update!(sf::ScoringFunction, u::Int, v::Int) = error("ScoringFunction: Abstract update!(sf, u, v) called")
+update!(sf::ScoringFunction, u::Int, v::Int; evaluate::Bool=true) = error("ScoringFunction: Abstract update!(sf, u, v; evaluate) called")
 get_restricted_neighborhood(sf::ScoringFunction, S::Set{Int}, V_S::Set{Int}
                            )::@NamedTuple{X::Union{Vector{Int}, Set{Int}}, Y::Union{Vector{Int}, Set{Int}}} = 
     error("ScoringFunction: Abstract get_restricted_neighborhood(sf) called")
@@ -41,7 +41,7 @@ function update!(sf::d_S_ScoringFunction, graph::SimpleGraph, S::Set{Int})::Vect
     return sf.d_S
 end
 
-function update!(sf::d_S_ScoringFunction, u::Int, v::Int)
+function update!(sf::d_S_ScoringFunction, u::Int, v::Int; evaluate::Bool=true)
     for w in neighbors(sf.graph, u)
         sf.d_S[w] -= 1
     end
@@ -77,7 +77,7 @@ function update!(sf::Random_ScoringFunction, graph::SimpleGraph, S::Set{Int})
     return sf.d_S
 end
 
-function update!(sf::Random_ScoringFunction, u::Int, v::Int) 
+function update!(sf::Random_ScoringFunction, u::Int, v::Int; evaluate::Bool=true) 
     d_S = update!(sf.d_S_sf, u, v)
     sf.d_S = d_S
     return sf.d_S
@@ -128,7 +128,7 @@ function update!(sf::SimpleGNN_ScoringFunction, graph::SimpleGraph, S::Set{Int})
     return sf.scores
 end
 
-function update!(sf::SimpleGNN_ScoringFunction, u::Int, v::Int)
+function update!(sf::SimpleGNN_ScoringFunction, u::Int, v::Int; evaluate::Bool=true)
     for w in neighbors(sf.graph, u)
         sf.d_S[w] -= 1
     end
@@ -194,7 +194,7 @@ function add_decoder_features(embeddings::AbstractMatrix{Float32}, graph::Simple
 end
 
 # only apply decoder, compute context from node embeddings
-function update!(sf::Encoder_Decoder_ScoringFunction, u::Int, v::Int)
+function update!(sf::Encoder_Decoder_ScoringFunction, u::Int, v::Int; evaluate::Bool=true)
     for w in neighbors(sf.graph, u)
         sf.d_S[w] -= 1
     end
@@ -203,6 +203,11 @@ function update!(sf::Encoder_Decoder_ScoringFunction, u::Int, v::Int)
     end
     delete!(sf.S, u)
     push!(sf.S, v)
+
+    # if multiple swaps are performed, only update scores after last iteration
+    if !evaluate 
+        return sf.scores 
+    end
 
     embeddings_with_context = vcat(sf.embeddings, compute_context(sf.embeddings, sf.S, nv(sf.graph)))
 

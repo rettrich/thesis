@@ -254,10 +254,11 @@ Target values for training are computed using `lookahead_func`.
 """
 function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGenerator, gnn::GNNModel; 
                epochs=200, lookahead_func=Ω_1_LookaheadSearchFunction(), baseline::Union{Nothing, LocalSearchBasedMH}=nothing,
+               num_samples = 25,
                num_batches=4, logger::Union{Nothing, TBLogger}=nothing
                )
-    capacity = 4000
-    min_fill = 2000
+    capacity = 1000
+    min_fill = 500
     buffer = ReplayBuffer(min_fill, capacity)
     ps = Flux.params(gnn)
 
@@ -285,7 +286,7 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
             gap = (s_ls - s_base) / s_base
         end
 
-        data = sample_candidate_solutions(swap_history, 100)
+        data = sample_candidate_solutions(swap_history, num_samples)
 
         t_targets = @elapsed (local_optima = add_to_buffer!(buffer, graph, data.samples, lookahead_func, data.node_features, get_decoder_features(gnn)))
         t_train = 0
