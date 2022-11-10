@@ -254,13 +254,13 @@ Target values for training are computed using `lookahead_func`.
 - `num_samples`: The number of samples generated per epoch
 - `num_batches`: The number of batches used for training each epoch
 - `batchsize`: Number of samples in each batch
-- `warm_start`: Use d_S as scoring function for the lookahead search first `warm_start` iterations, 
+- `warm_up`: Use d_S as scoring function for the lookahead search first `warm_up` iterations, 
     to start using the gnn based scoring function only when it is already somewhat trained.  
 
 """
 function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGenerator, gnn::GNNModel; 
                epochs=200, lookahead_func=Ω_1_LookaheadSearchFunction(), baseline::Union{Nothing, LocalSearchBasedMH}=nothing,
-               num_samples::Int = 25, num_batches::Int = 4, batchsize::Int = 8, warm_start::Int = 50,
+               num_samples::Int = 25, num_batches::Int = 4, batchsize::Int = 8, warm_up::Int = 50,
                logger::Union{Nothing, TBLogger}=nothing
                )
     capacity = 1000
