@@ -15,8 +15,9 @@ parsed_args = parse_args(
     [
         ARGS..., 
         "--feature_set=Node2Vec_2_4-Struct2Vec",
-        "--lookahead_depth=3",
+        "--lookahead_depth=2",
         "--lookahead_breadth=50",
+        "--epochs=30"
     ], 
     settings)
 
