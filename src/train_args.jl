@@ -34,16 +34,11 @@ settings = ArgParseSettings()
         help = "For reinforcement learning: For the first `warm_up` iterations, use d_S as scoring vector for restricted neighborhood in lookahead search"
         arg_type = Int
         default = 50
+    "--epochs"
+        help = "Number of training epochs (iterations of training loop)"
+        arg_type = Int
+        default = 200
 end
-
-parsed_args = parse_args(
-    [
-        ARGS..., 
-        "--feature_set=Node2Vec_2_4-Struct2Vec",
-        "--lookahead_depth=3",
-        "--lookahead_breadth=50",
-    ], 
-    settings)
 
 function parse_feature_set(feature_string)::Vector{<:NodeFeature}
     features = split(feature_string, "-")

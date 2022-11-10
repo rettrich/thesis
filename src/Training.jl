@@ -294,7 +294,7 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
 
         data = sample_candidate_solutions(swap_history, num_samples)
 
-        if use_scoring_vector(lookahead_func) && i >= warm_start
+        if use_scoring_vector(lookahead_func) && i >= warm_up
             gnn_for_scores = gnn
         else
             gnn_for_scores = nothing

@@ -11,6 +11,15 @@ using ArgParse
 
 include("train_args.jl")
 
+parsed_args = parse_args(
+    [
+        ARGS..., 
+        "--feature_set=Node2Vec_2_4-Struct2Vec",
+        "--lookahead_depth=3",
+        "--lookahead_breadth=50",
+    ], 
+    settings)
+
 function train_MQCP(parsed_args::Dict{String, Any})
     start_time = time()
     γ = 0.999
@@ -80,9 +89,12 @@ function train_MQCP(parsed_args::Dict{String, Any})
     lookahead_func = parse_neighborhood_size(parsed_args)
 
     Training.train!(local_search, instance_generator, gnn; 
-                    lookahead_func, epochs=200, 
+                    lookahead_func, epochs=parsed_args["epochs"], 
                     baseline=baseline_local_search, 
-                    num_samples=25, batchsize=8, num_batches=4, warm_up=50,
+                    num_samples=parsed_args["num_samples"], 
+                    batchsize=parsed_args["batchsize"], 
+                    num_batches=parsed_args["num_batches"], 
+                    warm_up=parsed_args["warm_up"],
                     logger=tblogger)
 
     BSON.@save "./$(parsed_args["dir"])/$run_id.bson" gnn
