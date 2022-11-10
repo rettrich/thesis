@@ -722,6 +722,8 @@ In order to make training feasible on larger instances and for greater $d$, we p
 \subsubsection{Restricting the neighborhood}
 
 Recall that during the execution of the Local Search Based Metaheuristic we restrict the cardinality of the sets of vertices $X \subseteq S, Y \subseteq V \setminus S$ to the $k$ vertices with the lowest and highest $\mathit{gnn}_S$-values, respectively. Similarly, when searching $\bigcup_{i=1}^d \Omega_i$, we can restrict the cardinality of the sets of vertices considered for swaps $X, Y$ to contain up to $k^\prime$ vertices with the lowest and highest $\mathit{gnn}_S$-values each, and then exhaustively enumerate all possible neighboring solutions that can be obtained by removing up to $d$ vertices in $X$ from $S$ and adding up to $d$ vertices from $Y$. Intuitively, it makes sense to use a value $k^\prime > k$, as this means a greater part of the neighborhood structure $\bigcup_{i=1}^d \Omega_i$ is explored and therefore the approximation is more likely to be precise. 
+Furthermore, by using a fixed size neighborhood determined by $k^\prime$, the computation scales well on larger graphs. 
+In order to make this training process more stable, we propose to start training with targets computed by searching a small neighborhood like $\Omega_1$ that can be searched exhaustively without restriction, and then changing to a restricted, bigger neighborhood.  
 
 \subsubsection{A Beam Search Based Approach}
 

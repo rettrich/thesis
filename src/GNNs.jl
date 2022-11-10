@@ -298,7 +298,7 @@ Base.show(io::IO, ::MIME"text/plain", x::Encoder_Decoder_GNNModel) =
 
 encode(gnn::Encoder_Decoder_GNNModel, graph::GNNGraph, embeddings::AbstractMatrix) = gnn.encoder(graph, embeddings)
 
-add_context(embeddings::AbstractMatrix, S) = vcat(embeddings, repeat(mean(gather(embeddings, S), dims=2), 1, size(embeddings, 2)))
+add_context(embeddings::AbstractMatrix, S) = vcat(embeddings, repeat(mean(NNlib.gather(embeddings, collect(S)), dims=2), 1, size(embeddings, 2)))
 
 function decode(gnn::Encoder_Decoder_GNNModel, graph::GNNGraph, embeddings::AbstractMatrix, S, d_S)
     decoder_feature_list = get_decoder_features(gnn)

@@ -155,7 +155,7 @@ function create_sample(graph::SimpleGraph{Int},
     else
         gnn_g = GNNGraph(graph)
         gnn_g = add_self_loops(gnn_g)
-        scores = evaluate(gnn, gnn_g, embeddings, S, d_S)
+        scores = vec(evaluate(gnn, gnn_g, node_features, S, d_S))
         obj_val, solutions = lookahead_func(graph, S, d_S; scores)
     end
     
@@ -250,12 +250,18 @@ Target values for training are computed using `lookahead_func`.
 - `gnn`: The GNN to be trained
 - `epochs`: Number of epochs of training
 - `lookahead_func`: Lookahead search function used to compute target values for training 
+- `baseline`: Local search function to compare the gnn based local search to
+- `num_samples`: The number of samples generated per epoch
+- `num_batches`: The number of batches used for training each epoch
+- `batchsize`: Number of samples in each batch
+- `warm_start`: Use d_S as scoring function for the lookahead search first `warm_start` iterations, 
+    to start using the gnn based scoring function only when it is already somewhat trained.  
 
 """
 function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGenerator, gnn::GNNModel; 
                epochs=200, lookahead_func=Ω_1_LookaheadSearchFunction(), baseline::Union{Nothing, LocalSearchBasedMH}=nothing,
-               num_samples = 25,
-               num_batches=4, logger::Union{Nothing, TBLogger}=nothing
+               num_samples::Int = 25, num_batches::Int = 4, batchsize::Int = 8, warm_start::Int = 50,
+               logger::Union{Nothing, TBLogger}=nothing
                )
     capacity = 1000
     min_fill = 500
@@ -267,8 +273,8 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
 
     # check if gnn supports batching of graphs. for encoder / decoder it is not possible for now, as looping over graphs in batch is not possible
     # https://github.com/CarloLucibello/GraphNeuralNetworks.jl/issues/161
-    batchsize = batch_support(gnn) ? 16 : 1     
-    num_batches = batch_support(gnn) ? num_batches : (num_batches, 16)
+    batchsize = batch_support(gnn) ? batchsize : 1
+    num_batches = batch_support(gnn) ? num_batches : (num_batches, batchsize)
 
 
     @printf("Iteration | encountered |   t_ls | t_base | t_targets | t_train | (opt)buffer | loss | V/density | solution | baseline |   gap | free/total memory\n")
@@ -288,7 +294,15 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
 
         data = sample_candidate_solutions(swap_history, num_samples)
 
-        t_targets = @elapsed (local_optima = add_to_buffer!(buffer, graph, data.samples, lookahead_func, data.node_features, get_decoder_features(gnn)))
+        if use_scoring_vector(lookahead_func) && i >= warm_start
+            gnn_for_scores = gnn
+        else
+            gnn_for_scores = nothing
+        end
+
+        t_targets = @elapsed (local_optima = add_to_buffer!(buffer, graph, data.samples, 
+                                                            lookahead_func, data.node_features, 
+                                                            get_decoder_features(gnn), gnn_for_scores))
         t_train = 0
         iter_loss = NaN
 

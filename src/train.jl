@@ -16,10 +16,15 @@ settings = ArgParseSettings()
                "Multiple features can be specified, separated by a '-' (e.g. Degree-EgoNet1-DeepWalk)."
         arg_type = String
         default = "EgoNet1"
-    "--neighborhood_size"
-        help = "Set neighborhood size for training. Neighborhood will be searched exhaustively. Only feasible for values 1, 2"
+    "--lookahead_depth"
+        help = "Set neighborhood size for training. Neighborhoods Ω_1, Ω_2, ... Ω_lookahead_depth will be searched exhaustively." *
+               "Only feasible for values 1, 2, 3."
         arg_type = Int
         default = 1
+    "--lookahead_breadth"
+        help = "Set size of restricted neighborhood for Ω_1, Ω_2, ... or 0 if no restriction should be applied. "
+        arg_type = Int
+        default = 0
     "--dir"
         help = "Directory where logs and models are stored"
         arg_type = String
@@ -30,7 +35,8 @@ parsed_args = parse_args(
     [
         ARGS..., 
         "--feature_set=EgoNet1-Struct2Vec",
-        "--neighborhood_size=1"
+        "--lookahead_depth=2",
+        "--lookahead_breadth=50",
     ], 
     settings)
 
@@ -61,10 +67,10 @@ function parse_feature_set(feature_string)::Vector{<:NodeFeature}
 end
 
 function parse_neighborhood_size(parsed_args)
-    if parsed_args["neighborhood_size"] == 1
+    if parsed_args["lookahead_depth"] == 1
         lookahead_search = Ω_1_LookaheadSearchFunction()
-    elseif parsed_args["neighborhood_size"] == 2
-        lookahead_search = Ω_d_LookaheadSearchFunction_B(2)
+    elseif parsed_args["lookahead_depth"] <= 3
+        lookahead_search = Ω_d_LookaheadSearchFunction(parsed_args["lookahead_depth"], parsed_args["lookahead_breadth"])
     else
         error("Neighborhood size $(parsed_args["neighborhood_size"]) not supported")
     end

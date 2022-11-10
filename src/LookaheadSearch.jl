@@ -106,15 +106,15 @@ the highest objective value. For Ω_1 neighborhood, use
 """
 struct Ω_d_LookaheadSearchFunction <: LookaheadSearchFunction
     d::Int
-    k′_in::Int
-    k′_out::Int
+    k′::Int
+    d_S_epochs::Int
 
-    function Ω_d_LookaheadSearchFunction(d::Int, k′_in::Int=0, k′_out::Int=0)
-        new(d, k′_in, k′_out)
+    function Ω_d_LookaheadSearchFunction(d::Int, k′::Int=0)
+        new(d, k′)
     end
 end
 
-use_scoring_vector(x::Ω_d_LookaheadSearchFunction)::Bool = x.k′ > 0
+use_scoring_vector(x::Ω_d_LookaheadSearchFunction)::Bool = (x.k′ > 0)
 
 function (lookahead_search::Ω_d_LookaheadSearchFunction)(
     graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
@@ -124,8 +124,7 @@ function (lookahead_search::Ω_d_LookaheadSearchFunction)(
     )::Tuple{Int, Vector{Tuple}}
     
     d = lookahead_search.d
-    k′_in = (lookahead_search.k′_in > 0) ? lookahead_search.k′_in : typemax(Int)
-    k′_out = (lookahead_search.k′_out > 0) ? lookahead_search.k′_out : typemax(Int)
+    k′ = (lookahead_search.k′ > 0) ? lookahead_search.k′ : typemax(Int)
     
     d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
     obj_val = calculate_obj(graph, S, d_S)
@@ -142,8 +141,8 @@ function (lookahead_search::Ω_d_LookaheadSearchFunction)(
         scores_S = [(scores[i], i) for i in S]
     end
 
-    candidates_V_S = map(x -> x[2], partialsort(scores_V_S, 1:min(k′_out, length(scores_V_S)); by=first, rev=true))
-    candidates_S = map(x -> x[2], partialsort(scores_S, 1:min(k′_in, length(scores_S)); by=first))
+    candidates_V_S = map(x -> x[2], partialsort(scores_V_S, 1:min(k′, length(scores_V_S)); by=first, rev=true))
+    candidates_S = map(x -> x[2], partialsort(scores_S, 1:min(k′, length(scores_S)); by=first))
 
     d_min_vals = partialsort([d_S[i] for i in S], 1:min(d, length(S)))
     d_max_vals = partialsort([d_S[i] for i in V_S], 1:min(d, length(V_S)); rev=true)
