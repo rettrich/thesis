@@ -11,7 +11,7 @@ using Flux
 using thesis.LookaheadSearch
 using thesis.Instances: generate_instance
 using thesis.LocalSearch: run_lsbmh, LocalSearchBasedMH, sample_candidate_solutions
-using thesis.GNNs: GNNModel, device, NodeFeature, get_feature_list, batch_support, get_decoder_features, evaluate
+using thesis.GNNs: GNNModel, device, NodeFeature, get_feature_list, batch_support, get_decoder_features, evaluate, loss_func_unbatched
 using Printf
 using Logging, TensorBoardLogger
 using BSON
@@ -276,6 +276,7 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
     batchsize = batch_support(gnn) ? batchsize : 1
     num_batches = batch_support(gnn) ? num_batches : (num_batches, batchsize)
 
+    loss(g::GNNGraph, S::Vector{Int}) = loss_func_unbatched(gnn, g, S) 
 
     @printf("Iteration | encountered |   t_ls | t_base | t_targets | t_train | (opt)buffer | loss | V/density | solution | baseline |   gap | free/total memory\n")
 
@@ -333,24 +334,26 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
         # loss(g::GNNGraph) = Flux.logitbinarycrossentropy( vec(gnn(g, g.ndata.x)), g.ndata.y)
 
         if batch_support(gnn)
-            losses = []
-            for g in first(train_loader, num_batches)
-                g = g |> device
-                gs = gradient(ps) do 
-                    gnn.loss(g)
-                end
-                push!(losses, gnn.loss(g))
-                Flux.Optimise.update!(gnn.opt, ps, gs)
-            end
-            iter_loss = mean(losses)
+            error("currently not supported")
+            # losses = []
+            # for g in first(train_loader, num_batches)
+            #     g = g |> device
+            #     gs = gradient(ps) do 
+            #         gnn.loss(g)
+            #     end
+            #     push!(losses, gnn.loss(g))
+            #     Flux.Optimise.update!(gnn.opt, ps, gs)
+            # end
+            # iter_loss = mean(losses)
         else
+            # only unbatched training is possible atm (batch consists of individual samples)
             losses = []
             for _ in 1:num_batches[1]
                 graphs = first(train_loader, num_batches[2]) # get batch 
                 Ss = [filter(v -> g.ndata.in_S[v]==1, 1:nv(g)) for g in graphs] # obtain candidate solution for each graph
                 graphs = [g |> device for g in graphs]
                 gs = gradient(ps) do 
-                    iter_loss = mean( gnn.loss.(graphs, Ss) )
+                    iter_loss = mean( loss.(graphs, Ss) )
                     iter_loss                    
                 end
                 push!(losses, iter_loss)
