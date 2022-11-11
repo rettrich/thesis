@@ -1,5 +1,6 @@
 settings_cfg = ArgParseSettings()
-@add_arg_table settings_cfg begin
+
+@add_arg_table! settings_cfg begin
     "--feature_set"
         help = "Define input features. Possible values: EgoNet_%d , Degree, Pagerank, DeepWalk, Node2Vec_%f_%f, Struct2Vec" * 
                "Multiple features can be specified, separated by a '-' (e.g. Degree-EgoNet1-DeepWalk)."

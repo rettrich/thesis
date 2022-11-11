@@ -12,7 +12,7 @@ using MHLib
 
 include("train_args.jl")
 
-parse_settings!([settings_cfg, thesis.GNNs.settings_cfg],
+parse_settings!([settings_cfg, thesis.NodeRepresentationLearning.settings_cfg],
                 vcat(ARGS,
                 [
                     "--feature_set=Node2Vec_2_4-Struct2Vec",

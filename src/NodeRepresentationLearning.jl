@@ -16,7 +16,7 @@ export WalkSimulator, RandomWalkSimulator, SecondOrderRandomWalkSimulator, Struc
 # Deepwalk implementation is inspired by his explanation and code 
 
 const settings_cfg = ArgParseSettings()
-@add_arg_table settings_cfg begin
+@add_arg_table! settings_cfg begin
     "--tmpdir"
         help = "Temporary directory for word2vec output"
         arg_type = String
