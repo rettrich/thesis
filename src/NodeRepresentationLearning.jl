@@ -6,6 +6,8 @@ using Flux
 using Random
 using DynamicAxisWarping, Distances, DelimitedFiles
 using Word2Vec
+using ArgParse
+using MHLib
 
 export WalkSimulator, RandomWalkSimulator, SecondOrderRandomWalkSimulator, Struct2VecWalkSimulator,
     learn_embeddings, learn_embeddings_word2vec
@@ -13,7 +15,13 @@ export WalkSimulator, RandomWalkSimulator, SecondOrderRandomWalkSimulator, Struc
 # Thanks @ Dan Saattrup Nielsen for his explanation of deepwalk: https://saattrupdan.github.io/2020-08-24-deepwalk/
 # Deepwalk implementation is inspired by his explanation and code 
 
-__init__() = global TMP_DIR = mktempdir(; cleanup=false)
+const settings_cfg = ArgParseSettings()
+@add_arg_table settings_cfg begin
+    "--tmpdir"
+        help = "Temporary directory for word2vec output"
+        arg_type = String
+        default = "/tmp"
+end
 
 abstract type WalkSimulator end
 
@@ -319,8 +327,8 @@ function learn_embeddings_word2vec(ws::WalkSimulator, graph::AbstractGraph; embe
         end
     end
     str_walks = map(x -> string.(x), walks)
-    walks_file = tempname(TMP_DIR; cleanup=false)
-    vecs_file = tempname(TMP_DIR; cleanup=false)
+    walks_file = tempname(settings[:tmpdir]; cleanup=false)
+    vecs_file = tempname(settings[:tmpdir]; cleanup=false)
     writedlm(walks_file, str_walks)
     # suppress word2vec logs
     redirect_stdout(()->word2vec(walks_file, vecs_file; verbose=false, debug=0, size=embedding_size, window=ws.window_size), open("/dev/null", "w"))

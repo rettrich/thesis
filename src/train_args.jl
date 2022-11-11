@@ -1,5 +1,5 @@
-settings = ArgParseSettings()
-@add_arg_table settings begin
+settings_cfg = ArgParseSettings()
+@add_arg_table settings_cfg begin
     "--feature_set"
         help = "Define input features. Possible values: EgoNet_%d , Degree, Pagerank, DeepWalk, Node2Vec_%f_%f, Struct2Vec" * 
                "Multiple features can be specified, separated by a '-' (e.g. Degree-EgoNet1-DeepWalk)."
@@ -66,12 +66,12 @@ function parse_feature_set(feature_string)::Vector{<:NodeFeature}
     feature_set
 end
 
-function parse_neighborhood_size(parsed_args)
-    if parsed_args["lookahead_depth"] == 1
+function parse_neighborhood_size()
+    if settings[:lookahead_depth] == 1
         lookahead_search = Ω_1_LookaheadSearchFunction()
-    elseif parsed_args["lookahead_depth"] <= 3
-        lookahead_search = Ω_d_LookaheadSearchFunction(parsed_args["lookahead_depth"], parsed_args["lookahead_breadth"])
+    elseif settings[:lookahead_depth] <= 3
+        lookahead_search = Ω_d_LookaheadSearchFunction(settings[:lookahead_depth], settings[:lookahead_breadth])
     else
-        error("Neighborhood size $(parsed_args["neighborhood_size"]) not supported")
+        error("Neighborhood size $(settings[:neighborhood_size]) not supported")
     end
 end

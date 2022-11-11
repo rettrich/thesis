@@ -6,22 +6,22 @@ using BSON
 using TensorBoardLogger: TBLogger
 using Logging
 using ArgParse
+using MHLib
 
 # ENV["JULIA_DEBUG"] = "thesis"
 
 include("train_args.jl")
 
-parsed_args = parse_args(
-    [
-        ARGS..., 
-        "--feature_set=Node2Vec_2_4-Struct2Vec",
-        "--lookahead_depth=2",
-        "--lookahead_breadth=50",
-        "--epochs=30"
-    ], 
-    settings)
+parse_settings!([settings_cfg, thesis.GNNs.settings_cfg],
+                vcat(ARGS,
+                [
+                    "--feature_set=Node2Vec_2_4-Struct2Vec",
+                    "--lookahead_depth=1",
+                    # "--lookahead_breadth=50",
+                    # "--epochs=30"
+                ]))
 
-function train_MQCP(parsed_args::Dict{String, Any})
+function train_MQCP()
     start_time = time()
     γ = 0.999
 
@@ -45,7 +45,7 @@ function train_MQCP(parsed_args::Dict{String, Any})
     # gnn = SimpleGNN(2, [64, 64, 64])
     # scoring_function = SimpleGNN_ScoringFunction(gnn, 20)
 
-    feature_set = parse_feature_set(parsed_args["feature_set"])
+    feature_set = parse_feature_set(settings[:feature_set])
 
     gnn = Encoder_Decoder_GNNModel([64, 64, 64], [32, 32]; 
                                    encoder_factory=GATv2Conv_GNNChainFactory(128, 4), 
@@ -80,30 +80,29 @@ function train_MQCP(parsed_args::Dict{String, Any})
     instance_generator = Training.InstanceGenerator(Normal(200, 15), Uniform(0.4, 0.6))
 
     tblogger = nothing
-    run_id = replace("MQCP-$(repr(MIME"text/plain"(), gnn))-feature_set=$(parsed_args["feature_set"])-$(repr(MIME"text/plain"(), instance_generator))-" * 
+    run_id = replace("MQCP-$(repr(MIME"text/plain"(), gnn))-feature_set=$(settings[:feature_set])-$(repr(MIME"text/plain"(), instance_generator))-" * 
                         string(now()) * tempname(".")[3:end], ":"=>"-")
-    logdir = joinpath("./$(parsed_args["dir"])", run_id)
+    logdir = joinpath("./$(settings[:dir])", run_id)
     tblogger = TBLogger(logdir)
 
     println("$run_id")
 
-    lookahead_func = parse_neighborhood_size(parsed_args)
+    lookahead_func = parse_neighborhood_size()
 
     Training.train!(local_search, instance_generator, gnn; 
-                    lookahead_func, epochs=parsed_args["epochs"], 
+                    lookahead_func, epochs=settings[:epochs], 
                     baseline=baseline_local_search, 
-                    num_samples=parsed_args["num_samples"], 
-                    batchsize=parsed_args["batchsize"], 
-                    num_batches=parsed_args["num_batches"], 
-                    warm_up=parsed_args["warm_up"],
+                    num_samples=settings[:num_samples], 
+                    batchsize=settings[:batchsize], 
+                    num_batches=settings[:num_batches], 
+                    warm_up=settings[:warm_up],
                     logger=tblogger)
 
-    BSON.@save "./$(parsed_args["dir"])/$run_id.bson" gnn
+    BSON.@save "./$(settings[:dir])/$run_id.bson" gnn
 
     println("Total duration: $(time()- start_time)")
     
     nothing
 end
 
-train_MQCP(parsed_args)
-# parse_feature_set(parsed_args["feature_set"])
+train_MQCP()
