@@ -260,12 +260,13 @@ Target values for training are computed using `lookahead_func`.
 """
 function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGenerator, gnn::GNNModel; 
                epochs=200, lookahead_func=Ω_1_LookaheadSearchFunction(), baseline::Union{Nothing, LocalSearchBasedMH}=nothing,
-               num_samples::Int = 25, num_batches::Int = 4, batchsize::Int = 8, warm_up::Int = 50,
+               num_samples::Int = 25, num_batches::Int = 4, batchsize::Int = 8, warm_up::Int = 50, 
+               buffer_capacity::Int = 1000,
                logger::Union{Nothing, TBLogger}=nothing
                )
-    capacity = 1000
-    min_fill = 500
-    buffer = ReplayBuffer(min_fill, capacity)
+    buffer_capacity = 1000
+    min_fill = round(Int, buffer_capacity / 2)
+    buffer = ReplayBuffer(min_fill, buffer_capacity)
     ps = Flux.params(gnn)
 
     t_baseline = 0

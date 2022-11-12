@@ -15,10 +15,10 @@ include("train_args.jl")
 parse_settings!([settings_cfg, thesis.NodeRepresentationLearning.settings_cfg],
                 vcat(ARGS,
                 [
-                    "--feature_set=Node2Vec_2_4-Struct2Vec",
-                    "--lookahead_depth=1",
+                    # "--feature_set=Node2Vec_2_4-Struct2Vec",
+                    # "--lookahead_depth=1",
                     # "--lookahead_breadth=50",
-                    # "--epochs=30"
+                    # "--epochs=200"
                 ]))
 
 function train_MQCP()
@@ -95,7 +95,8 @@ function train_MQCP()
                     num_samples=settings[:num_samples], 
                     batchsize=settings[:batchsize], 
                     num_batches=settings[:num_batches], 
-                    warm_up=settings[:warm_up],
+                    warm_up=settings[:warm_up], 
+                    buffer_capacity=settings[:buffer_capacity],
                     logger=tblogger)
 
     BSON.@save "./$(settings[:dir])/$run_id.bson" gnn

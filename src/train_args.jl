@@ -39,6 +39,10 @@ settings_cfg = ArgParseSettings()
         help = "Number of training epochs (iterations of training loop)"
         arg_type = Int
         default = 200
+    "--buffer_capacity"
+        help = "Capacity of replay buffer"
+        arg_type = Int
+        default = 1000
 end
 
 function parse_feature_set(feature_string)::Vector{<:NodeFeature}
