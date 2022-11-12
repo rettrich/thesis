@@ -48,6 +48,10 @@ settings_cfg = ArgParseSettings()
         help = "Capacity of replay buffer"
         arg_type = Int
         default = 1000
+    "--debug"
+        help = "Enable debug output"
+        arg_type = Bool
+        default = false
 end
 
 function parse_feature_set(feature_string)::Vector{<:NodeFeature}

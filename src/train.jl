@@ -19,7 +19,13 @@ parse_settings!([settings_cfg, thesis.NodeRepresentationLearning.settings_cfg],
                     # "--lookahead_depth=1",
                     # "--lookahead_breadth=50",
                     # "--epochs=200"
+                    # "--sparse_evaluation=false",
+                    # "--debug=true"
                 ]))
+
+if settings[:debug]
+    ENV["JULIA_DEBUG"] = "thesis"
+end
 
 function train_MQCP()
     start_time = time()
@@ -70,12 +76,12 @@ function train_MQCP()
     # local search with gnn
     local_search = LocalSearchBasedMH(
             lower_bound_heuristic, construction_heuristic, local_search_procedure, feasibility_checker, solution_extender;
-            timelimit, max_iter, next_improvement, record_swap_history, max_restarts)
+            timelimit, max_iter, next_improvement, record_swap_history, max_restarts, sparse_evaluation=settings[:sparse_evaluation])
 
     # baseline for comparison
     baseline_local_search = LocalSearchBasedMH(
         lower_bound_heuristic, construction_heuristic, baseline_local_search_procedure, feasibility_checker, solution_extender;
-        timelimit, max_iter, next_improvement, record_swap_history=false, max_restarts, sparse_evaluation=settings[:sparse_evaluation])
+        timelimit, max_iter, next_improvement, record_swap_history=false, max_restarts)
 
     instance_generator = Training.InstanceGenerator(Normal(200, 15), Uniform(0.4, 0.6))
 
