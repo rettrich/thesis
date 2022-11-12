@@ -39,6 +39,11 @@ settings_cfg = ArgParseSettings()
         help = "Number of training epochs (iterations of training loop)"
         arg_type = Int
         default = 200
+    "--sparse_evaluation"
+        help = "If set to false, the NN evaluates the vertices in each iteration. If set to true, the NN only evaluates "*
+               "the vertices in case no improving solution was found in the last iteration."
+        arg_type = Bool
+        default = false
 end
 
 function parse_feature_set(feature_string)::Vector{<:NodeFeature}

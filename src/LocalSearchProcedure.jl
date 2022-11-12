@@ -53,12 +53,15 @@ and optionally the swap history.
         the first improving neighboring solution will be selected, otherwise the neighborhood is always searched to 
         completion and best improvement is used. 
 - `swap_history`: Swap history will be recorded, if a `SwapHistory` instance is passed.
+- `neighborhood_search`: Type of neighborhood search, e.g. Variable Neighborhood Descent 
+- `sparse_evaluation`: Only re-evaluate by NN, if no improving swap could be found. 
 
 """
 function (local_search_procedure::MQCP_LocalSearchProcedure)(
           graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}}, freq::Vector{Int};
           timelimit::Float64, max_iter::Int, next_improvement::Bool,
-          swap_history::Union{Nothing, SwapHistory}, neighborhood_search::NeighborhoodSearch
+          swap_history::Union{Nothing, SwapHistory}, neighborhood_search::NeighborhoodSearch,
+          sparse_evaluation::Bool,
           )::@NamedTuple{S::Vector{Int}, freq::Vector{Int}, swap_history::Union{Nothing, SwapHistory}}
 
     γ = local_search_procedure.γ
@@ -143,7 +146,9 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
             current_obj += Δuv
 
             #update scoring function
-            evaluate = isnothing(peek(swaps_to_perform)) # in last iteration, evaluate scoring function (gnn) again, otherwise do not evaluate
+            # in last iteration, evaluate scoring function (gnn) again
+            # also, if sparse_evaluation is true, only evaluate if gain of swap was not positive
+            evaluate = isnothing(peek(swaps_to_perform)) && (!sparse_evaluation || (Δ ≤ 0) )
             update!(scoring_function, u, v; evaluate)
             d_S = scoring_function.d_S
         end

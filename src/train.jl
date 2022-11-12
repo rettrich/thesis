@@ -75,7 +75,7 @@ function train_MQCP()
     # baseline for comparison
     baseline_local_search = LocalSearchBasedMH(
         lower_bound_heuristic, construction_heuristic, baseline_local_search_procedure, feasibility_checker, solution_extender;
-        timelimit, max_iter, next_improvement, record_swap_history=false, max_restarts)
+        timelimit, max_iter, next_improvement, record_swap_history=false, max_restarts, sparse_evaluation=settings[:sparse_evaluation])
 
     instance_generator = Training.InstanceGenerator(Normal(200, 15), Uniform(0.4, 0.6))
 
