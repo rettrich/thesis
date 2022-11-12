@@ -44,6 +44,10 @@ settings_cfg = ArgParseSettings()
                "the vertices in case no improving solution was found in the last iteration."
         arg_type = Bool
         default = false
+    "--buffer_capacity"
+        help = "Capacity of replay buffer"
+        arg_type = Int
+        default = 1000
 end
 
 function parse_feature_set(feature_string)::Vector{<:NodeFeature}
