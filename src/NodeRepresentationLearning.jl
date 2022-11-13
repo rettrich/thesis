@@ -118,7 +118,9 @@ function init_struct2vec(rws::Struct2VecWalkSimulator, graph::AbstractGraph)
                 # add edge to graph of current layer
                 w = ℯ^(-f_values[(u,v)])
                 total_weight += w
-                SimpleWeightedGraphs.add_edge!(current_graph, u, v, w)
+                if w > 0
+                    SimpleWeightedGraphs.add_edge!(current_graph, u, v, w)
+                end
             end
         end
 
