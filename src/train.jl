@@ -29,7 +29,7 @@ end
 
 function train_MQCP()
     start_time = time()
-    γ = 0.999
+    γ = settings[:gamma]
 
     # initialize components of local search based metaheuristic
     
@@ -83,7 +83,14 @@ function train_MQCP()
         lower_bound_heuristic, construction_heuristic, baseline_local_search_procedure, feasibility_checker, solution_extender;
         timelimit, max_iter, next_improvement, record_swap_history=false, max_restarts)
 
-    instance_generator = Training.InstanceGenerator(Normal(200, 15), Uniform(0.4, 0.6))
+    # instance generator settings
+    V = settings[:V]
+    dens = settings[:density]
+    instance_generator = Training.InstanceGenerator(
+                            Normal(V[1], V[2]), 
+                            Uniform(dens[1], dens[2]); 
+                            ensure_connectivity=settings[:ensure_connectivity],
+                            )
 
     tblogger = nothing
     run_id = replace("MQCP-$(repr(MIME"text/plain"(), gnn))-feature_set=$(settings[:feature_set])-$(repr(MIME"text/plain"(), instance_generator))-" * 

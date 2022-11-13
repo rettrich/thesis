@@ -1,6 +1,6 @@
 module Instances
 
-export load_instance, load_instances, generate_instance, 
+export load_instance, load_instances, generate_instance, generate_connected_instance, 
        MQCPInstance, graph_to_file 
 using Graphs
 using StatsBase
@@ -91,6 +91,43 @@ function graph_to_file(graph::SimpleGraph, filename::String)
     end
 end
 
+function generate_connected_instance(n::Int, dens::Real)
+    g, edge_list = generate_random_tree(n)
+    m = Int(n * (n - 1) / 2)
+    num_edges = round(Int, dens*m) - ne(g)
+    add_edges = sample(setdiff(collect(1:m), [_edge_to_num(u, v, n) for (u, v) in edge_list]), num_edges; replace=false)
+    for num in add_edges
+        u, v = _num_to_edge(num, n)
+        add_edge!(g, u, v)
+    end
+    @assert is_connected(g)
+    return g
+end
+
+function generate_random_tree(n::Int)
+    g = SimpleGraph(n)
+
+    not_connected = Set(collect(vertices(g)))
+    connected = Set()
+    
+    # initial vertex
+    v_start = sample(collect(not_connected))
+    delete!(not_connected, v_start)
+    push!(connected, v_start)
+    edge_list = []
+    
+    while !isempty(not_connected)
+        u = sample(collect(not_connected))
+        delete!(not_connected, u)
+        v = sample(collect(connected))
+        push!(connected, u)
+        add_edge!(g, u, v)
+        push!(edge_list, (min(u,v), max(u,v)))
+    end
+
+    return g, edge_list
+end
+
 """
     _num_to_edge(num, n)
 Maps integers in the range 1:(n*(n-1)/2) to distinct edges in a simple graph with `n` vertices
@@ -109,6 +146,12 @@ function _num_to_edge(num::Int, n::Int)
     end
     j = i + num
     return i, j
+end
+
+# reverse function of num_to_edge
+function _edge_to_num(u::Int, v::Int, n::Int)
+    if u == 1 return v-u end
+    return n*(u-1) - Int((u-1)*u/2) + v-u
 end
 
 end # module

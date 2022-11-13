@@ -211,9 +211,10 @@ sample the density of generated graphs.
 struct InstanceGenerator
     nv_sampler::Sampleable
     density_sampler::Sampleable
+    ensure_connectivity::Bool
 
-    function InstanceGenerator(nv_sampler, density_sampler)
-        new(nv_sampler, density_sampler)
+    function InstanceGenerator(nv_sampler, density_sampler; ensure_connectivity=false)
+        new(nv_sampler, density_sampler, ensure_connectivity)
     end
 end
 
@@ -233,10 +234,14 @@ density are sampled randomly according to the distributions in the `instance_gen
 
 """
 function sample_graph(instance_generator::InstanceGenerator)::SimpleGraph
-    return generate_instance(
-        round(Int, rand(instance_generator.nv_sampler)), 
-        rand(instance_generator.density_sampler)
-        )
+    V = round(Int, rand(instance_generator.nv_sampler))
+    dens = rand(instance_generator.density_sampler)
+
+    if instance_generator.ensure_connectivity
+        generate_connected_instance(V, dens)
+    else
+        generate_instance(V, dens)
+    end
 end
 
 """

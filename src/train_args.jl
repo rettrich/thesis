@@ -2,7 +2,7 @@ settings_cfg = ArgParseSettings()
 
 @add_arg_table! settings_cfg begin
     "--feature_set"
-        help = "Define input features. Possible values: EgoNet_%d , Degree, Pagerank, DeepWalk, Node2Vec_%f_%f, Struct2Vec" * 
+        help = "Define input features. Possible values: EgoNet%d , Degree, Pagerank, DeepWalk, Node2Vec_%f_%f, Struct2Vec" * 
                "Multiple features can be specified, separated by a '-' (e.g. Degree-EgoNet1-DeepWalk)."
         arg_type = String
         default = "EgoNet1"
@@ -52,7 +52,29 @@ settings_cfg = ArgParseSettings()
         help = "Enable debug output"
         arg_type = Bool
         default = false
+    "--gamma"
+        help = "Parameter γ that defines a feasible MQC"
+        arg_type = Float64
+        default = 0.999
+    "--V"
+        help = "Specify μ and σ² for number of vertices in randomly generated instances, separated by comma, e.g. 200,15"
+        arg_type = Tuple
+        default = (200,15)
+    "--density"
+        help = "Specify upper and lower bound for density of randomly generated instances, separated by comma. e.g. 0.7,0.8"
+        arg_type = Tuple
+        default = (0.4,0.6)
+    "--ensure_connectivity"
+        help = "If set to true, only connected graphs are generated"
+        arg_type = Bool
+        default = false
 end
+
+function ArgParse.parse_item(::Type{Tuple}, x::AbstractString)
+    return Tuple(parse(Float64, i) for i in split(x, ","))
+end
+
+
 
 function parse_feature_set(feature_string)::Vector{<:NodeFeature}
     features = split(feature_string, "-")
