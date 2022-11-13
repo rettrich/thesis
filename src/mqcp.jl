@@ -1,21 +1,15 @@
 using ArgParse
-using Graphs
+using Graphs, Flux, GraphNeuralNetworks
 using Revise
-using thesis
-using thesis.LocalSearch
-using thesis.Instances
-using thesis.GNNs
-using CSV
-using CUDA
-using DataFrames
-using Flux
+using thesis, thesis.LocalSearch, thesis.Instances, thesis.GNNs
+using CSV, DataFrames
 using BSON
-using GraphNeuralNetworks
 using MHLib
+using SimpleWeightedGraphs, SparseArrays # needed to deserialize gnn with bson
 
 
 # To run, provide a graph instance and target density γ, e.g.:
-# julia --project=. .\src\mqcp.jl --graph="inst/DIMACS/brock400_1.clq" --gamma=0.999 --timelimit=60
+# julia --project=. .\src\mqcp.jl --graph="inst/DIMACS/brock400_1.clq" --gamma=0.999 --timelimit=60.0
 
 include("mqcp_args.jl")
 
@@ -29,6 +23,13 @@ if settings[:debug]
     ENV["JULIA_DEBUG"] = "thesis"
 end
 
+scoring_function = nothing
+if settings[:scoring_function] != "-"
+    println("Load scoring function $(settings[:scoring_function])")
+    BSON.@load settings[:scoring_function] gnn
+    scoring_function = Encoder_Decoder_ScoringFunction(gnn, settings[:neighborhood_size])
+end
+
 function run_mqcp(scoring_function=nothing)
     γ = settings[:gamma]
 
@@ -36,7 +37,7 @@ function run_mqcp(scoring_function=nothing)
     
     # lower bound heuristic: beam search with GreedyCompletionHeuristic as guidance function
     guidance_func = GreedyCompletionHeuristic()
-    # lower_bound_heuristic = BeamSearch_LowerBoundHeuristic(guidance_func; β=parsed_args["beta"], γ, expansion_limit=parsed_args["expansion_limit"])
+    # lower_bound_heuristic = BeamSearch_LowerBoundHeuristic(guidance_func; β=settings[:beta], γ, expansion_limit=settings[:expansion_limit])
     lower_bound_heuristic = SingleVertex_LowerBoundHeuristic()
 
     construction_heuristic = Freq_GRASP_ConstructionHeuristic(settings[:alpha], settings[:p])
@@ -71,7 +72,7 @@ function run_mqcp(scoring_function=nothing)
     for inst in settings[:graph]
         results[inst.name] = Int[]
         for i = 1:settings[:runs_per_instance]
-            println("Start run $i/$settings[:runs_per_instance] for $(inst.name)")
+            println("Start run $i/$(settings[:runs_per_instance]) for $(inst.name)")
             t = @elapsed solution, _ = run_lsbmh(local_search, inst.graph)
             push!(results[inst.name], length(solution))
             println("Found solution: $(sort(solution)), runtime $t")

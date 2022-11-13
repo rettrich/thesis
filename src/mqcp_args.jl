@@ -90,9 +90,3 @@ function get_stm(stm_string)
     end
 end
 
-scoring_function = nothing
-if settings[:scoring_function] != "-"
-    println("Load scoring function $(settings[:scoring_function])")
-    BSON.@load parsed_args["scoring_function"] gnn
-    scoring_function = Encoder_Decoder_ScoringFunction(gnn, settings[:neighborhood_size])
-end
