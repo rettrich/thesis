@@ -151,14 +151,14 @@ In recent years, GNNs have gained popularity in their application in the context
 The main motivation of this thesis is to further study the application of GNNs in the context of metaheuristics for COPs defined on graphs. We address the problems of current end-to-end approaches by using a GNN only as a component of a metaheuristic search procedure that should enhance the search for high quality solutions either by speeding up the search or by improving the quality of its final solutions. More specifically, we consider several relaxations of a COP defined on graphs, the Maximum Clique Problem (MCP), that seem to be well-suited for our purpose. 
 
 \section{Considered Problems}
-The MCP is the problem of finding a fully connected subgraph -- a \textit{clique} -- of maximum size in a given graph. It is a fundamental problem in computer science, as its decision variant is one of Karp's 21 NP-complete problems \cite{Karp1972}. The MCP has several practical applications, e.g.,  in bioinformatics \cite{Dognin2010} and social network analysis \cite{Pattillo_network_analysis_2013}. However, for some real-world applications that require identifying dense subgraphs, the MCP is too strict a model. This leads to the introduction of several clique relaxations such as -- among others -- the Maximum Quasi-Clique Problem (MQCP) (introduced in \cite{Abello2002}, Definition \ref{def:mqcp}), the Maximum $k$-defective Clique Problem (MDCP) (introduced in \cite{Yu2006}, Definition \ref{def:mdcp}), and the Maximum $k$-plex Problem (MPP) (introduced in \cite{Seidman1978}, Definition \ref{def:mpp}). 
-As all of these problems are NP-hard optimization problems, it is practically often infeasible to obtain exact solutions for large instances. However, many real-world applications often require solutions for large graphs. Therefore, efficient heuristic methods are needed that produce high quality solutions in an acceptable amount of time. While the MCP has been studied well over the last decades, heuristic methods for MQCP, MDCP, and MPP are less abundant. It is therefore another motivation of this thesis to enrich the arsenal of heuristic methods for these relaxations of the MCP. 
+The MCP is the problem of finding a fully connected subgraph -- a \textit{clique} -- of maximum size in a given graph. It is a fundamental problem in computer science, as its decision variant is one of Karp's 21 NP-complete problems \cite{Karp1972}. The MCP has several practical applications, e.g.,  in bioinformatics \cite{Dognin2010} and social network analysis \cite{Pattillo_network_analysis_2013}. However, for some real-world applications that require identifying dense subgraphs, the MCP is too strict a model. This leads to the introduction of several clique relaxations such as -- among others -- the Maximum Quasi-Clique Problem (MQCP) (introduced in \cite{Abello2002}, Definition \ref{def:mqcp}), and the Maximum $k$-defective Clique Problem (MDCP) (introduced in \cite{Yu2006}, Definition \ref{def:mdcp}), 
+As all of these problems are NP-hard optimization problems, it is practically often infeasible to obtain exact solutions for large instances. However, many real-world applications often require solutions for large graphs. Therefore, efficient heuristic methods are needed that produce high quality solutions in an acceptable amount of time. While the MCP has been studied well over the last decades, heuristic methods for the MQCP and the MDCP are less abundant. It is therefore another motivation of this thesis to enrich the arsenal of heuristic methods for these relaxations of the MCP. 
 
 \section{Outline of the Thesis}
 
 \chapter{Considered Problems and Definitions}
 
-In this chapter we want to provide all necessary definitions and notations used throughout this thesis. Section \ref{sec:notation} lists commonly used graph theoretic notations and definitions. Sections \ref{sec:mcp} -- \ref{sec:mpp} show definitions for the problems considered in this thesis, starting with the Maximum Clique Problem, from which all considered problems are derived. Additionally, we list notable properties of the considered problems that are relevant for developing well-performing algorithms for these problems. 
+In this chapter we want to provide all necessary definitions and notations used throughout this thesis. Section \ref{sec:notation} lists commonly used graph theoretic notations and definitions. Sections \ref{sec:mcp} -- \ref{sec:mdcp} show definitions for the problems considered in this thesis, starting with the Maximum Clique Problem, from which all considered problems are derived. Additionally, we list notable properties of the considered problems that are relevant for developing well-performing algorithms for these problems. 
 
 \section{Notation}\label{sec:notation}
 
@@ -266,24 +266,64 @@ Finding a $k$-$s$-defective clique is equivalent to finding a $k$-$\gamma$-quasi
 When approximating the maximum $s$-defective clique in a graph $G$ by a series of $s$-defective cliques of increasing size, the problem can therefore be reduced to finding a series of $\gamma$-quasi cliques and vice-versa.
 
 
-\section{The Maximum k-plex Problem}\label{sec:mpp}
+% \section{The Maximum k-plex Problem}\label{sec:mpp}
 
-\todo{maximum k-plex problem}
+% \todo{maximum k-plex problem}
 
-\begin{definition}[Maximum $k$-plex Problem]
-	\label{def:mpp}
-	Given a graph $G = (V,E)$ and integer $k$, the Maximum $k$-plex Problem (MPP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
-	such that each $v \in S$ is adjacent to at least $|S| - k$ vertices in $S$. 
-\end{definition}
+% \begin{definition}[Maximum $k$-plex Problem]
+% 	\label{def:mpp}
+% 	Given a graph $G = (V,E)$ and integer $k$, the Maximum $k$-plex Problem (MPP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
+% 	such that each $v \in S$ is adjacent to at least $|S| - k$ vertices in $S$. 
+% \end{definition}
 
 
 \chapter{Related Work}
 
-\section{Machine Learning in Combinatorial Optimization Problems}
+Utilizing Machine Learning (ML) techniques in combinatorial optimization has been a research field of growing interest in recent years, and especially the application of graph neural networks (GNNs) in the context of combinatorial optimization is growing in popularity. 
+In this chapter we want to provide a concise review of methods and work related to the topics of this thesis, namely ML methods and GNNs in combinatorial optimization, and also work related to the considered problems, the MCP, the MQCP, and the MDCP. Section \ref{sec:gnns} provides an introduction to the necessary concepts related to graph neural networks that are applied in this work, Section \ref{sec:ml-co} reviews the application of ML techniques that are relevant to this work, and \ref{sec:node-representation} presents methods to generate node features in feature-less graphs, which we apply in our algorithm in Chapter \ref{chp:gnn}. Furthermore, we provide an overview of existing heuristic and exact solution approaches for the MQCP in Section \ref{sec:mqcp-related-work} and for the MDCP in Section \ref{sec:mdcp-related-work}. 
 
-\section{Graph Neural Networks in Combinatorial Optimization Problems}
+\section{Graph Neural Networks}\label{sec:gnns}
+% graph neural networks
+Problems that are defined on graphs, e.g. the Traveling Salesperson Problem (TSP), pose new challenges in utilizing machine learning effectively: Utilized methods should be able to effectively capture and exploit the structure of input graphs, while taking into account that graphs do not have a unique representation and no fixed order of vertices, i.e. they should be \emph{order invariant}. Furthermore, graphs of all sizes should be considered as input, therefore utilized methods need to be \emph{scale invariant}. Ideally, the results of the training should generalize on unseen instances that might also be of different size than the instances seen during training. In order to address these challenges, researches have come up with machine learning architectures known as Graph Neural Networks (GNNs). 
 
-\section{Solution Approaches for the MQCP}
+The authors in \cite{Sperduti1997} were the first to research the application of neural networks on graphs. Since then, many researches have advanced the field by developing new architectures and methods. 
+A comprehensive overview of the taxonomy of GNNs and a review of applications and methods can be found in \cite{Wu2019} and \cite{Zhou2020}. 
+
+The authors of \cite{Wu2019} classify GNNs into four main categories: Recurrent GNNs, Convolutional GNNs (ConvGNNs), Graph autoencoders, and Spatial-temporal graph neural networks. In the following, we conform to their definitions of GNN-related concepts. 
+In the context of our work, spatial-based ConvGNNs are the most relevant. 
+The Message Passing Neural Network (MPNN) \cite{GilmerSRVD17} is a framework of spatial-based ConvGNNs, which captures several different concrete realisations due to its generality. 
+% Here, information corresponding to the vertices in a graph are represented by feature vectors, and convolution operations are defined to aggregate information of the neighboring vertices by passing messages over the edges of the graph. A convolutional layer then aggregates the features of neighboring vertices for all vertices in the graph. The general idea of this convolution operation is sketched in Figure \ref{fig:conv-gnn}, 
+where the updated value for vertex $v_0$ is computed by aggregating the messages passed from its neighbors. MPNN uses a fixed number of layers to compute the final node embeddings. 
+More precisely, to update the representation $h_v^{(k)}$ of a node $v$ in layer $k$, the following message passing function is applied: 
+
+\[
+    h_v^{(k)} = U_k (h_v^{(k-1)}, \sum_{u \in N_G(v)} M_k(h_v^{(k-1)}, h_u^{(k-1)}, x_{vu}^{e}))
+\]
+Here, $U_k(\cdot), M_k(\cdot)$ are functions with learnable parameters, $h_v^{(0)} = x_v$, where $x_v$ is the initial feature vector of node $v$, and $x_{vu}^{e}$ is the feature vector of the (directed) edge from $v$ to $u$. Note that edge features are however not required, as also our work in this thesis utilizes spatial-based ConvGNNs on graphs that only contain information about vertices, but not about edges. 
+The functions $U_k, M_k$ can be realized by any learnable function and thus cover many concrete realizations of the concept, for example $M_k$ can be an Multi-Layer Perceptron (MLP) that takes the concatenation of $(h_v^{(k-1)}, h_u^{(k-1)}, x_{vu}^{e})$ as inputs to compute its message, and $U_k$ is often realized by a ReLU activation function, followed by a batch-normalization \cite{IoffeS15} layer with learnable parameters. 
+
+GNNs can be used for different tasks such as node-level tasks, e.g. the classification of nodes in a graph, edge-level tasks, e.g. edge classification or link prediction, or graph-level tasks, e.g. graph classification, both in supervised and unsupervised learning settings. 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\textwidth]{graphics/gnn-conv.eps}
+    \caption{Visual representation of the convolution operation for a vertex in a graph.}
+    \label{fig:conv-gnn}
+\end{figure}
+
+\section{Machine Learning in Combinatorial Optimization}\label{sec:ml-co}
+ 
+In \cite{Kool2019} and \cite{Joshi2021}, the authors present end-to-end ML approaches by utilizing GNNs for routing problems including the Euclidean TSP. While their work shows promise, the proposed methods are only available for relatively small graphs, where exact approaches are available. In \cite{Hudson2021}, the authors present a guided local search approach, where a GNN is used to provide additional information to enhance the metaheuristic search, leading to improved results when applied to the TSP. Again, only relatively small instances are considered. 
+We refer to \cite{Cappart2021} for a comprehensive overview of GNNs in the context of combinatorial optimization for both heuristic and exact algorithms. 
+
+% graph neural networks in CO: kool, etc
+
+% specific to MCP relaxations
+
+\section{Node Representation Learning}\label{sec:node-representation}
+
+\section{Solution Approaches for the MQCP}\label{sec:mqcp-related-work}
+
 \subsection{Exact Approaches}\label{milp-mqcp}
 Pattillo et al. \cite{pattillo_maximum_2013} propose a Mixed Integer Linear Programming formulation with a number of variables that is quadratic in the size of the vertex set $V$. 
 It is derived from the following quadratic formulation, where $x_i \in \{0,1\}$ are binary decision variables representing the solution set $S \subseteq V$, and $a_{ij}$ represent elements of the adjacency matrix with $a_{ij}$ equal to one if $\{i,j\} \in E$ and zero otherwise: 
@@ -314,21 +354,7 @@ The authors linearize the above quadratic formulation by introducing variables $
 
 \subsubsection{Local Search Based Metaheuristics}
 
-\chapter{Methodology}
-
-\section{Machine Learning}
-
-\subsection{Neural Networks}
-
-\subsection{Graph Neural Networks}
-
-\section{Local Search}
-
-\subsection{Tabu Search}
-
-\section{Beam Search}
-
-\section{Linear Programming}
+\section{Solution Approaches for the MDCP}\label{sec:mdcp-related-work}
 
 
 \chapter{A Local Search Based Metaheuristic for Maximum Clique Relaxations}\label{chp:local-search-algorithm}
@@ -402,9 +428,11 @@ We use a simple data structure for nodes of the search tree where a node $v$ has
 Additionally, we define the cost of a node $v$ as $g(v) = |v.S|$, which is the size of the feasible solution that this node represents.  
 The root node of the beam search tree is then defined by an empty candidate set $\mathit{root.S}$ with $\mathit{root.g}=0, \mathit{root.h}=0$. 
 
-The main loop in line~\ref{alg:exploration-construction-while-start}--\ref{alg:exploration-construction-while-end} expands all nodes in the current beam into all feasible successor nodes. 
+The main loop in line~\ref{alg:exploration-construction-while-start}--\ref{alg:exploration-construction-while-end} expands all nodes in the current beam into feasible successor nodes. 
 Since a node $v$ represents a set of vertices $\mathit{v.S}$ which is a feasible $\gamma$-quasi clique, successor nodes are generated by checking for each vertex $u \in V \setminus \mathit{v.S}$ whether $\mathit{v.S} \cup \{u\}$ is still a feasible $\gamma$-quasi clique. 
 These successor nodes are then added to a list $\mathit{children}$. 
+In order to keep the computational effort low, we introduce a parameter $\varepsilon$ that controls the maximum number of successor nodes for each node in the search tree. Thus, if a node has more than $\varepsilon$ feasible successors, we sort potential successors by the number of edges in their corresponding candidate solutions and add only $\varepsilon$ successor nodes to $\mathit{children}$, as can be seen in line \ref{alg:lower-bound-heuristic-expansion} of the algorithm.  
+
 In order to avoid symmetries, i.e. nodes $u,v$ representing the same solutions such that $u.S = v.S$, we use a hash map for each level of the search tree containing all solution vertex sets that were already added for expansion. Before adding a successor node $v$ to $\mathit{children}$, a check is performed to make sure that a node representing $v.S$ is not already contained in $\mathit{children}$.  
 
 Note that due to this expansion into successor nodes all the solutions corresponding to the nodes on a level of the search tree have the same cardinality, and thus the same $g$-value.  
@@ -412,18 +440,18 @@ Therefore, $g$-values can be ignored in the evaluation, and all nodes in $\mathi
 Furthermore, since all the solutions corresponding to nodes on a level of the search tree have the same cardinality, a random node is selected to possibly update the best-so-far solution $S^*$ on each level.
 Finally, when the beam becomes empty, the maximum cardinality solution is returned. 
 
-We propose two different guidance functions for this beam search: 
-\begin{itemize}
-    \item The first one returns the solution size that is obtained by a simple greedy construction: Given a node $v$ with candidate set $S = v.S$, greedily add the vertex $v = \arg \max_{u \in V \setminus S} d_S(u)$ if $S \cup \{v\}$ is still a feasible $\gamma$-quasi clique, where $d_S(u) = |\{v \mid v \in S, \{u,v\} \in E \}|$. 
-    Ties are broken randomly. This greedy extension is repeated until the corresponding solution is maximal, i.e. no single vertex can extend the cardinality of the solution while maintaining feasibility. 
-    The size of the solution obtained this way is then the return value of the guidance function. This greedy guidance function has a time complexity of $O(kn)$ per iteration, where $k$ is the solution size obtained by the greedy construction and $n$ is the number of nodes in $G$. 
-    \item The second guidance function takes a parameter $l$ and evaluates a node $v$ with candidate set $S = v.S$ by calculating the sum of the $l$ vertices in $V \setminus S$ with the highest values for $d_S(u)$. This guidance function is designed to be more time-efficient than the previous one, as the computation is independent of the solution size. 
-    \fxnote{braucht noch immer $O(n \log n)$ wegen sortieren und performt deutlich schlechter, vielleicht einfach rausstreichen?}
-\end{itemize}
+We use the result of a simple greedy construction as the value of the heuristic function $h$: Given a node $v$ with candidate set $S = v.S$, greedily add the vertex $v = \arg \max_{u \in V \setminus S} d_S(u)$ if $S \cup \{v\}$ is still a feasible $\gamma$-quasi clique, where $d_S(u) = |\{v \mid v \in S, \{u,v\} \in E \}|$. 
+Ties are broken randomly. This greedy extension is repeated until the corresponding solution is maximal, i.e., no single vertex can extend the cardinality of the solution while maintaining feasibility. 
+The size of the solution obtained this way is then the return value of the guidance function $h(v)$. This greedy guidance function has a time complexity of $O(kn)$ per iteration, where $k$ is the solution size obtained by the greedy construction and $n$ is the number of nodes in $G$. 
+
+
+    % \item The second guidance function takes a parameter $l$ and evaluates a node $v$ with candidate set $S = v.S$ by calculating the sum of the $l$ vertices in $V \setminus S$ with the highest values for $d_S(u)$. This guidance function is designed to be more time-efficient than the previous one, as the computation is independent of the solution size. 
+    % \fxnote{braucht noch immer $O(n \log n)$ wegen sortieren und performt deutlich schlechter, vielleicht einfach rausstreichen?}
+
 
 \begin{algorithm}
     \DontPrintSemicolon
-    \KwIn{Graph $G$, Target density $\gamma$, guidance function $h$, beam width $\beta$}
+    \KwIn{Graph $G$, Target density $\gamma$, guidance function $h$, beam width $\beta$, expansion control parameter $\varepsilon$}
     \KwOut{A feasible $\gamma$-quasi clique $S$}
     $\mathit{root.S} \gets \emptyset$ \;
     $S^* \gets \emptyset$ \;
@@ -431,8 +459,8 @@ We propose two different guidance functions for this beam search:
     \While{$\mathit{beam}$ not empty}{\label{alg:lower-bound-heuristic-while-start}
         $\mathit{children} \gets \emptyset$ \;
         \For{$\mathit{node} \in \mathit{beam}$}{
-            Expand $\mathit{node.S}$ into all feasible solutions that can be obtained by adding a node from $V \setminus \mathit{node.S}$ \;
-            $\mathit{children} \gets $ add feasible solutions obtained from $\mathit{node}$ \;
+            Expand $\mathit{node.S}$ into up to $\varepsilon$ successor nodes that can be obtained by adding a vertex from $V \setminus \mathit{node.S}$ \; \label{alg:lower-bound-heuristic-expansion}
+            $\mathit{children} \gets $ add feasible successor nodes obtained from expanding $\mathit{node}$ \;
         }
         \If{$children$ not empty}{
             $S^* \gets \mathit{node.S}$ for some arbitrary node in $\mathit{children}$ 
@@ -791,15 +819,11 @@ Since the node embeddings are only computed once per graph, it is essential that
 
 In \cite{Duong2019} the authors analyze the effect of different node feature initialization methods on node classification task. They distinguish between centrality based approaches (e.g. degree based initialization, number of triangles that a vertex participates in, etc), and learning-based approaches (e.g. DeepWalk \cite{Perozzi2014}, where vertices are mapped closer together, if the probability that they occur in a random walk together is higher). 
 The authors conclude that centrality-based approaches are generally not as suitable as learning-based approaches by evaluating different feature initialization approaches in a node classification setting. 
-
 We therefore investigate both the application of centrality-based and learning-based feature initialization methods. 
-For centrality-based features, we evaluate the following feature initialization methods: 
-\begin{itemize}
-    \item Degree initialization: Each vertex is initialized by its degree.
-    \item EgoNet initialization: Given a graph $G = (V, E)$, and vertex $v \in V$, let $N(v, d)$ be the set of vertices reachable from $v$ by a path of length at most $d$. The induced subgraph $G[N(v, d)]$ is the $d$-hop-EgoNet of vertex $v$. Note that for $d=1$, $N(v, d)$ is the closed neighborhood of $v$ in $G$. We derive three features from the EgoNet of each vertex in $V$: the size $|N(v, d)|$, the number of edges in the subgraph induced by the EgoNet $|E(G[N(v, d)])|$, and the number of edges that leave $N(v, d)$, i.e. ${\{u, v\} \mid u \in N(v,d), v \notin N(v,d), \{u,v\} \in E}$.     
-\end{itemize}
 
-Learning-based feature initialization models are mostly based on generating variations of random walks on the original graph or a derived graph, and then mapping vertices closer together in the feature space that often occur in these random walks together at a certain distance. Notable methods are DeepWalk \cite{Perozzi2014}, its generalization Node2Vec \cite{GroverL16} that introduces hyperparameters for the random walks, and Struct2Vec \cite{FigueiredoRS17}. Whereas DeepWalk and Node2Vec take locality and distance between vertices into account, Struct2Vec is focused on structural similarities, i.e. vertices with structurally similar neighborhoods are mapped closer together, even though they can be at a great distance in the actual graph. We therefore propose to evaluate different parameterizations of Node2Vec and Struct2Vec in the context of our algorithm. 
+For centrality-based features, we evaluate \emph{Degree} initialization, where each vertex is initialized by its degree, and \emph{EgoNet} initialization: Given a graph $G = (V, E)$, and vertex $v \in V$, let $N(v, d)$ be the set of vertices reachable from $v$ by a path of length at most $d$. The induced subgraph $G[N(v, d)]$ is the $d$-hop-EgoNet of vertex $v$. Note that for $d=1$, $N(v, d)$ is the closed neighborhood of $v$ in $G$. We derive three features from the EgoNet of each vertex in $V$: the size $|N(v, d)|$, the number of edges in the subgraph induced by the EgoNet $|E(G[N(v, d)])|$, and the number of edges that leave $N(v, d)$, i.e. ${\{u, v\} \mid u \in N(v,d), v \notin N(v,d), \{u,v\} \in E}$.     
+
+Learning-based feature initialization models are mostly based on generating variations of random walks on the original graph or a derived graph, and then mapping vertices closer together in the feature space that often occur in these random walks together at a certain distance. Notable methods are \emph{DeepWalk} \cite{Perozzi2014}, its generalization \emph{Node2Vec} \cite{GroverL16} that introduces hyperparameters for the random walks, and \emph{Struct2Vec} \cite{FigueiredoRS17}. Whereas DeepWalk and Node2Vec take locality and distance between vertices into account, Struct2Vec is focused on structural similarities, i.e. vertices with structurally similar neighborhoods are mapped closer together, even though they can be at a great distance in the actual graph. We therefore propose to evaluate different parameterizations of Node2Vec and Struct2Vec in the context of our algorithm. 
 
 \subsection{Encoder}
 In general, any graph convolutional network (GCN) model can be used as an encoder. We refer to Residual Gated Graph Convolutional Networks (\cite{Bresson2017}), and GATv2 networks (\cite{Velickovic2018}, \cite{Brody2021}), which we will use in our experiments. Based on these GCN models, we propose two architectures. In the following we denote by $dim_i$ the input dimension of layer $i, 0 \leq i \leq l_e$ of the network, where $l_e$ is the number of layers used in the encoder, $dim_0$ corresponds to the feature dimension of the node features, and for $1 \leq i \leq l_e$ $dim_i$ corresponds to the output dimension of layer $i$. 
@@ -966,13 +990,231 @@ The GNN will then be applied only once at the beginning of the local search algo
 % \end{center}
 % \end{table}
 
-\chapter{Evaluation}
+\chapter{Computational Experiments \& Evaluation}
 
-\section{Dataset}
+\section{Computational Experiments}
+
+\begin{table}
+    \centering
+    \begin{tabular}{ll}
+        \hline
+        Parameter & Description \\ \hline
+        $\mathit{stm}$ & Short Term Memory type (TabuList, ConfigurationChecking) \\
+        $\alpha$ & GRASP control variable of construction heuristic, controls randomness \\
+        $p$ & Control variable $p$ for construction heuristic \\
+        $\beta$ & Beam width of beam search used as lower bound heuristic \\
+        $\varepsilon$ & Maximum number of successor nodes for a node in lower bound heuristic \\
+        $\mathit{timelimit}$ & Cutoff time for execution of algorithm \\
+        $\mathit{max\_iter}$ & Local search is restarted after $\mathit{max\_iter}$ iterations without improvement \\
+        $k$ & Maximum size of sets $X, Y$ in restricted neighborhood during local search 
+    \end{tabular}
+    \label{tab:parameters-lsbmh}
+    \caption{Parameters of Local Search Based Metaheuristic}
+\end{table}
+
+\begin{table}
+    \centering
+    \begin{tabular}{ll}
+        \hline
+        Parameter & Description \\ \hline
+        $d$ & Depth of lookahead search \\
+        $k^\prime$ & Maximum size of sets $X,Y$ in restricted neighborhood in look-ahead search \\
+        $\mathit{dim}^{\mathit{conv}}_e$ & Dimension of Convolutional layers of encoder \\
+        $\mathit{dim}^{\mathit{ff}}_e$ & Dimensions of Feed Forward layers of encoder \\
+        $l_e$ & Number of layers in encoder \\
+        $\mathit{dim}_d$ & Dimensions of Feed Forward layers of decoder \\
+        $l_d$ & Number of layers in decoder \\
+        $\rho$ & Maximum replay buffer capacity \\
+        $z$ & Number of iterations of training loop (number of epochs) \\
+        $\mathcal{V} \sim \mathcal{N}(\mu, \sigma^2)$ & Normal distribution for sampling number of vertices of random instances \\
+        $\mathcal{D} \sim \mathcal{U}(a_1, a_2) $ & Uniform distribution for sampling edge density of random instances 
+    \end{tabular}
+    \label{tab:parameters-training}
+    \caption{Parameters used in training}
+\end{table}
 
 
 
-\chapter{Conclusions}
+
+\begin{itemize}
+    \item Lower bound heuristic
+    \item Node Features
+    \item Lookahead Depth, Lookahead Breadth
+    \item Generalization on bigger graphs
+    \item Parameters and runtime
+    \item Evaluation on (selected) instances from DIMACS, BHOSLIB 
+\end{itemize}
+
+\subsection{Node Features}
+Ten runs each for
+\begin{itemize}
+    \item Degree
+    \item EgoNet-1
+    \item Degree,EgoNet1
+    \item EgoNet1,EgoNet2
+    \item Degree,EgoNet-1,EgoNet-2
+    \item Node2Vec
+    \item Struct2Vec
+    \item Node2Vec,Struct2Vec
+    \item Degree,Struct2Vec
+    \item Degree,Node2Vec
+    \item EgoNet1, Struct2Vec
+    \item EgoNet1, Node2Vec
+\end{itemize}
+with lookahead depth 1 and 2. Compare results for average of 30 test instances. 
+
+\subsection{Scale Invariance}
+
+\subsection{GNN Hyperparameters}
+
+\subsection{Look-ahead Search Hyperparameters}
+
+\section{Benchmark Sets}
+Table containing benchmark instances for reference
+\begin{table}
+    \centering
+    \resizebox{0.38\columnwidth}{!}{
+    \begin{tabular}{|r|l|r|r|r|}
+        \hline
+        \textbf{Nr.} & \textbf{ID} & \textbf{V} & \textbf{E} & \textbf{Density} \\ \hline
+        01 & brock200\_1 & $200$ & $14834$ & $0.745$\\
+        02 & brock200\_2 & $200$ & $9876$ & $0.496$\\
+        03 & brock200\_3 & $200$ & $12048$ & $0.605$\\
+        04 & brock400\_1 & $400$ & $59723$ & $0.748$\\
+        05 & brock400\_2 & $400$ & $59786$ & $0.749$\\
+        06 & brock400\_3 & $400$ & $59681$ & $0.748$\\
+        07 & brock800\_1 & $800$ & $207505$ & $0.649$\\
+        08 & brock800\_2 & $800$ & $208166$ & $0.651$\\
+        09 & brock800\_3 & $800$ & $207333$ & $0.649$\\
+        10 & c-fat200-1 & $200$ & $1534$ & $0.077$\\
+        11 & c-fat200-2 & $200$ & $3235$ & $0.163$\\
+        12 & c-fat200-5 & $200$ & $8473$ & $0.426$\\
+        13 & c-fat500-1 & $500$ & $4459$ & $0.036$\\
+        14 & c-fat500-10 & $500$ & $46627$ & $0.374$\\
+        15 & c-fat500-2 & $500$ & $9139$ & $0.073$\\
+        16 & c-fat500-5 & $500$ & $23191$ & $0.186$\\
+        17 & C1000 & $1000$ & $450079$ & $0.901$\\
+        18 & C125 & $125$ & $6963$ & $0.898$\\
+        19 & C2000 & $2000$ & $1799532$ & $0.900$\\
+        20 & C250 & $250$ & $27984$ & $0.899$\\
+        21 & C4000 & $4000$ & $4000268$ & $0.500$\\
+        22 & C500 & $500$ & $112332$ & $0.900$\\
+        23 & DSJC1000 & $1000$ & $249826$ & $0.500$\\
+        24 & DSJC500 & $500$ & $62624$ & $0.502$\\
+        25 & gen200\_p0 & $200$ & $17910$ & $0.900$\\
+        26 & gen400\_p0 & $400$ & $71820$ & $0.900$\\
+        27 & hamming10-2 & $1024$ & $518656$ & $0.990$\\
+        28 & hamming10-4 & $1024$ & $434176$ & $0.829$\\
+        29 & hamming6-2 & $64$ & $1824$ & $0.905$\\
+        30 & hamming6-4 & $64$ & $704$ & $0.349$\\
+        31 & hamming8-2 & $256$ & $31616$ & $0.969$\\
+        32 & hamming8-4 & $256$ & $20864$ & $0.639$\\
+        33 & johnson16-2-4 & $120$ & $5460$ & $0.765$\\
+        34 & johnson32-2-4 & $496$ & $107880$ & $0.879$\\
+        35 & johnson8-2-4 & $28$ & $210$ & $0.556$\\
+        36 & johnson8-4-4 & $70$ & $1855$ & $0.768$\\
+        37 & keller4 & $171$ & $9435$ & $0.649$\\
+        38 & keller5 & $776$ & $225990$ & $0.752$\\
+        39 & keller6 & $3361$ & $4619898$ & $0.818$\\
+        40 & MANN\_a27 & $378$ & $70551$ & $0.990$\\
+        41 & MANN\_a45 & $1035$ & $533115$ & $0.996$\\
+        42 & MANN\_a9 & $45$ & $918$ & $0.927$\\
+        43 & p\_hat1000-1 & $1000$ & $122253$ & $0.245$\\
+        44 & p\_hat1000-2 & $1000$ & $244799$ & $0.49$\\
+        45 & p\_hat1000-3 & $1000$ & $371746$ & $0.744$\\
+        46 & p\_hat1500-2 & $1500$ & $568960$ & $0.506$\\
+        47 & p\_hat300-1 & $300$ & $10933$ & $0.244$\\
+        48 & p\_hat300-2 & $300$ & $21928$ & $0.489$\\
+        49 & p\_hat500-1 & $500$ & $31569$ & $0.253$\\
+        50 & p\_hat500-2 & $500$ & $62946$ & $0.505$\\
+        51 & p\_hat700-1 & $700$ & $60999$ & $0.249$\\
+        52 & p\_hat700-2 & $700$ & $121728$ & $0.498$\\
+        53 & san1000 & $1000$ & $250500$ & $0.502$\\
+        54 & san200\_0 & $200$ & $17910$ & $0.900$\\
+        55 & san400\_0 & $400$ & $55860$ & $0.700$\\
+        56 & sanr200\_0 & $200$ & $17863$ & $0.898$\\
+        57 & sanr400\_0 & $400$ & $55869$ & $0.700$\\ \hline
+    \end{tabular}
+    }     
+    \caption{DIMACS benchmark instance set}   
+    \label{tab:DIMACS}
+\end{table}
+
+\begin{table}
+    \centering
+    \begin{tabular}{|r|l|r|r|r|}
+        \hline
+        \textbf{Nr.} & \textbf{ID} & \textbf{V} & \textbf{E} & \textbf{Density} \\ \hline
+        01 & frb100-40 & $4000$ & $7425226$ & $0.928$\\
+        02 & frb30-15-1 & $450$ & $83198$ & $0.824$\\
+        03 &frb30-15-2 & $450$ & $83151$ & $0.823$\\
+        04 &frb30-15-4 & $450$ & $83194$ & $0.823$\\
+        05 &frb30-15-5 & $450$ & $83231$ & $0.824$\\
+        06 &frb35-17-1 & $595$ & $148859$ & $0.842$\\
+        07 &frb35-17-2 & $595$ & $148868$ & $0.842$\\
+        08 &frb35-17-4 & $595$ & $148873$ & $0.842$\\
+        09 &frb35-17-5 & $595$ & $148572$ & $0.841$\\
+        10 &frb40-19-1 & $760$ & $247106$ & $0.857$\\
+        11 &frb40-19-2 & $760$ & $247157$ & $0.857$\\
+        12 &frb40-19-4 & $760$ & $246815$ & $0.856$\\
+        13 &frb40-19-5 & $760$ & $246801$ & $0.856$\\
+        14 &frb45-21-1 & $945$ & $386854$ & $0.867$\\
+        15 &frb45-21-2 & $945$ & $387416$ & $0.869$\\
+        16 &frb45-21-4 & $945$ & $387491$ & $0.869$\\
+        17 &frb45-21-5 & $945$ & $387461$ & $0.869$\\
+        18 &frb50-23-1 & $1150$ & $580603$ & $0.879$\\
+        19 &frb50-23-2 & $1150$ & $579824$ & $0.878$\\
+        20 &frb50-23-4 & $1150$ & $580417$ & $0.879$\\
+        21 &frb50-23-5 & $1150$ & $580640$ & $0.879$\\
+        22 &frb53-24-1 & $1272$ & $714129$ & $0.883$\\
+        23 &frb53-24-2 & $1272$ & $714067$ & $0.883$\\
+        24 &frb53-24-4 & $1272$ & $714048$ & $0.883$\\
+        25 &frb53-24-5 & $1272$ & $714130$ & $0.883$\\
+        26 &frb56-25-1 & $1400$ & $869624$ & $0.888$\\
+        27 &frb56-25-2 & $1400$ & $869899$ & $0.888$\\
+        28 &frb56-25-4 & $1400$ & $869262$ & $0.888$\\
+        29 &frb56-25-5 & $1400$ & $869699$ & $0.888$\\
+        30 &frb59-26-1 & $1534$ & $1049256$ & $0.892$\\
+        31 &frb59-26-2 & $1534$ & $1049648$ & $0.893$\\
+        32 &frb59-26-4 & $1534$ & $1048800$ & $0.892$\\
+        33 &frb59-26-5 & $1534$ & $1049829$ & $0.893$\\ \hline
+    \end{tabular}
+    \caption{BHOSLIB benchmark instance set}
+    \label{tab:BHOSLIB}    
+\end{table}
+
+\begin{table}
+    \centering
+    \begin{tabular}{|r|l|r|r|r|}
+        \hline
+        \textbf{Nr.} & \textbf{ID} & \textbf{V} & \textbf{E} & \textbf{Density} \\ \hline
+        01 & CA-GrQc-50 & $5242$ & $14496$ & $0.001$\\
+        02 & CA-GrQc-90 & $5242$ & $14496$ & $0.001$\\
+        03 & email-50 & $1133$ & $5451$ & $0.009$\\
+        04 & email-90 & $1133$ & $5451$ & $0.009$\\
+        05 & Erdos971-50 & $472$ & $1314$ & $0.012$\\
+        06 & Erdos971-90 & $472$ & $1314$ & $0.012$\\
+        07 & Harvard500-50 & $500$ & $2043$ & $0.016$\\
+        08 & Harvard500-90 & $500$ & $2043$ & $0.016$\\
+        09 & SmallW-50 & $396$ & $994$ & $0.013$\\
+        10 & SmallW-90 & $396$ & $994$ & $0.013$\\
+        11 & USAir97-50 & $332$ & $2126$ & $0.039$\\
+        12 & USAir97-90 & $332$ & $2126$ & $0.039$\\ \hline
+    \end{tabular}
+    \caption{Florida benchmark instance set}
+    \label{tab:Florida}
+\end{table}
+
+\section{Benchmark Results}
+
+\subsection{MQCP Results}
+\subsection{MDCP Results}
+
+
+
+
+
+\chapter{Conclusions \& Future Work}
 
 \backmatter
 
