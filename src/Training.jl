@@ -285,7 +285,7 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
 
     loss(g::GNNGraph, S::Vector{Int}) = loss_func_unbatched(gnn, g, S) 
 
-    @printf("Iteration | encountered |   t_ls | t_base | t_targets | t_train | (opt)buffer | loss | V/density | solution | baseline |   gap | free/total memory\n")
+    @printf("Iteration | encountered |   t_ls | t_base | t_targets | t_train | (opt)buffer | loss | V/density | solution | baseline |   gap \n")
 
     for i = 1:epochs
         
@@ -314,21 +314,18 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
         t_train = 0
         iter_loss = NaN
 
-        free_mem = Int(Sys.free_memory()) / 2^30
-        total_mem = Int(Sys.total_memory()) / 2^30
-
         if length(buffer) < buffer.min_fill
-            @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i %7.3f   %5.3f/%5.3f\n", 
+            @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i %7.3f\n", 
                     i, length(swap_history),
                     t_ls, t_baseline, t_targets, 0, 
                     local_optima, length(buffer), 
                     iter_loss, 
                     nv(graph), density(graph), 
                     s_ls, s_base, gap,
-                    free_mem, total_mem)
+                    )
             if !isnothing(logger)
                 with_logger(logger) do 
-                    @info("thesis", t_ls, t_baseline, t_targets, t_train, iter_loss, V=nv(graph), dens=density(graph), s_ls, s_base, gap, free_mem, total_mem)
+                    @info("thesis", t_ls, t_baseline, t_targets, t_train, iter_loss, V=nv(graph), dens=density(graph), s_ls, s_base, gap, )
                 end
             end
             continue
@@ -371,18 +368,18 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
 
         t_train = time() - before_training
 
-        @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i %7.3f   %5.3f/%5.3f\n", 
+        @printf("%9i %13i %8.3f %8.3f %11.3f %9.3f   (%3i)%6i %6.3f %5i/%4.3f %10i %10i %7.3f\n", 
                     i, length(swap_history),
                     t_ls, t_baseline, t_targets, t_train, 
                     local_optima, length(buffer), 
                     iter_loss, 
                     nv(graph), density(graph), 
                     s_ls, s_base, gap,
-                    free_mem, total_mem)
+                    )
 
         if !isnothing(logger)
             with_logger(logger) do 
-                @info("thesis", t_ls, t_baseline, t_targets, t_train, iter_loss, V=nv(graph), dens=density(graph), s_ls, s_base, gap, free_mem, total_mem)
+                @info("thesis", t_ls, t_baseline, t_targets, t_train, iter_loss, V=nv(graph), dens=density(graph), s_ls, s_base, gap, )
             end
         end
 

@@ -16,11 +16,14 @@ parse_settings!([settings_cfg, thesis.NodeRepresentationLearning.settings_cfg],
                 vcat(ARGS,
                 [
                     # "--feature_set=Node2Vec_2_4-Struct2Vec",
-                    # "--lookahead_depth=1",
+                    # "--lookahead_depth=2",
                     # "--lookahead_breadth=50",
-                    # "--epochs=200"
+                    # "--epochs=400",
                     # "--sparse_evaluation=false",
                     # "--debug=true"
+                    # "--gamma=0.9",
+                    # "--V=500,30",
+                    # "--density=0.5,0.6",
                 ]))
 
 if settings[:debug]
@@ -34,11 +37,11 @@ function train_MQCP()
     # initialize components of local search based metaheuristic
     
     # lower bound heuristic: beam search with GreedyCompletionHeuristic as guidance function
-    # guidance_func = GreedyCompletionHeuristic()
-    # lower_bound_heuristic = BeamSearch_LowerBoundHeuristic(guidance_func; β=1, γ, expansion_limit=10)
+    guidance_func = GreedyCompletionHeuristic()
+    lower_bound_heuristic = BeamSearch_LowerBoundHeuristic(guidance_func; β=5, γ, expansion_limit=10)
 
     # use a single vertex as lower bound 
-    lower_bound_heuristic = SingleVertex_LowerBoundHeuristic()
+    # lower_bound_heuristic = SingleVertex_LowerBoundHeuristic()
 
     construction_heuristic = Freq_GRASP_ConstructionHeuristic(0.2, 0.3)
 
@@ -58,7 +61,7 @@ function train_MQCP()
                                    node_features=feature_set, 
                                    decoder_features=[d_S_NodeFeature()],
                                    )
-    scoring_function = Encoder_Decoder_ScoringFunction(gnn, 20)
+    scoring_function = Encoder_Decoder_ScoringFunction(gnn, 30)
 
     # compare with baseline
     baseline_scoring_function = d_S_ScoringFunction()
@@ -67,7 +70,7 @@ function train_MQCP()
     local_search_procedure = MQCP_LocalSearchProcedure(γ, short_term_memory, scoring_function)
     baseline_local_search_procedure = MQCP_LocalSearchProcedure(γ, short_term_memory, baseline_scoring_function)
 
-    timelimit = 120.0
+    timelimit = 300.0
     max_iter = 4000
     next_improvement = false
     record_swap_history = true
