@@ -270,7 +270,6 @@ function train!(local_search::LocalSearchBasedMH, instance_generator::InstanceGe
                buffer_capacity::Int = 1000,
                logger::Union{Nothing, TBLogger}=nothing
                )
-    buffer_capacity = 1000
     min_fill = round(Int, buffer_capacity / 2)
     buffer = ReplayBuffer(min_fill, buffer_capacity)
     ps = Flux.params(gnn)
