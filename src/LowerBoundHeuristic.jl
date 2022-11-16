@@ -37,6 +37,38 @@ This function must be implemented by every subtype of `GuidanceFunction`
 """
 (::GuidanceFunction)(g::SimpleGraph, node::Node, γ::Real)::Real = error("Abstract implementation called")
 
+struct GreedySearchHeuristic <: GuidanceFunction end
+
+function (::GreedySearchHeuristic)(g::SimpleGraph, node::Node, γ::Real)::Real
+    return node.num_edges
+end
+
+# returns random value for each node
+struct RandomHeuristic <: GuidanceFunction end
+
+function (::RandomHeuristic)(g::SimpleGraph, node::Node, γ::Real)::Real
+    return rand()
+end
+
+struct NumOfEdgesHeuristic <: GuidanceFunction 
+    variant_a::Bool
+end
+
+function (noeh::NumOfEdgesHeuristic)(g::SimpleGraph, node::Node, γ::Real)::Real
+    k = length(node.S)
+    min_edges_needed = ceil(Int, γ * (k*(k+1)/2)) - node.num_edges # edges needed for feasibility in clique of size k+1
+    d_S = [node.d_S[v] for v in vertices(g) if v ∉ node.S] # d_S values for vertices outside S
+    result = 0
+    for val in d_S
+        if val >= min_edges_needed
+            result += 1
+            add = noeh.variant_a ? ((val - min_edges_needed)/(k*(k+1)/2)) : (val - min_edges_needed)
+            result += add
+        end
+    end 
+    return result
+end
+
 """
     GreedyCompletionHeuristic
 
