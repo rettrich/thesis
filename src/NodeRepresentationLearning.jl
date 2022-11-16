@@ -47,7 +47,7 @@ mutable struct Struct2VecWalkSimulator <: WalkSimulator
     window_size::Int
     k′::Int
     q::Real
-    multi_layer_graph::Vector{SimpleWeightedGraph}
+    multi_layer_graph
     layer_transition_probs
 
     function Struct2VecWalkSimulator(walk_length, window_size, k′, q)
@@ -167,6 +167,14 @@ init_walk_simulator(rws::SecondOrderRandomWalkSimulator, graph::AbstractGraph) =
 function init_walk_simulator(rws::Struct2VecWalkSimulator, graph::AbstractGraph)
     rws.multi_layer_graph, rws.layer_transition_probs = init_struct2vec(rws, graph)
 end
+
+cleanup_walk_simulator(::WalkSimulator) = nothing
+cleanup_walk_simulator(rws::SecondOrderRandomWalkSimulator) = empty!(rws.transition_probs)
+function cleanup_walk_simulator(::Struct2VecWalkSimulator)
+    rws.multi_layer_graph = []
+    rws.layer_transition_probs = []
+end
+
 
 function skip_gram_model(vocabulary_size, embedding_size)::Chain
     model = Chain(
@@ -314,7 +322,7 @@ function learn_embeddings(ws::WalkSimulator, graph::AbstractGraph; embedding_siz
             Flux.Optimise.update!(opt, ps, gs)
         end
     end
-    
+    cleanup_walk_simulator(ws) # remove temporary data structures
     return model[1](Flux.onehotbatch(labels, labels))
 end
 

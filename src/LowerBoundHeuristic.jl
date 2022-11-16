@@ -50,11 +50,11 @@ function (::RandomHeuristic)(g::SimpleGraph, node::Node, γ::Real)::Real
     return rand()
 end
 
-struct NumOfEdgesHeuristic <: GuidanceFunction 
+struct FeasibleNeighborsHeuristic <: GuidanceFunction 
     variant_a::Bool
 end
 
-function (noeh::NumOfEdgesHeuristic)(g::SimpleGraph, node::Node, γ::Real)::Real
+function (noeh::FeasibleNeighborsHeuristic)(g::SimpleGraph, node::Node, γ::Real)::Real
     k = length(node.S)
     min_edges_needed = ceil(Int, γ * (k*(k+1)/2)) - node.num_edges # edges needed for feasibility in clique of size k+1
     d_S = [node.d_S[v] for v in vertices(g) if v ∉ node.S] # d_S values for vertices outside S
