@@ -13,10 +13,10 @@ export calculate_d_S, calculate_num_edges,
     GuidanceFunction, GreedyCompletionHeuristic, GreedyCompletionHeuristicPQVariant, 
     SumOfNeighborsHeuristic, FeasibleNeighborsHeuristic, RandomHeuristic, GreedySearchHeuristic, 
     SwapHistory, sample_candidate_solutions,
-    ScoringFunction, d_S_ScoringFunction, SimpleGNN_ScoringFunction, Random_ScoringFunction, Encoder_Decoder_ScoringFunction,
+    ScoringFunction, d_S_ScoringFunction, SimpleGNN_ScoringFunction, Random_ScoringFunction, Encoder_Decoder_ScoringFunction, 
     SolutionExtender, MQCP_GreedySolutionExtender,
     FeasibilityChecker, MQCP_FeasibilityChecker,
-    NeighborhoodSearch, VariableNeighborhoodDescent, VariableNeighborhoodDescent_SparseEvaluation, 
+    NeighborhoodSearch, VariableNeighborhoodDescent, VariableNeighborhoodDescent_SparseEvaluation, Ω_1_NeighborhoodSearch, 
     run_lsbmh
 
 include("LowerBoundHeuristic.jl")
@@ -65,22 +65,24 @@ struct LocalSearchBasedMH
     record_swap_history::Bool
     max_restarts::Float32
     sparse_evaluation::Bool
+    score_based_sampling::Bool
 
     function LocalSearchBasedMH(lower_bound_heuristic::LowerBoundHeuristic, 
                                 construction_heuristic::ConstructionHeuristic,
                                 local_search_procedure::LocalSearchProcedure,
                                 feasibility_checker::FeasibilityChecker,
                                 solution_extender::SolutionExtender; 
-                                neighborhood_search = VariableNeighborhoodDescent(1),
+                                neighborhood_search = Ω_1_NeighborhoodSearch(),
                                 timelimit::Float64 = 600.0, # 10 minutes
                                 max_iter::Int = 1000, 
                                 next_improvement::Bool = true,
                                 record_swap_history::Bool = false,
                                 max_restarts = Inf,
-                                sparse_evaluation::Bool = false
+                                sparse_evaluation::Bool = false,
+                                score_based_sampling::Bool = false,
                                 )
         new(lower_bound_heuristic, construction_heuristic, local_search_procedure, feasibility_checker, solution_extender, neighborhood_search,
-            timelimit, max_iter, next_improvement, record_swap_history, max_restarts, sparse_evaluation)
+            timelimit, max_iter, next_improvement, record_swap_history, max_restarts, sparse_evaluation, score_based_sampling)
     end
 end
 
@@ -109,7 +111,8 @@ function run_lsbmh(local_search::LocalSearchBasedMH, graph::SimpleGraph)::@Named
         @debug "Starting local search with candidate solution of density $(density_of_subgraph(graph, S))"
         S, freq, swap_history = local_search.local_search_procedure(graph, S, freq;
                     local_search.neighborhood_search, timelimit, local_search.max_iter, 
-                    local_search.next_improvement, swap_history, local_search.sparse_evaluation)
+                    local_search.next_improvement, swap_history, local_search.sparse_evaluation,
+                    local_search.score_based_sampling)
         
         @debug "Found solution with density $(density_of_subgraph(graph, S))"
 

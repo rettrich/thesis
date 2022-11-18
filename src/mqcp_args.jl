@@ -24,7 +24,7 @@ settings_cfg = ArgParseSettings()
     "--expansion_limit"
         help = "Limit expansion of nodes in beam search construction"
         arg_type = Int
-        default = 50
+        default = 10
     "--p"
         help = "Controls how much rarely visited vertices are preferred in construction heuristic, 0 ≤ p ≤ 1"
         arg_type = Float64
@@ -36,11 +36,11 @@ settings_cfg = ArgParseSettings()
     "--max_iter"
         help = "Search is restarted after max_iter iterations without finding an improving solution"
         arg_type = Int
-        default = 4000
+        default = 1000
     "--max_restarts"
         help = "Execution stops after max_restarts restarts of the local search."
         arg_type = Int
-        default = 100
+        default = 10
     "--next_improvement"
         help = "If true: Search neighborhoods with next improvement strategy, otherwise use best improvement"
         arg_type = Bool
@@ -74,6 +74,10 @@ settings_cfg = ArgParseSettings()
         help = "Limit the size of sets X, Y of the restricted neighborhood to this size"
         arg_type = Int
         default = 20
+    "--score_based_sampling"
+        help = "Use score based sampling when using GNN if no improving move was found"
+        arg_type = Bool
+        default = false
 end
 
 function ArgParse.parse_item(::Type{Vector}, x::AbstractString)

@@ -22,6 +22,8 @@ struct VariableNeighborhoodDescent <: NeighborhoodSearch
     d::Int # search neighborhoods Ω_1, ... , Ω_d
 end
 
+struct Ω_1_NeighborhoodSearch <: NeighborhoodSearch end
+
 """
     VariableNeighborhoodDescent_SparseEvaluation
 
@@ -55,13 +57,14 @@ and optionally the swap history.
 - `swap_history`: Swap history will be recorded, if a `SwapHistory` instance is passed.
 - `neighborhood_search`: Type of neighborhood search, e.g. Variable Neighborhood Descent 
 - `sparse_evaluation`: Only re-evaluate by NN, if no improving swap could be found. 
+- `score_based_sampling`: If no improving move can be found, sample a random move based on scores given by scoring function
 
 """
 function (local_search_procedure::MQCP_LocalSearchProcedure)(
           graph::SimpleGraph, S::Union{Vector{Int}, Set{Int}}, freq::Vector{Int};
           timelimit::Float64, max_iter::Int, next_improvement::Bool,
           swap_history::Union{Nothing, SwapHistory}, neighborhood_search::NeighborhoodSearch,
-          sparse_evaluation::Bool,
+          sparse_evaluation::Bool, score_based_sampling::Bool,
           )::@NamedTuple{S::Vector{Int}, freq::Vector{Int}, swap_history::Union{Nothing, SwapHistory}}
 
     γ = local_search_procedure.γ
@@ -94,18 +97,20 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
 
         swap, Δ = search_neighborhood(neighborhood_search, graph, d_S, X, Y, blocked, aspiration_val; next_improvement)
 
-        # if Δ < 0
-        #     candidate = setdiff(union(S, swap.outside), swap.inside)
-        #     println("original S: $S")
-        #     println("Local optimum? $candidate")
-        #     println("Aspiration val: $aspiration_val")
-        #     println("Blocked: $blocked")
-        #     error("is this really a local optimum?")
-        # end
-
-        # if all moves are blocked and no move fulfills the aspiration criterion, use random move
-        if Δ == -Inf
-            # does this happen?
+        # no improving move could be found
+        if Δ < 0 && Δ > -Inf
+            # use move according to a scoring criterion
+            if score_based_sampling
+                X, Y = collect(X), collect(Y)
+                scores = get_scores(scoring_function)
+                X_scores = [(1 - scores[i]) for i in X]
+                Y_scores = [scores[i] for i in Y]
+                u = sample(X, Weights(X_scores))
+                v = sample(Y, Weights(Y_scores))
+            end
+            # else just use the move with best Δ
+        # there is no unblocked move
+        elseif Δ == -Inf
             vec_S = collect(S)
             unblocked_S = filter(u -> u ∉ blocked , vec_S) 
             
@@ -116,7 +121,6 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
             
             u = sample(first_non_empty(unblocked_S, vec_S))
             v = sample(first_non_empty(unblocked_N_G_S, setdiff(N_G_S, V_S), collect(V_S)))
-            # TODO: use freq to sample vertex that was not moved as often?
             Δ = gain(graph, d_S, u, v)
             inside, outside = [u], [v]
             swap = (; inside, outside)
@@ -168,6 +172,13 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
     return (;S=collect(S′), freq, swap_history)
 end
 
+function search_neighborhood(::Ω_1_NeighborhoodSearch, 
+                    graph::SimpleGraph, d_S, X, Y, blocked::Set{Int}, aspiration_val; 
+                    next_improvement=true)
+    inside, outside, Δ = search_neighborhood_Ω_1(graph, d_S, X, Y, blocked, aspiration_val; next_improvement)
+    swap = (;inside, outside)
+    return swap, Δ
+end
 """
     search_neighborhood(vnd::VariableNeighborhoodDescent, graph::SimpleGraph, d_S, X, Y, blocked::Set{Int}, aspiration_val; next_improvement=true)
 

@@ -170,7 +170,7 @@ end
 
 cleanup_walk_simulator(::WalkSimulator) = nothing
 cleanup_walk_simulator(rws::SecondOrderRandomWalkSimulator) = empty!(rws.transition_probs)
-function cleanup_walk_simulator(::Struct2VecWalkSimulator)
+function cleanup_walk_simulator(rws::Struct2VecWalkSimulator)
     rws.multi_layer_graph = []
     rws.layer_transition_probs = []
 end
@@ -345,6 +345,7 @@ function learn_embeddings_word2vec(ws::WalkSimulator, graph::AbstractGraph; embe
     model = wordvectors(vecs_file)
     rm(walks_file)
     rm(vecs_file)
+    cleanup_walk_simulator(ws) # remove temporary data structures
     return reduce(hcat, [get_vector(model, string(v)) for v in vertices(graph)])
 end
 

@@ -21,6 +21,7 @@ abstract type ScoringFunction end
 
 update!(sf::ScoringFunction, graph::SimpleGraph, S::Set{Int}) = error("ScoringFunction: Abstract update!(sf, graph, S) called")
 update!(sf::ScoringFunction, u::Int, v::Int; evaluate::Bool=true) = error("ScoringFunction: Abstract update!(sf, u, v; evaluate) called")
+get_scores(sf::ScoringFunction) = sf.d_S
 get_restricted_neighborhood(sf::ScoringFunction, S::Set{Int}, V_S::Set{Int}
                            )::@NamedTuple{X::Union{Vector{Int}, Set{Int}}, Y::Union{Vector{Int}, Set{Int}}} = 
     error("ScoringFunction: Abstract get_restricted_neighborhood(sf) called")
@@ -104,6 +105,8 @@ end
 
 abstract type GNN_ScoringFunction <: ScoringFunction end
 
+get_scores(sf::GNN_ScoringFunction) = sf.scores
+
 mutable struct SimpleGNN_ScoringFunction <: GNN_ScoringFunction
     graph::Union{Nothing, SimpleGraph}
     gnn_graph::Union{Nothing, GNNGraph}
@@ -138,7 +141,7 @@ function update!(sf::SimpleGNN_ScoringFunction, u::Int, v::Int; evaluate::Bool=t
     node_features = compute_node_features(get_feature_list(sf.gnn), sf.graph, nothing, sf.d_S)
     sf.scores = vec(sf.gnn(sf.gnn_graph, node_features |> device) |> cpu)
     return sf.scores
-end
+end 
 
 mutable struct Encoder_Decoder_ScoringFunction <: GNN_ScoringFunction
     graph::Union{Nothing, SimpleGraph}

@@ -68,6 +68,14 @@ settings_cfg = ArgParseSettings()
         help = "If set to true, only connected graphs are generated"
         arg_type = Bool
         default = false
+    "--neighborhood_size"
+        help = "Limit the size of sets X, Y of the restricted neighborhood to this size"
+        arg_type = Int
+        default = 20
+    "--nr_embedding_size"
+        help = "Embedding size for NodeRepresentationLearning features DeepWalk, Node2Vec, Struct2Vec"
+        arg_type = Int
+        default = 64
 end
 
 function ArgParse.parse_item(::Type{Tuple}, x::AbstractString)
@@ -92,9 +100,9 @@ function parse_feature_set(feature_string)::Vector{<:NodeFeature}
         elseif startswith(feature, "Node2Vec")
             p = parse(Float32, split(feature, "_")[2])
             q = parse(Float32, split(feature, "_")[3])
-            push!(feature_set, Node2VecNodeFeature(p, q))
+            push!(feature_set, Node2VecNodeFeature(p, q; embedding_size=settings[:nr_embedding_size]))
         elseif startswith(feature, "Struct2Vec")
-            push!(feature_set, Struct2VecNodeFeature())
+            push!(feature_set, Struct2VecNodeFeature(; embedding_size=settings[:nr_embedding_size]))
         else
             error("Unknown feature '$feature'")
         end

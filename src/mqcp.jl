@@ -16,7 +16,13 @@ include("mqcp_args.jl")
 parse_settings!([settings_cfg, thesis.NodeRepresentationLearning.settings_cfg],
                 vcat(ARGS,
                 [
-                    #"--debug=true"
+                    # "--debug=true",
+                    # "--stm=cc",
+                    # "--timelimit=120.0",
+                    # "--graph=inst/BHOSLIB/frb30-15-1.clq",
+                    # "--neighborhood_size=30", 
+                    # "--gamma=0.95",
+                    # "score_based_sampling"
                 ]))
 
 if settings[:debug]
@@ -37,8 +43,8 @@ function run_mqcp(scoring_function=nothing)
     
     # lower bound heuristic: beam search with GreedyCompletionHeuristic as guidance function
     guidance_func = GreedyCompletionHeuristic()
-    # lower_bound_heuristic = BeamSearch_LowerBoundHeuristic(guidance_func; β=settings[:beta], γ, expansion_limit=settings[:expansion_limit])
-    lower_bound_heuristic = SingleVertex_LowerBoundHeuristic()
+    lower_bound_heuristic = BeamSearch_LowerBoundHeuristic(guidance_func; β=settings[:beta], γ, expansion_limit=settings[:expansion_limit])
+    # lower_bound_heuristic = SingleVertex_LowerBoundHeuristic()
 
     construction_heuristic = Freq_GRASP_ConstructionHeuristic(settings[:alpha], settings[:p])
 
@@ -49,7 +55,11 @@ function run_mqcp(scoring_function=nothing)
     
     solution_extender = MQCP_GreedySolutionExtender(γ)
 
-    neighborhood_search = VariableNeighborhoodDescent(settings[:vnd_depth])
+    if settings[:vnd_depth] > 1
+        neighborhood_search = VariableNeighborhoodDescent(settings[:vnd_depth])
+    else
+        neighborhood_search = Ω_1_NeighborhoodSearch()
+    end
 
     if isnothing(scoring_function)
         scoring_function = d_S_ScoringFunction()
@@ -59,12 +69,13 @@ function run_mqcp(scoring_function=nothing)
     local_search_procedure = MQCP_LocalSearchProcedure(γ, short_term_memory, scoring_function)
     println("ScoringFunction: $(typeof(scoring_function))")
 
+    score_based_sampling = settings[:score_based_sampling] && (typeof(scoring_function) <: GNN_ScoringFunction)
 
     local_search = LocalSearchBasedMH(
             lower_bound_heuristic, construction_heuristic, local_search_procedure, feasibility_checker, solution_extender;
             neighborhood_search, timelimit=settings[:timelimit], max_iter=settings[:max_iter], 
             next_improvement=settings[:next_improvement], record_swap_history=false, max_restarts=settings[:max_restarts],
-            sparse_evaluation=settings[:sparse_evaluation],
+            sparse_evaluation=settings[:sparse_evaluation], score_based_sampling,
             )
     
     results = Dict()

@@ -16,14 +16,18 @@ parse_settings!([settings_cfg, thesis.NodeRepresentationLearning.settings_cfg],
                 vcat(ARGS,
                 [
                     # "--feature_set=Node2Vec_2_4-Struct2Vec",
-                    # "--lookahead_depth=2",
+                    # "--lookahead_depth=1",
                     # "--lookahead_breadth=50",
-                    # "--epochs=400",
+                    # "--epochs=250",
                     # "--sparse_evaluation=false",
                     # "--debug=true"
-                    # "--gamma=0.9",
-                    # "--V=500,30",
-                    # "--density=0.5,0.6",
+                    # "--gamma=0.95",
+                    # "--V=450,1",
+                    # "--density=0.82,0.825",
+                    # "--neighborhood_size=20",
+                    # "--nr_embedding_size=128",
+                    # "--buffer_capacity=1000",
+                    # "--num_samples=50",
                 ]))
 
 if settings[:debug]
@@ -56,12 +60,12 @@ function train_MQCP()
 
     feature_set = parse_feature_set(settings[:feature_set])
 
-    gnn = Encoder_Decoder_GNNModel([64, 64, 64], [32, 32]; 
-                                   encoder_factory=GATv2Conv_GNNChainFactory(128, 4), 
+    gnn = Encoder_Decoder_GNNModel([128, 128, 128], [32, 32]; 
+                                   encoder_factory=GATv2Conv_GNNChainFactory(256, 4), 
                                    node_features=feature_set, 
                                    decoder_features=[d_S_NodeFeature()],
                                    )
-    scoring_function = Encoder_Decoder_ScoringFunction(gnn, 30)
+    scoring_function = Encoder_Decoder_ScoringFunction(gnn, settings[:neighborhood_size])
 
     # compare with baseline
     baseline_scoring_function = d_S_ScoringFunction()
@@ -71,10 +75,10 @@ function train_MQCP()
     baseline_local_search_procedure = MQCP_LocalSearchProcedure(γ, short_term_memory, baseline_scoring_function)
 
     timelimit = 300.0
-    max_iter = 4000
+    max_iter = 2000
     next_improvement = false
     record_swap_history = true
-    max_restarts = 1 # abort after fixed number of restarts to save time
+    max_restarts = 3 # abort after fixed number of restarts to save time
 
     # local search with gnn
     local_search = LocalSearchBasedMH(
