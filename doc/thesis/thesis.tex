@@ -382,23 +382,44 @@ Other notable approaches in node representation learning include HOPE \cite{Ming
 Pattillo et al. \cite{pattillo_maximum_2013} propose a Mixed Integer Linear Programming formulation with a number of variables that is quadratic in the size of the vertex set $V$. 
 It is derived from the following quadratic formulation, where $x_i \in \{0,1\}$ are binary decision variables representing the solution set $S \subseteq V$, and $a_{ij}$ represent elements of the adjacency matrix with $a_{ij}$ equal to one if $\{i,j\} \in E$ and zero otherwise: 
 
-\fxnote{GR: MILPs schreibt man normalerweise so auf, dass die Zielfunktion und alle Funktionen linksbündig stehen, alle Quantoren rechtsbündig. Inequalities nicht in eine Zeile zusammenfassen (außer Domainangaben wie 0 <= x <= 10.)}
 \begin{align}
-    \max \sum_{i=1}^{n} x_i & \\
-    \text{s.t. } \sum_{i=1}^n \sum_{j=i+1}^n a_{ij} x_i x_j & \geq \gamma \sum_{i=1}^n \sum_{j=i+1}^n x_i x_j
+    \max & \sum_{i=1}^{n} x_i  \\
+    \text{s.t. } & \sum_{i=1}^n \sum_{j=i+1}^n a_{ij} x_i x_j \geq \gamma \sum_{i=1}^n \sum_{j=i+1}^n x_i x_j 
 \end{align}
-The authors linearize the above quadratic formulation by introducing variables $w_{ij}$ defined as $w_{ij} = x_i x_j$: 
+The authors linearize the above quadratic formulation by introducing variables $w_{ij}$ defined as $w_{ij} = x_i x_j$ in their MILP-formulation named F1: 
 
 \begin{align}
-    \max & \sum_{i=1}^n x_i \\
-    \text{s.t. } & \sum_{i=1}^n \sum_{j=i+1}^n (\gamma - a_{ij}) w_{ij} \leq 0  
-\end{align}
-\begin{align}
-    w_{ij} &\leq x_i, & & w_{ij} \leq x_j, & & w_{ij} \geq x_i + x_j - 1, & & j > i=1, \dots , n \\
-    w_{ij} &\geq 0,   & & x_i \in \{0,1\}, & & j > i = 1, \dots, n        & & 
+    \max & \sum_{i=1}^n x_i &\\
+    \text{s.t. } & \sum_{i=1}^n \sum_{j=i+1}^n (\gamma - a_{ij}) w_{ij} \leq 0  &\\
+     & w_{ij} \leq x_i & \forall i, j \in V, i < j\\
+     & w_{ij} \leq x_j & \forall i, j \in V, i < j\\
+     & w_{ij} \geq x_i + x_j - 1 & \forall i, j \in V, i < j\\
+    & w_{ij} \geq 0 & \forall i, j \in V, i < j \\
+    & x_i \in \{0,1\} & i \in V
 \end{align}
 
-\todo{try other MILP formulations: especially F3, F4 from \cite{VeremyevPBP16} seem interesting}
+Furthermore, the authors propose a second MILP-formulation F2 that has a number of variables that is linear in $n$, but their computational experiments show that the above formulation performs better on most instances. 
+
+In \cite{VeremyevPBP16}, the authors propose two additional MILP-formulation. 
+In one of their proposed MILP-models which is named F3, they utilize an upper and lower bound in order to provide a tighter formulation than the ones from \cite{pattillo_maximum_2013}. As a lower bound $\omega^{\ell}$, the size of any known $\gamma$-quasi clique can be used, whereas the upper bound is defined as  $\omega^u = \lfloor \frac{1}{2} + \frac{1}{2} \sqrt{1 + 8\frac{|E|}{\gamma}} \rfloor$. The proposed formulation F3 is then defined as: 
+
+\begin{align}
+    \max & \sum_{i \in V} x_i \\
+    \text{s.t.} & \sum_{(i,j) \in E} y_{ij} \geq \gamma \sum_{k = \omega^{\ell}}^{\omega^u} \frac{k(k-1)}{2} z_k \\
+    & y_{ij} \leq x_i & \forall(i,j) \in E \\
+    & y_{ij} \leq x_j & \forall(i,j) \in E \\
+    & \sum_{i \in V} x_i = \sum_{k = \omega^{\ell}}^{\omega^u} k z_k & \\
+    & \sum_{k = \omega^{\ell}}^{\omega^u} z_k = 1 \\
+    & x_i \in \{0,1\} & \forall i \in V \\
+    & y_{ij} \geq 0 & \forall i, j \in V, i < j\\
+    & z_k \geq 0 & \forall k \in \{\omega^{\ell}, \dots, \omega^u\}
+\end{align}
+
+Compared to the formulation F1 in \cite{pattillo_maximum_2013}, the authors introduce a variable $z_k$, that is used to determine the size of the solution $S$, i.e. $z_k = 1$ iff $|S| = k$. Clearly, providing tight upper and lower bounds $\omega^{\ell}, \omega^u$ has a great effect on the performance of this model. The authors evaluate their formulations and show both theoretically and empirically that they outperform the previously mentioned formulations F1 and F2, and that the formulations are especially effective on sparse graphs. Dense graphs with $|V| > 100$ however are infeasible to solve in practice using any of the proposed formulations. 
+
+In \cite{ribeiro_exact_2019}, the authors propose a branch-and-bound algorithm that is able to outperform the previously mentioned MILP-formulations on dense graphs of sizes of up to $100$ vertices. Furthermore, they propose a new method to calculate upper bounds for the size of a maximum-quasi clique, which provides much tighter upper bounds than previously known methods. A MILP-formulation with an exponential number of variables is proposed in \cite{marinelli_lp-based_2021}. The authors also present a branch-and-price algorithm that can be used for column generation in the context of their presented formulation. 
+
+Despite the advances in the research of exact methods regarding the MQCP, the problem proves to be extremely computationally challenging. In practice, only very small or very sparse graphs are feasible to solve using any of the presented exact methods. 
 
 \subsection{Heuristic Approaches}
 
