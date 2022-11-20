@@ -15,19 +15,20 @@ include("train_args.jl")
 parse_settings!([settings_cfg, thesis.NodeRepresentationLearning.settings_cfg],
                 vcat(ARGS,
                 [
-                    # "--feature_set=Node2Vec_2_4-Struct2Vec",
+                    "--feature_set=Node2Vec_2_4-Struct2Vec",
                     # "--lookahead_depth=1",
                     # "--lookahead_breadth=50",
-                    # "--epochs=250",
+                    "--epochs=250",
                     # "--sparse_evaluation=false",
                     # "--debug=true"
-                    # "--gamma=0.95",
-                    # "--V=450,1",
-                    # "--density=0.82,0.825",
-                    # "--neighborhood_size=20",
-                    # "--nr_embedding_size=128",
-                    # "--buffer_capacity=1000",
-                    # "--num_samples=50",
+                    "--gamma=0.95",
+                    "--V=800,50",
+                    "--density=0.3,0.4",
+                    "--neighborhood_size=20",
+                    "--nr_embedding_size=64",
+                    "--buffer_capacity=1000",
+                    "--num_samples=50",
+                    # "--num_solutions=10",
                 ]))
 
 if settings[:debug]
@@ -41,7 +42,7 @@ function train_MQCP()
     # initialize components of local search based metaheuristic
     
     # lower bound heuristic: beam search with GreedyCompletionHeuristic as guidance function
-    guidance_func = GreedyCompletionHeuristic()
+    guidance_func = FeasibleNeighborsHeuristic(false)
     lower_bound_heuristic = BeamSearch_LowerBoundHeuristic(guidance_func; β=5, γ, expansion_limit=10)
 
     # use a single vertex as lower bound 
@@ -60,8 +61,8 @@ function train_MQCP()
 
     feature_set = parse_feature_set(settings[:feature_set])
 
-    gnn = Encoder_Decoder_GNNModel([128, 128, 128], [32, 32]; 
-                                   encoder_factory=GATv2Conv_GNNChainFactory(256, 4), 
+    gnn = Encoder_Decoder_GNNModel([64, 64, 64], [32, 32]; 
+                                   encoder_factory=GATv2Conv_GNNChainFactory(128, 8), 
                                    node_features=feature_set, 
                                    decoder_features=[d_S_NodeFeature()],
                                    )

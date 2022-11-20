@@ -76,6 +76,10 @@ settings_cfg = ArgParseSettings()
         help = "Embedding size for NodeRepresentationLearning features DeepWalk, Node2Vec, Struct2Vec"
         arg_type = Int
         default = 64
+    "--num_solutions"
+        help = "Lookahead search returns up to this many solutions"
+        arg_type = Int
+        default = typemax(Int)
 end
 
 function ArgParse.parse_item(::Type{Tuple}, x::AbstractString)
@@ -112,9 +116,9 @@ end
 
 function parse_neighborhood_size()
     if settings[:lookahead_depth] == 1
-        lookahead_search = Ω_1_LookaheadSearchFunction()
+        lookahead_search = Ω_1_LookaheadSearchFunction(; num_solutions=settings[:num_solutions])
     elseif settings[:lookahead_depth] <= 3
-        lookahead_search = Ω_d_LookaheadSearchFunction(settings[:lookahead_depth], settings[:lookahead_breadth])
+        lookahead_search = Ω_d_LookaheadSearchFunction(settings[:lookahead_depth], settings[:lookahead_breadth]; num_solutions=settings[:num_solutions])
     else
         error("Neighborhood size $(settings[:neighborhood_size]) not supported")
     end

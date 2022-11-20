@@ -11,7 +11,7 @@ export LookaheadSearchFunction, Ω_1_LookaheadSearchFunction, Ω_d_LookaheadSear
 abstract type LookaheadSearchFunction end
 
 """
-    (::LookaheadSearchFunction)(graph::SimpleGraph, S::Set{Int}, num_solutions::Int)
+    (::LookaheadSearchFunction)(graph::SimpleGraph, S::Set{Int},d_S::Union{Vector{Int}, Nothing}=nothing; scores::Union{Nothing, Vector{Float32}}=nothing)
 
 Returns the best neighboring solution(s) `S′` of `S` in `graph` depending on the
 concrete type of `LookaheadSearchFunction` along with its objective value
@@ -24,12 +24,11 @@ swapping the nodes in `in_nodes ∈ S` with the nodes in `out_nodes ∈ V ∖ S`
 - `graph`: The input graph
 - `S`: The current candidate solution
 - `d_S`: d_S values for vertices in `graph` (optional)
-- `num_solutions`: Return at most `num_solutions` solutions if there are more than one
 - `scores`: Optional scoring vector of vertices in `graph` to restrict neighborhood based on best scoring vertices
 
 """
 (::LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
-                            d_S::Union{Vector{Int}, Nothing}=nothing, num_solutions=typemax(Int)::Int; 
+                            d_S::Union{Vector{Int}, Nothing}=nothing; 
                             scores::Union{Nothing, Vector{Float32}}=nothing)::Tuple{Int, Vector{Tuple}} =
     error("Abstract (::LookaheadSearchFunction)(graph::SimpleGraph, S::Set{Int}) called")
 
@@ -49,17 +48,23 @@ Searches the Ω_1 neighborhood exhaustively and returns the neighboring solution
 the highest objective value.
 
 """
-struct Ω_1_LookaheadSearchFunction <: LookaheadSearchFunction end
+struct Ω_1_LookaheadSearchFunction <: LookaheadSearchFunction 
+    num_solutions::Int
+
+    function Ω_1_LookaheadSearchFunction(; num_solutions::Int=typemax(Int))
+        new(num_solutions)
+    end
+end
 
 Base.show(io::IO, ::Ω_1_LookaheadSearchFunction) = print(io, "Ω_1_LookaheadSearchFunction")
 
-function (::Ω_1_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
-                                         d_S::Union{Vector{Int}, Nothing}=nothing, 
-                                         num_solutions::Int=typemax(Int);
+function (lookahead_search::Ω_1_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
+                                         d_S::Union{Vector{Int}, Nothing}=nothing;
                                          scores::Union{Nothing, Vector{Float32}}=nothing
                                          )::Tuple{Int, Vector{Tuple}}
     d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
     obj_val = calculate_obj(graph, S, d_S)
+    num_solutions = lookahead_search.num_solutions
 
     V_S = filter(v -> v ∉ S, vertices(graph))
 
@@ -68,7 +73,7 @@ function (::Ω_1_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vect
     X = filter(u -> (d_S[u] <= d_min+1), S)
     Y = filter(v -> (d_S[v] >= d_max-1), V_S)
 
-    Δuv_best = 0
+    Δuv_best = typemin(Int)
 
     solutions = []
 
@@ -86,11 +91,11 @@ function (::Ω_1_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vect
         end
     end
 
-    if Δuv_best == 0
-        return obj_val, [] # S is local optimum, therefore do not return any neighboring solutions
-    else
+    # if Δuv_best == 0
+    #     return obj_val, [] # S is local optimum, therefore do not return any neighboring solutions
+    # else
         return obj_val + Δuv_best, solutions
-    end
+    # end
 end
 
 """
@@ -108,9 +113,10 @@ struct Ω_d_LookaheadSearchFunction <: LookaheadSearchFunction
     d::Int
     k′::Int
     d_S_epochs::Int
+    num_solutions::Int
 
-    function Ω_d_LookaheadSearchFunction(d::Int, k′::Int=0)
-        new(d, k′)
+    function Ω_d_LookaheadSearchFunction(d::Int, k′::Int=0; num_solutions::Int=typemax(Int))
+        new(d, k′, num_solutions)
     end
 end
 
@@ -118,13 +124,13 @@ use_scoring_vector(x::Ω_d_LookaheadSearchFunction)::Bool = (x.k′ > 0)
 
 function (lookahead_search::Ω_d_LookaheadSearchFunction)(
     graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}}, 
-    d_S::Union{Vector{Int}, Nothing}=nothing, 
-    num_solutions::Int=typemax(Int); 
+    d_S::Union{Vector{Int}, Nothing}=nothing; 
     scores::Union{Nothing, Vector{Float32}}=nothing,
     )::Tuple{Int, Vector{Tuple}}
     
     d = lookahead_search.d
     k′ = (lookahead_search.k′ > 0) ? lookahead_search.k′ : typemax(Int)
+    num_solutions = lookahead_search.num_solutions
     
     d_S = isnothing(d_S) ? calculate_d_S(graph, S) : d_S
     obj_val = calculate_obj(graph, S, d_S)
@@ -245,10 +251,11 @@ struct BeamSearch_LookaheadSearchFunction <: LookaheadSearchFunction
     α::Int
     β::Int
     use_scoring_vector::Bool
+    num_solutions::Int
 
 
-    function BeamSearch_LookaheadSearchFunction(d::Int, α::Int, β::Int; use_scoring_vector::Bool=false)
-        new(d, α, β, use_scoring_vector)
+    function BeamSearch_LookaheadSearchFunction(d::Int, α::Int, β::Int; use_scoring_vector::Bool=false, num_solutions::Int=typemax(Int))
+        new(d, α, β, use_scoring_vector, num_solutions)
     end
 end
 
@@ -261,12 +268,11 @@ use_scoring_vector(x::BeamSearch_LookaheadSearchFunction)::Bool = x.use_scoring_
 #     )::Tuple{Int, Vector{Tuple}}
 
 function (bs::BeamSearch_LookaheadSearchFunction)(graph::SimpleGraph{Int}, S::Union{Vector{Int}, Set{Int}},
-                                                  d_S::Union{Vector{Int}, Nothing}=nothing, 
-                                                  num_solutions::Int=10;
+                                                  d_S::Union{Vector{Int}, Nothing}=nothing;
                                                   scores::Union{Nothing, Vector{Float32}}=nothing,
                                                   )::Tuple{Int, Vector{Tuple}}
     (bs.use_scoring_vector && isnothing(scores)) && error("use_scoring_vector is $(bs.use_scoring_vector) but scores is $scores")
-    return beam_search(graph, S, bs.d, d_S; bs.α, bs.β, scores, num_solutions)
+    return beam_search(graph, S, bs.d, d_S; bs.α, bs.β, scores, bs.num_solutions)
 end
 """
     Node
