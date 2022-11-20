@@ -141,22 +141,37 @@
 
 \chapter{Introduction}
 
-\section{Motivation}
+This thesis presents our approach of utilizing Graph Neural Networks in the context of a local search based metaheuristic for edge-based relaxations of a well-known combinatorial optimization problem, the Maximum Clique Problem. Section \ref{sec:motivation} discusses the motivation of this work. In Section \ref{sec:considered-problems} we discuss the relevance and applications of the considered problems. Then, Section \ref{sec:methodology} briefly presents an overview of the contributions of this work. Lastly, the structure of this thesis is outlined in Section \ref{sec:outline}.
+
+\section{Motivation}\label{sec:motivation}
 In many Combinatorial Optimization Problems (COPs), problem instances exhibit clearly defined internal structures that can be expressed as graphs. Here, a graph is a tuple $G = (V, E)$, where $V$ is the set of vertices and the set of edges $E \subseteq V \times V$ defines the relationships among vertices. While there are other methods to deal with inputs of variable size (Fully Convolutional Networks, Recurrent Neural Networks), Graph Neural Networks (GNNs) are Neural Networks tailored specifically to learn from structured input in the form of graphs, making them a valuable tool for Machine Learning (ML) tasks on data with graph-like structure.   
 
 In recent years, GNNs have gained popularity in their application in the context of COPs. However, current end-to-end ML approaches are in most cases not competitive to state-of-the-art (meta-)heuristic solution approaches, and their application is limited to small instances, where exact algorithms are available. Nonetheless, GNNs show promise in their use in COPs, and there have been many successful applications over the last years, e.g. 
 % \cite{NEURIPS2021_0db2e204}, where a GNN is used to find maximal Independent Sets by imitating a time-expensive Monte-Carlo Tree Search, or
 \cite{Oberweger2022}, where a Large Neighborhood Search is enhanced by a GNN that guides a destroy-operator, or \cite{NEURIPS2021_0db2e204}, where a GNN is used to find maximal Independent Sets by imitating a time-expensive Monte-Carlo Tree Search, producing solutions that reach a solution quality of $99.5\%$ while being three orders of magnitude faster. 
 
-The main motivation of this thesis is to further study the application of GNNs in the context of metaheuristics for COPs defined on graphs. We address the problems of current end-to-end approaches by using a GNN only as a component of a metaheuristic search procedure that should enhance the search for high quality solutions either by speeding up the search or by improving the quality of its final solutions. More specifically, we consider several relaxations of a COP defined on graphs, the Maximum Clique Problem (MCP), that seem to be well-suited for our purpose. 
+The main motivation of this thesis is to further study the application of GNNs in the context of metaheuristics for COPs defined on graphs. We address the problems of current end-to-end approaches by using a GNN only as a component of a metaheuristic search procedure provides additional heuristic information. More specifically, we consider relaxations of a COP defined on graphs, the Maximum Clique Problem (MCP), that seem to be well-suited for our purpose. 
 
-\section{Considered Problems}
-The MCP is the problem of finding a fully connected subgraph -- a \textit{clique} -- of maximum size in a given graph. It is a fundamental problem in computer science, as its decision variant is one of Karp's 21 NP-complete problems \cite{Karp1972}. The MCP has several practical applications, e.g.,  in bioinformatics \cite{Dognin2010} and social network analysis \cite{Pattillo_network_analysis_2013}. However, for some real-world applications that require identifying dense subgraphs, the MCP is too strict a model. This leads to the introduction of several clique relaxations such as -- among others -- the Maximum Quasi-Clique Problem (MQCP) (introduced in \cite{Abello2002}, Definition \ref{def:mqcp}), and the Maximum $k$-defective Clique Problem (MDCP) (introduced in \cite{Yu2006}, Definition \ref{def:mdcp}), 
-As all of these problems are NP-hard optimization problems, it is practically often infeasible to obtain exact solutions for large instances. However, many real-world applications often require solutions for large graphs. Therefore, efficient heuristic methods are needed that produce high quality solutions in an acceptable amount of time. While the MCP has been studied well over the last decades, heuristic methods for the MQCP and the MDCP are less abundant. It is therefore another motivation of this thesis to enrich the arsenal of heuristic methods for these relaxations of the MCP. 
+\section{Considered Problems}\label{sec:considered-problems}
+The MCP is the problem of finding a fully connected subgraph -- a \textit{clique} -- of maximum size in a given graph. It is a fundamental problem in computer science, as its decision variant is one of Karp's 21 NP-complete problems \cite{Karp1972}. The MCP has several practical applications, e.g.,  in bioinformatics \cite{Dognin2010} and social network analysis \cite{Pattillo_network_analysis_2013}. However, for some real-world applications that require identifying dense subgraphs, the MCP is too strict a model. This leads to the introduction of several clique relaxations such as -- among others -- the Maximum Quasi-Clique Problem (MQCP) (introduced in \cite{Abello2002}, Definition \ref{def:mqcp}), and the Maximum $k$-defective Clique Problem (MDCP) (introduced in \cite{Yu2006}, Definition \ref{def:mdcp}). 
 
-\section{Outline of the Thesis}
+As all of these problems are NP-hard optimization problems, it is practically often infeasible to obtain exact solutions for large instances. However, many real-world applications often require solutions for large graphs. Therefore, efficient heuristic methods are needed that produce high quality solutions in an acceptable amount of time. While the MCP has been studied extensively over the last decades, heuristic methods for the MQCP and the MDCP are less abundant. It is therefore another motivation of this thesis to enrich the arsenal of heuristic methods for these relaxations of the MCP and to provide a foundation for future research including the application of GNNs in the context of MCP relaxations. 
 
-\chapter{Considered Problems and Definitions}
+\section{Methodology}\label{sec:methodology}
+With this thesis, we want to build upon well-established metaheuristic approaches for MCP relaxations and evaluate, how and where GNNs can be utilized in the context of such algorithms in order to provide additional information. 
+Studying the relevant literature, we found that the most effective metaheuristic approaches for MCP relaxations are based on metaheuristics centered around local search, where neighboring solutions can be reached by swapping a vertex inside the current candidate solution with a vertex outside the candidate solution. In order to evaluate efficiently which vertices seem promising for swapping, a scoring function is used that assigns scores to the vertices in the graph in each iteration of the local search. Using these scores, the neighborhood can be restricted to only promising vertices. 
+Building upon these approaches, we want to utilize a GNN to extract structural information from input graphs that can be used to enhance such a scoring function.  
+
+As the considered MCP relaxations are defined on non-attributed graphs, one of the goals of this thesis is to evaluate, which feature initialization methods can be used to effectively extract information from input graphs. Thus, we investigate several centrality-based and learning-based methods within the context of our proposed algorithm that can be found in the literature. 
+
+Furthermore, we propose a training algorithm LSBM-T that is used to generate and label training data in order to train the GNN to make high quality predictions. A training sample consists of the input graph and a candidate solution, and the GNN is trained to predict, which vertices are likely to be in a swap that leads to an improved solution. In order to compute target labels for the vertices in the input graph, we present different methods to search neighborhood structures relative to the candidate solution in a training sample. 
+
+Finally, we conduct computational experiments in order to evaluate our approach on graphs of different sizes and densities and discuss future work that can be done in order to improve our method. 
+
+\section{Outline of the Thesis}\label{sec:outline}
+Chapter \ref{chp:problems-definitions} presents the notation of graph-related terms and the definitions of the considered problems. Then, in Chapter \ref{chp:related-work} we review and present related work and methodology, namely GNNs, node representation learning, the use of ML in combinatorial optimization, and both exact and heuristic solution approaches for the considered MCP relaxations. In Chapter \ref{chp:local-search-algorithm} we present our algorithm LSBM, which build upon existing algorithms. Chapter \ref{chp:gnn} contains the main contribution of this work, as we present, how a GNN can be incorporated into the previously presented LSBM and how it can be trained using our training algorithm LSBM-T. Then, Chapter \ref{chp:evaluation} shows computational experiments and the evaluation of our proposed methods. Finally, in Chapter \ref{chp:conclusions} we summarize our findings, offer concluding remarks, and discuss promising future work. 
+
+\chapter{Considered Problems and Definitions}\label{chp:problems-definitions}
 
 In this chapter we want to provide all necessary definitions and notations used throughout this thesis. Section \ref{sec:notation} lists commonly used graph theoretic notations and definitions. Sections \ref{sec:mcp} -- \ref{sec:mdcp} show definitions for the problems considered in this thesis, starting with the Maximum Clique Problem, from which all considered problems are derived. Additionally, we list notable properties of the considered problems that are relevant for developing well-performing algorithms for these problems. 
 
@@ -277,7 +292,7 @@ When approximating the maximum $s$-defective clique in a graph $G$ by a series o
 % \end{definition}
 
 
-\chapter{Related Work}
+\chapter{Related Work}\label{chp:related-work}
 
 Utilizing Machine Learning (ML) techniques in combinatorial optimization has been a research field of growing interest in recent years, and especially the application of graph neural networks (GNNs) in the context of combinatorial optimization is growing in popularity. 
 In this chapter we want to provide a concise review of methods and work related to the topics of this thesis, namely ML methods and GNNs in combinatorial optimization, and also work related to the considered problems, the MCP, the MQCP, and the MDCP. Section \ref{sec:gnns} provides an introduction to the necessary concepts related to graph neural networks that are applied in this work, Section \ref{sec:ml-co} reviews the application of ML techniques that are relevant to this work, and \ref{sec:node-representation} presents methods to generate node features in feature-less graphs, which we apply in our algorithm in Chapter \ref{chp:gnn}. Furthermore, we provide an overview of existing heuristic and exact solution approaches for the MQCP in Section \ref{sec:mqcp-related-work} and for the MDCP in Section \ref{sec:mdcp-related-work}. 
@@ -1081,7 +1096,7 @@ The GNN will then be applied only once at the beginning of the local search algo
 % \end{center}
 % \end{table}
 
-\chapter{Computational Experiments \& Evaluation}
+\chapter{Computational Experiments \& Evaluation}\label{chp:evaluation}
 
 We implemented LSBM and LSBM-T in Julia 1.8.2 using Flux \footnote{https://github.com/FluxML/Flux.jl} and GraphNeuralNetworks \footnote{https://github.com/CarloLucibello/GraphNeuralNetworks.jl}\cite{Lucibello2021GNN} for the implementation of the GNN, and Word2Vec \footnote{https://github.com/JuliaText/Word2Vec.jl} for the implementation of Node2Vec and Struct2Vec. All computational experiments in this chapter are executed on an Intel Xeon E5-2640 processor with 2.40\,GHz. For training the NNs, we use a memory limit of 32GB, whereas for all other experiments a memory limit of 20GB is used. 
 
@@ -1401,7 +1416,7 @@ Table containing benchmark instances for reference
 
 
 
-\chapter{Conclusions \& Future Work}
+\chapter{Conclusions \& Future Work}\label{chp:conclusions}
 
 Contributions:
 \begin{itemize}
