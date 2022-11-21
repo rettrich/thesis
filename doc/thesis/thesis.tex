@@ -157,7 +157,7 @@ The MCP is the problem of finding a fully connected subgraph -- a \textit{clique
 
 As all of these problems are NP-hard optimization problems, it is practically often infeasible to obtain exact solutions for large instances. However, many real-world applications often require solutions for large graphs. Therefore, efficient heuristic methods are needed that produce high quality solutions in an acceptable amount of time. While the MCP has been studied extensively over the last decades, heuristic methods for the MQCP and the MDCP are less abundant. It is therefore another motivation of this thesis to enrich the arsenal of heuristic methods for these relaxations of the MCP and to provide a foundation for future research including the application of GNNs in the context of MCP relaxations. 
 
-\section{Methodology}\label{sec:methodology}
+\section{Methodological Approach}\label{sec:methodology}
 With this thesis, we want to build upon well-established metaheuristic approaches for MCP relaxations and evaluate, how and where GNNs can be utilized in the context of such algorithms in order to provide additional information. 
 Studying the relevant literature, we found that the most effective metaheuristic approaches for MCP relaxations are based on metaheuristics centered around local search, where neighboring solutions can be reached by swapping a vertex inside the current candidate solution with a vertex outside the candidate solution. In order to evaluate efficiently which vertices seem promising for swapping, a scoring function is used that assigns scores to the vertices in the graph in each iteration of the local search. Using these scores, the neighborhood can be restricted to only promising vertices. 
 Building upon these approaches, we want to utilize a GNN to extract structural information from input graphs that can be used to enhance such a scoring function.  
@@ -204,7 +204,7 @@ Figure \ref{fig:maxclique} depicts a maximum clique in a graph.
 \begin{figure}
     \centering
     \includegraphics[width=0.3\textwidth]{graphics/graph1-clique.eps}
-    \caption{A maximum clique.}
+    \caption{A maximum clique of size four.}
     \label{fig:maxclique}
 \end{figure}
 
@@ -459,15 +459,30 @@ The authors compare their algorithm to those presented in \cite{pinto2021brkga},
 Finally, the most recent heuristic solution approach for the MQCP at the time of writing this thesis is presented in \cite{peng_solving_2021}. Here, the authors propose a hybrid artificial bee colony algorithm (HBAC), which incorporates an opposition-based construction phase and then adapts the artificial bee colony framework to the MQCP. The algorithm again uses tabu search to improve initially constructed candidate solutions. 
 The authors report new best results on several instances that were not included in the evaluation of \cite{chen_nuqclq_2021}. A comparison is made only with RIG~\cite{oliveira2013construction}, and \cite{pinto2015biased}, \cite{pinto_biased_2018}, and \cite{pinto2021brkga}, which are outperformed on other instances by \cite{chen_nuqclq_2021} and \cite{zhou_opposition-based_2020}. 
 
-As we have extensively studied the literature regarding heuristic solution approaches, we found that most state-of-the-art methods are based on or utilize metaheuristics based on the local search paradigm. Therefore, we let previous work on the MQCP lead our way and plan to build our work upon the local search paradigm as well.  
+As we have extensively studied the literature regarding heuristic solution approaches, we found that most state-of-the-art methods are based on or utilize metaheuristics based on the local search paradigm. Therefore, we let previous work on the MQCP lead our way and plan to build our work upon the local search paradigm as well. 
 
 \section{Solution Approaches for the MDCP}\label{sec:mdcp-related-work}
 
-Compared to the MQCP, only a few solution approaches have been proposed for the MDCP. The first algorithm is presented in \cite{Yu2006}, along with the first formal definition of the problem. 
+Compared to the MQCP, only a few solution approaches have been proposed for the MDCP. 
+The first algorithm is proposed in \cite{Yu2006}, along with the first formal definition of the problem. The authors develop their approach for the use case of link prediction for protein-protein interactions. Even before that, the problem has been considered in the context of transportation planning \cite{Sherali2002}, where MILP formulations of the problem are analyzed and discussed. 
+Note that, similar to the MQCP, there is a straight-forward MILP-formulation as presented in \cite{Sherali2006}: 
+\begin{align}
+    \max & \sum_{i \in V} x_i &\\
+    \text{s.t.} & \sum_{\{i,j\} \in \overline{E}} z_{ij} \leq k &\\
+    & z_{ij} \geq x_i + x_j - 1 & \forall \{i,j\} \in \overline{E} \\
+    & z_{ij} \geq 0 & \forall \{i,j\} \in \overline{E} \\
+    & x_i \in \{0,1\} & \forall i \in V  
+\end{align}
+Here, $\overline{E}$ denotes the set $\{\{i,j\} \mid \{i,j\} \notin E\}$, i.e. the set of edges that are not in $E$. 
+
+In \cite{Trukhanov2013}, the authors analyze several MCP relaxations from the perspective of hereditary properties in graphs. They show that the property of being a defective clique is a non-trivial, interesting property that is hereditary on induced subgraphs, and that NP-hardness follows of the problem follows from this observation. Furthermore, the authors propose an exact algorithm based on Russian Doll Search (RDS) that can be used to solve MCP relaxations that are hereditary. In \cite{GSCHWIND2018131}, the RDS algorithm is revisited and improved by new pre-processing procedures. 
+More recently, exact solution approaches are proposed in \cite{chen2021computing} and \cite{gao2022exact} specifically to exploit massive sparse graphs. 
+
+When studying the literature related to MDCP, we notice that there is a lack of heuristic approaches. Due to the close relation of the MQCP and the MDCP we hope that our algorithm can also be used for the MDCP with only slight adaptions, which is why we focus our approach to build upon existing heuristic algorithms for the MQCP. 
 
 \chapter{A Local Search Based Metaheuristic for Maximum Clique Relaxations}\label{chp:local-search-algorithm}
 
-In this chapter we present a local search based metaheuristic for relaxations of the MCP in detail, which is the algorithmic fundament of the GNN based algorithm in Chapter \ref{chp:gnn}
+In this chapter we present a local search based metaheuristic for relaxations of the MCP in detail, which is the algorithmic fundament of the GNN based algorithm in Chapter~\ref{chp:gnn}.
 At first, we introduce the general structure of the algorithm without using GNNs in Section \ref{sec:algorithm-structure}. We present two types of construction heuristics that we use in our algorithm. The first one is used to efficiently obtain a feasible initial solution of high quality that can be used as a lower bound, whereas the second one does not necessarily yield a feasible solution, but is used to explore new regions of the search space not yet visited. In Section \ref{sec:neighborhood-structure} we define the main move operator used in the local search procedure and define the corresponding neighborhood structures. Furthermore, we show in detail the local search procedure of our algorithm that utilizes said neighborhood structures. 
 
 \section{Algorithm Structure} \label{sec:algorithm-structure}
