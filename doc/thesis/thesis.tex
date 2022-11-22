@@ -75,7 +75,7 @@
 % Required data.
 \setregnumber{01129393}
 \setdate{21}{06}{2022} % Set date with 3 arguments: {day}{month}{year}.
-\settitle{\thesistitle}{Using Graph Neural Networks in Local Search for Relaxations of the Maximum Clique Problem} % Sets English and German version of the title (both can be English or German). If your title contains commas, enclose it with additional curvy brackets (i.e., {{your title}}) or define it as a macro as done with \thesistitle.
+\settitle{\thesistitle}{Using Graph Neural Networks in Local Search for Edge-Based Relaxations of the Maximum Clique Problem} % Sets English and German version of the title (both can be English or German). If your title contains commas, enclose it with additional curvy brackets (i.e., {{your title}}) or define it as a macro as done with \thesistitle.
 % \setsubtitle{Optional Subtitle of the Thesis}{Optionaler Untertitel der Arbeit} % Sets English and German version of the subtitle (both can be English or German).
 
 % Select the thesis type: bachelor / master / doctor / phd-school.
@@ -744,15 +744,14 @@ Summarizing the previous sections, we present a flowchart visualization of LSBM 
 \section{Adaption to the MDCP}\label{sec:adaption-to-mdcp}
 The MQCP and the MDCP can be approached very similar in the context of a local search based algorithm, as during the local search procedure in both cases we try to find neighboring solutions that maximize the number of edges in the subgraph induced by the current candidate solution. The objective value of a candidate solution as defined in \ref{sec:neighborhood-structure} is equivalent in both problems. Thus, we only have to change the feasibility checks for feasible MQCs in Line~\ref{alg:feasibility-check-1} of Algorithm~\ref{alg:structure}, Line~\ref{alg:feasibility-check-2} of Algorithm~\ref{alg:extend}, and Line~\ref{alg:feasibility-check-3} in Algorithm~\ref{alg:local-search-procedure}, as well as the expansion into feasible successors in the lower bound heuristic in Line~\ref{alg:lower-bound-heuristic-expansion} of Algorithm~\ref{alg:lower-bound-heuristic} to feasibility checks for MDCs. The proposed construction heuristic can be used for the MDCP without any change.  
 
-\chapter{Using Graph Neural Networks in a Local Search Based Metaheuristic for Maximum Clique Relaxation Problems}\label{chp:gnn}
+\chapter{Using Graph Neural Networks in a Local Search Based Metaheuristic Edge-Based Relaxations of the Maximum Clique Problem}\label{chp:gnn}
 
-In this chapter we extend the local search based metaheuristic presented in Chapter \ref{chp:local-search-algorithm} by utilizing a GNN in order to enhance the algorithm. 
-Section \ref{sec:gnn-local-search} presents our idea of utilizing a GNN in the previously described local search algorithm and the general structure of the training loop. 
-Section \ref{sec:gnn-training} concerns the definition of training samples, and how training data is obtained. 
-In order to obtain target values for training the GNN, in Section \ref{sec:lookahead-search} we present our idea of using a look-ahead search that takes into account the current candidate solution and returns the best neighboring solution. 
+In this chapter we extend LSBM presented in Chapter \ref{chp:local-search-algorithm} by utilizing a GNN as a learnable scoring function in order to enhance the algorithm. 
+Section \ref{sec:gnn-local-search} presents our idea of utilizing a GNN in the previously described local search algorithm and the general structure of our training algorithm LSBM-T that can be used to train the GNN to predict, which vertices in the neighborhood relative to a candidate solution $S$ are more promising than others. 
+In the following Sections we present in detail the components of LSBM-T. Section \ref{sec:gnn-training} concerns the definition of training samples, and how training data is obtained. 
+In Section \ref{sec:lookahead-search} we present our idea of using a look-ahead search that takes into account the current candidate solution and returns the best neighboring solution in order to obtain target values for training the GNN. 
 We discuss relevant GNN models and architectures in Section \ref{sec:gnn-architecture}. 
-Finally, we analyze the effect of using a GNN as a scoring function on the runtime of the algorithm compared to the scoring function $d_S$ in Section \ref{sec:performance}. 
-
+Finally, we analyze the effect of using a GNN as a scoring function on the runtime of the algorithm compared to using only $d_S$ as a scoring function in Section \ref{sec:performance}. 
 
 \section{Using a GNN in Local Search for Maximum Clique Relaxation Problems}\label{sec:gnn-local-search}
 
@@ -767,11 +766,11 @@ Using $d_S$ as a scoring function to evaluate the quality of swaps has two major
 
 In order to address these drawbacks, we propose to incorporate the GNN into the local search algorithm to enhance the function $d_S$ as a scoring function for swaps: In each iteration of the local search algorithm, all vertices are evaluated by a GNN, assigning scores to vertices. The GNN can therefore be seen as a function $\mathit{gnn}_S$, where $\mathit{gnn}_S(v)$ denotes the score of vertex $v$ relative to candidate solution $S$. 
 As with $d_S$, the scores returned by the GNN induce a ranking over the possible swaps: High scores for vertices in $V \setminus S$ and low scores for vertices in $S$ indicate that these vertices are more likely to lead to an improved solution when considered for swaps. 
-Moreover, note that $gnn_S$ is not necessarily independent of $d_S$: The $d_S$-values of vertices can be used as features for the vertices in the graph. Thus, function $d_S$ can also be taken into consideration, but its information is enhanced by structural information obtained from the graph in order to overcome its drawbacks. 
+Moreover, note that $\mathit{gnn}_S$ is not necessarily independent of $d_S$: The $d_S$-values of vertices can be used as features for the vertices in the graph. Thus, function $d_S$ can also be taken into consideration, but its information is enhanced by structural information obtained from the graph in order to overcome its drawbacks. 
 
-The purpose of the GNN in this approach is two-fold: 
+The use of a GNN in the context of LSBM in this approach is two-fold: 
 \begin{itemize}
-    \item Similar to the use of $d_S$, the scoring function $\mathit{gnn}_S$ can be used to restrict the neighborhood to only promising neighboring candidate solutions that can be obtained by only considering swaps involving the $k$ vertices with the highest scores in $V \setminus S$ with the $k$ vertices with the lowest scores in $S$. 
+    \item Similar to the use of $d_S$, the scoring function $\mathit{gnn}_S$ can be used to restrict the neighborhood to only promising neighboring candidate solutions that can be obtained by only considering swaps involving the $k^\prime$ vertices with the highest scores in $V \setminus S$ with the $k^\prime$ vertices with the lowest scores in $S$. 
     \item The GNN can be trained to determine scores not only based on the neighborhood $\Omega_1$, but also to look ahead more than a single swap. This way, it can be used to obtain higher quality solutions as it is not caught in the local optima of the neighborhood structure $\Omega_1$.
 \end{itemize}
 
@@ -783,26 +782,27 @@ We aim to tackle these challenges in Sections \ref{sec:gnn-training} and \ref{se
 
 \section{Training the GNN}\label{sec:gnn-training}
 
-The general approach of the training algorithm is structured as depicted in Algorithm~\ref{alg:training}. A visualization of the algorithm structure is presented in the flowchart in Figure \ref{fig:flowchart-training-algorithm}. 
-Starting with a naively initialized GNN, in each iteration of the training loop a random representative instance is generated on the fly and the local search algorithm is started with a fixed time limit. The local search algorithm is almost identical to the algorithm described in Chapter~\ref{chp:local-search-algorithm}, with the key difference that the GNN is used as a scoring function in order to restrict the neighborhood during search instead of the function $d_S$.  
+The general approach of the training algorithm LSBM-T is structured as depicted in Algorithm~\ref{alg:training}. A visualization of the algorithm structure is presented in the flowchart in Figure \ref{fig:flowchart-training-algorithm}. 
+At the start, the GNN-based scoring function $\mathit{gnn}_S$ is initialized randomly. Then, in each iteration of the training loop a random representative instance is generated on the fly and LSBM is started with a fixed time limit and a maximum number of restarts and - most importantly - with the scoring function $\mathit{gnn_S}$ that is used to restrict the neighborhood during the local search procedure instead of the scoring function $d_S$. The size of the restricted neighborhood during this local search is defined by input parameter $k^\prime$, which sets the maximum cardinality for the restricted candidate sets $X, Y$.
 
-During random iterations of the local search algorithm, training samples are added to a replay buffer, where a training sample consists of the graph $G$ and the current candidate solution $S$. For each training sample, a look-ahead search is applied in order to identify which vertices lead to improving solutions when considered for swaps. For a detailed description of how target values for these samples are computed, we refer to Subsection \ref{subsec:target-values} Section and \ref{sec:lookahead-search}, where we propose and discuss different methods to identify improving neighboring solutions. 
-Once the time limit of the local search procedure is reached, the GNN is trained with data from the replay buffer. 
+During random iterations of the local search algorithm, training samples are added to a replay buffer realized by a FIFO queue, such that old training samples leave the buffer when they are updated by newer, more relevant training data. A training sample consists of the graph $G$ and the current candidate solution $S$. For each training sample, a look-ahead search is applied in order to identify which vertices lead to improving solutions when considered for swaps. For a detailed description of how target values for these samples are computed, we refer to Subsection \ref{subsec:target-values} Section and \ref{sec:lookahead-search}, where we propose and discuss different methods to identify improving neighboring solutions. 
+Once the time limit of the local search procedure is reached, the GNN is trained with data from the replay buffer, if it has reached at least half of its maximum capacity. 
 This process is repeated for $z$ iterations, until the GNN is sufficiently trained. 
 
 Using the NN during training data generation is typical practice in reinforcement learning, where the NN is often improved by ``self-play''. 
-We justify this algorithmic design choice by arguing about the trajectory of the search, i.e., the set of candidate solutions encountered during execution of the local search based metaheuristic with or without the GNN: using the GNN during training data generation will generate samples that would appear naturally during the execution of the local search based metaheuristic at test time. In contrast, using only $d_S$ as a scoring function during training data generation, the trajectory of the search might differ greatly compared to the trajectory when using the GNN - especially for an initially untrained GNN, which might decrease the stability of training. 
+We justify this algorithmic design choice by arguing about the trajectory of the search, i.e., the set of candidate solutions encountered during execution of the local search based metaheuristic with or without the GNN: using the GNN-based scoring function $\mathit{gnn}_S$ during training data generation will generate samples that would appear naturally during the execution of LSBM at test time. In contrast, using only $d_S$ as a scoring function during training data generation, the trajectory of the search might differ greatly compared to the trajectory when using $\mathit{gnn}_S$ - especially for an initially untrained GNN, which might decrease the stability of training. 
 
 \begin{algorithm}
     \DontPrintSemicolon
-    \KwIn{Untrained GNN $gnn$, Target density $\gamma$, Number of iterations $z$, min. replay buffer fill $\rho$}
-    \KwOut{Trained GNN $gnn$}
+    \KwIn{Target density $\gamma$, Number of iterations $z$, replay buffer size $\rho$, size of restricted neighborhood $k^\prime$, number of samples generated per iteration $n_s$}
+    \KwOut{Trained GNN $\mathit{gnn}_S$}
+    Initialize untrained GNN-based scoring function $\mathit{gnn}_S$ \; 
     Initialize Replay Buffer $R$ \;
     \For{$z$ iterations}{
         $G \gets$ create representative graph instance \;
-        $\mathit{LocalSearchWithTrainingDataGeneration}$($G$, $\gamma$, $gnn$, $R$) \;
-        \If{$|R| > \rho$}{
-            Train $gnn$ with data from $R$ \;
+        $\mathit{LSBM}$($G$, $\gamma$, $\mathit{gnn}_S$, $R$) \;
+        \If{$|R| > \frac{\rho}{2}$}{
+            Train $\mathit{gnn}_S$ with data from $R$ \;
         }
     }
     \Return{$gnn$}
@@ -821,7 +821,7 @@ We justify this algorithmic design choice by arguing about the trajectory of the
 As already mentioned, a training sample consists of a graph $G = (V,E)$ and a candidate solution $S$. Training is done in an imitation learning setting: In order to obtain target values for the vertices in $V$, we apply a look-ahead search to the candidate solution $S$ as described in Section \ref{sec:lookahead-search}, and the GNN is then trained to imitate this look-ahead search. 
 The look-ahead search returns a set of $j$ neighboring solutions $Y = \{S_1, S_2, \dots, S_j\}$ such that $S_1, S_2, \dots, S_j \subset V$ and $|S| = |S_1| = |S_2| = \dots = |S_j|$. Furthermore, all sets in $Y$ returned by the look-ahead search are the best neighboring solutions with respect to $S$ with equal objective value $f(S) < f(S_1) = f(S_2) = \dots = f(S_j)$. Note that if $S$ is already a local optimum with respect to the neighborhood structure searched by the look-ahead search, then $Y$ might be empty. Targets for the vertices in $V$ are then given by a mapping $y \colon V \rightarrow \{0,1\}$ which is defined the following way: For each $S_i \in Y$, let $S_{i}^1 = S_i \setminus S$, $S_{i}^0 = S \setminus S_i$. In other words, $S_i^1$ contains all vertices in $S_i$ that are outside $S$, and $S_i^0$ contains all vertices inside $S$ that are not in $S_i$. For $v \in (\bigcup_{S_i \in Y} S_i^1) \cup (S \setminus \bigcup_{S_i \in Y} S_i^0)$ we define $y(v) = 1$, and for $u \in \bigcup_{S_i \in Y} S_i^0$ we define $y(u) = 0 $. We demonstrate this mapping by a small example in Figure \ref{fig:target-values}. 
 
-\fxnote{RE: Anmerkung von Günther: eventuell könnte man hier Prediction aufzuteilen in zwei Werte - 1. Knoten außerhalb von $S$, die hinzugefügt werden sollen, 2. Knoten innerhalb von $S$, die behalten werden sollen. Der derzeitige Ansatz funktioniert aber recht gut, daher wäre dieser Ansatz vielleicht später oder in zukünftiger Arbeit noch zu verfolgen. }
+% \fxnote{RE: Anmerkung von Günther: eventuell könnte man hier Prediction aufzuteilen in zwei Werte - 1. Knoten außerhalb von $S$, die hinzugefügt werden sollen, 2. Knoten innerhalb von $S$, die behalten werden sollen. Der derzeitige Ansatz funktioniert aber recht gut, daher wäre dieser Ansatz vielleicht später oder in zukünftiger Arbeit noch zu verfolgen. }
 
 \begin{figure}
     \centering
@@ -864,8 +864,8 @@ In order to obtain target values for training the GNN, we need to be able to ide
 
 \subsection{A simple approach: Searching $\Omega_1$}
 
-As a first approach, we can define the look-ahead search as simply searching the neighborhood structure $\Omega_1$ w.r.t. a candidate solution $S$, which can be done in time $O(|V|^2)$ by inspecting all possible swaps. Note that the optimization described in \ref{sec:neighborhood-structure} using the restriction of possible swaps to vertices from $X \subseteq S, Y \subseteq V \setminus S$ can be applied in order to speed up the search. 
-When the GNN is trained successfully to imitate this look-ahead search, it will serve the same purpose as the function $d_S$ in Chapter~\ref{chp:local-search-algorithm}, as $d_S$ is used to efficiently search the neighborhood structure $\Omega_1$. 
+As a first approach, we can define the look-ahead search as simply searching the neighborhood structure $\Omega_1$ w.r.t. a candidate solution $S$, which can be done in time $O(n^2)$ by inspecting all possible swaps. Note that the optimization described in \ref{sec:neighborhood-structure} using the restriction of possible swaps to vertices from $X \subseteq S, Y \subseteq V \setminus S$ can be applied in order to speed up the search. 
+When $\mathit{gnn}_S$ is trained successfully to imitate this look-ahead search, it will serve the same purpose as the function $d_S$ in Chapter~\ref{chp:local-search-algorithm}, as $d_S$ is used to efficiently search the neighborhood structure $\Omega_1$. 
 
 \subsection{Beyond $\Omega_1$: Exact Approaches}
 
@@ -891,23 +891,25 @@ We propose the following optimizations to speed up the search:
 
 In practice, preliminary experiments have shown that searching the neighborhood exhaustively by enumeration of all possible swaps as described above is computationally infeasible for $d \geq 3$ even for small graphs ($|V| \leq 250$), even when applying the described optimizations. 
 
-\subsubsection{MILP Approaches}
+\subsubsection{MILP Approach}
 
 As an alternative approach, we present two MILP-formulations, which we adapted from the formulations presented in \cite{pattillo_maximum_2013} and in \cite{VeremyevPBP16}.
  
-The first formulation is based on the first formulation in \cite{pattillo_maximum_2013}:  
+The first formulation is based on the formulation F1 from \cite{pattillo_maximum_2013}:  
 \begin{align}
-    \max & \sum_{i=1}^n \sum_{j=i+1}^n a_{ij} w_{ij} \\
-    \text{s.t. } & \sum_{i \in V} x_i = k \label{milp:size-constraint} \\ 
-     & \sum_{i \in S} x_i \geq k - d    \label{milp:branching-constraint}
+    \max & \sum_{i=1}^n \sum_{j=i+1}^n a_{ij} w_{ij}  &\\
+    \text{s.t. } & \sum_{i \in V} x_i = k & \label{milp:size-constraint} \\
+    & \sum_{i \in S} x_i \geq k - d  &  \label{milp:branching-constraint}\\
+     & w_{ij} \leq x_i & \forall i, j \in V, i < j\\
+     & w_{ij} \leq x_j & \forall i, j \in V, i < j\\
+     & w_{ij} \geq x_i + x_j - 1 & \forall i, j \in V, i < j\\
+    & w_{ij} \geq 0 & \forall i, j \in V, i < j \\
+    & x_i \in \{0,1\} & i \in V
 \end{align}
-\begin{align}
-    w_{ij} &\leq x_i, & & w_{ij} \leq x_j, & & w_{ij} \geq x_i + x_j - 1, & & j > i=1, \dots , n \\
-    w_{ij} &\geq 0,   & & x_i \in \{0,1\}, & & j > i = 1, \dots, n        & & 
-\end{align}
+
 We change the objective function to determine the neighboring solution $S'$ of $S$ that can be obtained after at most $d$ swaps and maximizes the amount of edges in $G[S']$. The equality in \ref{milp:size-constraint} ensures that the neighboring solution contains $|S| = k$ vertices, and the inequality in \ref{milp:branching-constraint} ensures that $|S' \setminus S| \leq d$. 
 
-Furthermore, we also adapt the formulation F3 in \cite{VeremyevPBP16}, as the authors show both theoretically and empirically that the model performs better than the one in \cite{pattillo_maximum_2013}. This is done similarly as above, by introducing constraints \ref{milp:size-constraint} and \ref{milp:branching-constraint} and changing the objective function to maximize the number of edges in the solutions.  
+Furthermore, note that this method has similarities to the idea from formulation F3 in \cite{VeremyevPBP16} presented in Section \ref{sec:mqcp-related-work}, where the variables $z_{\omega^\ell}, \dots, z_{\omega^u}$ are introduced that ``guess'' the size of the solution, which must be somewhere between the lower and upper bounds $\omega^\ell, \omega^u$. The formulation above can therefore be seen as fixing the vaiable $z_k = 1$ while setting $z_j = 0$ for $j \neq k$. Theoretically, this should speed up the search significantly, as the search space is reduced greatly by fixing the size $k$ of the solution.  
 
 In practice, we obtain similar results as for the exhaustive search of $\bigcup_{i=1}^d \Omega_i$: Even for relatively small graphs ($|V| \leq 250$), this method becomes infeasible for $d \geq 3$. 
 
@@ -917,56 +919,60 @@ In order to make training feasible on larger instances and for greater $d$, we p
 
 \subsubsection{Restricting the neighborhood}
 
-Recall that during the execution of the Local Search Based Metaheuristic we restrict the cardinality of the sets of vertices $X \subseteq S, Y \subseteq V \setminus S$ to the $k$ vertices with the lowest and highest $\mathit{gnn}_S$-values, respectively. Similarly, when searching $\bigcup_{i=1}^d \Omega_i$, we can restrict the cardinality of the sets of vertices considered for swaps $X, Y$ to contain up to $k^\prime$ vertices with the lowest and highest $\mathit{gnn}_S$-values each, and then exhaustively enumerate all possible neighboring solutions that can be obtained by removing up to $d$ vertices in $X$ from $S$ and adding up to $d$ vertices from $Y$. Intuitively, it makes sense to use a value $k^\prime > k$, as this means a greater part of the neighborhood structure $\bigcup_{i=1}^d \Omega_i$ is explored and therefore the approximation is more likely to be precise. 
-Furthermore, by using a fixed size neighborhood determined by $k^\prime$, the computation scales well on larger graphs. 
-In order to make this training process more stable, we propose to start training with targets computed by searching a small neighborhood like $\Omega_1$ that can be searched exhaustively without restriction, and then changing to a restricted, bigger neighborhood.  
+Recall that during the execution of LSBM we restrict the cardinality of the sets of vertices $X \subseteq S, Y \subseteq V \setminus S$ to the $k^\prime$ vertices with the lowest and highest $\mathit{gnn}_S$-values, respectively. Similarly, when searching $\bigcup_{i=1}^d \Omega_i$, we can restrict the cardinality of the sets of vertices considered for swaps $X, Y$ to contain up to $k^\prime$ vertices with the lowest and highest $\mathit{gnn}_S$-values each, and then exhaustively enumerate all possible neighboring solutions that can be obtained by removing up to $d$ vertices in $X$ from $S$ and adding up to $d$ vertices from $Y$. Intuitively, it makes sense to use a value $k^* > k^\prime$ for the size of the restricted neighborhood during the look-ahead search, as this means a greater part of the neighborhood structure $\bigcup_{i=1}^d \Omega_i$ is searched and therefore the approximation is more likely to be precise. 
+Furthermore, by using a fixed size neighborhood determined by $k^*$, the computation scales well on larger graphs. 
+In order to make this training process more stable, we propose to start training with targets computed by searching a small neighborhood like $\Omega_1$ that can be searched exhaustively without restriction, and then changing to a restricted, bigger neighborhood. 
 
-\subsubsection{A Beam Search Based Approach}
+In order to make the training process more stable, introduce a user-defined parameter $\mathit{warmup_it} \in \mathbb{N}$ to the look-ahead search. This parameter dictates the number of iterations that the scoring function $d_S$ is used to restrict the neighborhood during the look-ahead search instead of the scoring function $\mathit{gnn}_S$, as the latter is initially untrained and thus unlikely to restrict the neighborhood to the most promising vertices. After the first $\mathit{warmup_it}$ iterations of the LSBM-T are completed, the look-ahead search then uses the scoring function $\mathit{gnn}_S$ to restrict the neighborhood. 
 
- This method is based on Beam Search and its pseudocode is shown in Algorithm \ref{alg:lookahead-beam-search}.
- We define a simple data structure for nodes in the beam search tree, where each node $v$ in the search tree corresponds to a set $S^\prime$ that can be obtained from the candidate solution $S$ by removing the vertices in $v.in \subseteq S$ from $S$ and adding the vertices in $v.out \subseteq V\setminus S$ to $S$. 
- Typically, each node $v$ in the beam search tree is evaluated by an evaluation function $f(v) = g(v) + h(v)$, where $g(v)$ denotes the cost of $v$ and $h(v)$ denotes a heuristic value determined by the heuristic guidance function $h$. In Algorithm \ref{alg:lookahead-beam-search}, we define $g(v)$ to be the number of edges in the solution $S^\prime$ that corresponds to $v$, and we set $h(v) = 0$ for all nodes in the search tree. 
+Furthermore, notice that the optimizations we proposed to exhaustively search the neighborhood $\bigcup_{i=1}^d \Omega_i$ can also be applied to this neighborhood restricted by a scoring function. 
 
-In each iteration all nodes representing candidate solutions in the beam are expanded into child nodes the following way: Assume a candidate solution $S^\prime$ corresponds to a node $v$ in the search tree. This node $v$ is then expanded into up to $\varepsilon^2$ successor nodes that can be obtained by adding on of the $\varepsilon$ vertices with highest $d_{S^\prime}$-values in $(V \setminus S^\prime) \setminus v.\mathit{in}$ to $v.out$ and one of the $\varepsilon$ vertices with the lowest $d_{S^\prime}$ values in $S^\prime \setminus v.\mathit{out}$ to $v.in$. Note that the vertices in $v.in, v.out$ are excluded in order to avoid repeating candidate solutions. All expanded nodes are then evaluated by their $f$-values and the $\beta$ nodes with highest $f$-values become the new beam, whereas the remaining solutions are discarded. 
+% \subsubsection{A Beam Search Based Approach}
 
-Note that by the described expansion of the nodes into successor nodes, each level $i$ of the search tree only contains nodes that can be reached by performing exactly $i$ swaps from the root node which corresponds to the initial candidate solution $S$. 
-In order to avoid symmetries, i.e. performing the swaps $(u_1, v_1), (u_2, v_2)$ produces the same candidate solution as performing the swaps $(u_1, v_2), (u_2, v_1)$, we use a hash map for each level of the search tree that stores the sets $v.\mathit{in}, v.\mathit{out}$ for each node. This way, when expanding a node $v$ into its successor nodes, we can check efficiently, whether a node with matching sets $v.\mathit{in}, v.\mathit{out}$ have already been added to $\mathit{children}$.  
+%  This method is based on Beam Search and its pseudocode is shown in Algorithm \ref{alg:lookahead-beam-search}.
+%  We define a simple data structure for nodes in the beam search tree, where each node $v$ in the search tree corresponds to a set $S^\prime$ that can be obtained from the candidate solution $S$ by removing the vertices in $v.in \subseteq S$ from $S$ and adding the vertices in $v.out \subseteq V\setminus S$ to $S$. 
+%  Typically, each node $v$ in the beam search tree is evaluated by an evaluation function $f(v) = g(v) + h(v)$, where $g(v)$ denotes the cost of $v$ and $h(v)$ denotes a heuristic value determined by the heuristic guidance function $h$. In Algorithm \ref{alg:lookahead-beam-search}, we define $g(v)$ to be the number of edges in the solution $S^\prime$ that corresponds to $v$, and we set $h(v) = 0$ for all nodes in the search tree. 
 
-This process is continued, until a fixed depth $d$ is reached in the search tree. The candidate solution with the highest $f$-value is then returned. Note that this approach can easily be adapted to return multiple solutions if there are multiple best solutions with the same $f$-value. 
+% In each iteration all nodes representing candidate solutions in the beam are expanded into child nodes the following way: Assume a candidate solution $S^\prime$ corresponds to a node $v$ in the search tree. This node $v$ is then expanded into up to $\varepsilon^2$ successor nodes that can be obtained by adding on of the $\varepsilon$ vertices with highest $d_{S^\prime}$-values in $(V \setminus S^\prime) \setminus v.\mathit{in}$ to $v.out$ and one of the $\varepsilon$ vertices with the lowest $d_{S^\prime}$ values in $S^\prime \setminus v.\mathit{out}$ to $v.in$. Note that the vertices in $v.in, v.out$ are excluded in order to avoid repeating candidate solutions. All expanded nodes are then evaluated by their $f$-values and the $\beta$ nodes with highest $f$-values become the new beam, whereas the remaining solutions are discarded. 
+
+% Note that by the described expansion of the nodes into successor nodes, each level $i$ of the search tree only contains nodes that can be reached by performing exactly $i$ swaps from the root node which corresponds to the initial candidate solution $S$. 
+% In order to avoid symmetries, i.e. performing the swaps $(u_1, v_1), (u_2, v_2)$ produces the same candidate solution as performing the swaps $(u_1, v_2), (u_2, v_1)$, we use a hash map for each level of the search tree that stores the sets $v.\mathit{in}, v.\mathit{out}$ for each node. This way, when expanding a node $v$ into its successor nodes, we can check efficiently, whether a node with matching sets $v.\mathit{in}, v.\mathit{out}$ have already been added to $\mathit{children}$.  
+
+% This process is continued, until a fixed depth $d$ is reached in the search tree. The candidate solution with the highest $f$-value is then returned. Note that this approach can easily be adapted to return multiple solutions if there are multiple best solutions with the same $f$-value. 
 
 
-\begin{algorithm}
-    \DontPrintSemicolon
-    \KwIn{Graph $G$, candidate solution $S$, Depth $d$, Expansion factor $\varepsilon$, beam width $\beta$}
-    \KwOut{Neighboring candidate solution $S^*$ that approximately maximizes the objective function}
-    $\mathit{root}.f, \mathit{root}.\mathit{in}, \mathit{root}.\mathit{out} \gets f(\mathit{root}), \emptyset, \emptyset$ \;
-    $\mathit{max\_node} \gets \mathit{root}$ \;
-    $\mathit{beam} \gets \{\mathit{root}\}$ \;
-    \While{$\mathit{beam}$ not empty and $d > 0$}{
-        $d \gets d-1$ \;
-        $\mathit{children} \gets \emptyset$\;
-        \For{$\mathit{node} \in \mathit{beam}$}{
-            $S^\prime \gets $ solution corresponding to $\mathit{node}$ \;
-            $X \gets $ select $\varepsilon$ vertices in $S^\prime \setminus \mathit{node}.\mathit{out}$ with lowest $d_{S^\prime}$-values \;
-            $Y \gets $ select $\varepsilon$ vertices in $V \setminus (S^\prime \cup \mathit{node}.\mathit{in})$ with highest $d_{S^\prime}$-values \;
-            \For{$(u,v) \in X \times Y$}{
-                $\mathit{child\_node} \gets f(child_node), \mathit{node}.\mathit{in} \cup \{u\}, \mathit{node}.\mathit{out} \cup \{v\}$
-                Add $\mathit{child\_node}$ to children if no node with $\mathit{child\_node}.\mathit{in}, \mathit{child\_node}.\mathit{out}$ exists in $\mathit{children}$
-            }
-        }
-        $\mathit{beam} \gets $ select $\beta$ nodes with highest $f$-value \;
-        \If{$\mathit{beam}$ not empty}{
-            $\mathit{max\_beam} \gets \arg\max_{\mathit{node} \in \mathit{beam}} \mathit{node}.f$ \;
-            \If{$\mathit{max\_beam}.f > \mathit{max\_node}.f$}{
-                $\mathit{max\_node} \gets \mathit{max\_beam}$ \;
-            }
-        }
-    }
-    $S^* \gets$ obtain solution from $S, \mathit{max\_node}$ \;
-    \Return{$S^*$}
-    \caption{Beam Search based look-ahead search}
-    \label{alg:lookahead-beam-search}
-\end{algorithm}
+% \begin{algorithm}
+%     \DontPrintSemicolon
+%     \KwIn{Graph $G$, candidate solution $S$, Depth $d$, Expansion factor $\varepsilon$, beam width $\beta$}
+%     \KwOut{Neighboring candidate solution $S^*$ that approximately maximizes the objective function}
+%     $\mathit{root}.f, \mathit{root}.\mathit{in}, \mathit{root}.\mathit{out} \gets f(\mathit{root}), \emptyset, \emptyset$ \;
+%     $\mathit{max\_node} \gets \mathit{root}$ \;
+%     $\mathit{beam} \gets \{\mathit{root}\}$ \;
+%     \While{$\mathit{beam}$ not empty and $d > 0$}{
+%         $d \gets d-1$ \;
+%         $\mathit{children} \gets \emptyset$\;
+%         \For{$\mathit{node} \in \mathit{beam}$}{
+%             $S^\prime \gets $ solution corresponding to $\mathit{node}$ \;
+%             $X \gets $ select $\varepsilon$ vertices in $S^\prime \setminus \mathit{node}.\mathit{out}$ with lowest $d_{S^\prime}$-values \;
+%             $Y \gets $ select $\varepsilon$ vertices in $V \setminus (S^\prime \cup \mathit{node}.\mathit{in})$ with highest $d_{S^\prime}$-values \;
+%             \For{$(u,v) \in X \times Y$}{
+%                 $\mathit{child\_node} \gets f(child_node), \mathit{node}.\mathit{in} \cup \{u\}, \mathit{node}.\mathit{out} \cup \{v\}$
+%                 Add $\mathit{child\_node}$ to children if no node with $\mathit{child\_node}.\mathit{in}, \mathit{child\_node}.\mathit{out}$ exists in $\mathit{children}$
+%             }
+%         }
+%         $\mathit{beam} \gets $ select $\beta$ nodes with highest $f$-value \;
+%         \If{$\mathit{beam}$ not empty}{
+%             $\mathit{max\_beam} \gets \arg\max_{\mathit{node} \in \mathit{beam}} \mathit{node}.f$ \;
+%             \If{$\mathit{max\_beam}.f > \mathit{max\_node}.f$}{
+%                 $\mathit{max\_node} \gets \mathit{max\_beam}$ \;
+%             }
+%         }
+%     }
+%     $S^* \gets$ obtain solution from $S, \mathit{max\_node}$ \;
+%     \Return{$S^*$}
+%     \caption{Beam Search based look-ahead search}
+%     \label{alg:lookahead-beam-search}
+% \end{algorithm}
 
 \section{GNN Architecture}\label{sec:gnn-architecture}
 In this section we present the key components of the GNN architecture used in our algorithm and justify our choices in designing said architecture. 
@@ -1014,7 +1020,7 @@ We add a batch normalization (\cite{IoffeS15}) layer after every GCN layer, whic
 \]
 where BN denotes batch normalization. 
 
-We therefore propose a GCN model \textit{RG-GCN}, which makes use of these layers and is structured as follows: 
+We therefore propose a ConvGNN model \textit{RG-GCN}, which makes use of these layers and is structured as follows: 
 \begin{itemize}
     \item Layer 0: We apply a learnable linear transformation with weight matrix $A_0$ and bias vector $b_0$, these weights are shared among all vertices. 
     \item Layer 1: We apply a Gated Graph Convolutional layer that maps the feature vectors of dimension $dim_0$ to embeddings of dimension $dim_1$, followed by batch normalization.
@@ -1022,19 +1028,27 @@ We therefore propose a GCN model \textit{RG-GCN}, which makes use of these layer
 \end{itemize}
 
 \subsubsection{GATv2 Encoder}
-We build upon the work of \cite{Kool2019}, in which the authors also use the Graph Attention Network architecture:
+We build upon the work of \cite{Kool2019}, in which the authors use Attention based GNNs to solve the Euclidean 2D TSP. We use their encoder architecture in this proposed ConvGNN model \textit{GATv2-GCN} and slightly adapt it to our purpose:
 \begin{itemize}
     \item Layer 1: We apply a linear transformation $A_1 x_i + b_1$ with learnable parameters $A_1, b_1$ for each feature vector $x_i, 1 \leq i \leq n$.
-    \item Layers 2, \dots, $l_e$: Following the GCN model used by \cite{Kool2019}, each attention layer consists of two sub-layers: A multi-head attention (MHA) layer and a dense, fully connected feed-forward (FF) layer. Each sub-layer also applies a skip-connection and batch-normalization. The following sub-layer definitions are given by the authors: 
+    \item Layers 2, \dots, $l_e$: Following the ConvGNN model used by \cite{Kool2019}, each attention layer consists of two sub-layers: A multi-head attention (MHA) layer and a dense, fully connected feed-forward (FF) layer. Each sub-layer also applies a skip-connection and batch-normalization. The following sub-layer definitions are given by the authors: 
     \begin{align*}
         \hat{h}_i &= \text{BN}^l(h_i^{(l-1)} + \text{MHA}_i^l (h_1^{(l-1)}, \dots , h_n^{(l-1)}) ) \\
         h_i^{(l)} &= \text{BN}^l(\hat{h}_i + FF^l(\hat{h}_i))
     \end{align*}
 \end{itemize}
-The authors in \cite{Kool2019} use as the MHA layer an attention mechanism which is based on the transformer architecture in \cite{VaswaniSPUJGKP17}, which we replace by the newer GATv2 layer from \cite{Brody2021}
+In \cite{Kool2019}, the authors use as the MHA layer an attention mechanism which is based on the transformer architecture in \cite{VaswaniSPUJGKP17}. We replace this layer by the newer GATv2 layer from \cite{Brody2021}, which was developed as an improved version of the Graph Attention Network \cite{Velickovic2018}. Here, a GATv2 attention layer is defined by update function 
+\[
+    h_i^{(l)} = \sum_{j \in N_G[i]} \alpha_{ij} W_{1}^{(l)} h_j^{(l-1)}.    
+\]
+The attention coefficients $\alpha_{ij}$ are defined as 
+\[
+    \alpha_{ij} = \frac{1}{z_i} \exp(a^T \mathit{LearkyReLU(W_2^{(l)}h_i^{(l-1)} + W_1 h_j^{(l-1)} )}),    
+\]
+where $z_i$ is a normalization factor and $a, W_1, W_2$ are learned layers. 
 
 \subsection{Context}
-The context is determined by the current candidate solution $S$ and is computed by aggregating the columns of the node embedding matrix that correspond to the vertices in $S$. In general, any order invariant aggregation function $\mathit{agg} \in \{\mathit{sum, mean, max}\}$ can be used. Furthermore, we derive features from the function $d_S$ (the $d_S$-values can of course be used, but also the mean and standard deviation of all $d_S$-values might be valuable information) and append them to the context embeddings, creating feature vectors $e_i ||c_i$ for $v_i, 1 \leq i \leq |V|$ by concatenating the context and the node embeddings. These final embeddings are used as inputs for the decoder. 
+The context is determined by the current candidate solution $S$ and is computed by aggregating the columns of the node embedding matrix that correspond to the vertices in $S$. In general, any order invariant aggregation function $\mathit{agg} \in \{\mathit{sum, mean, max}\}$ can be used, but similar in similar applications $\mathit{mean}$ seems to be the best choice, which is why we primarily use this aggregation function to compute the context. Furthermore, we derive features from the function $d_S$ (the $d_S$-values can of course be used, but also the mean and standard deviation of all $d_S$-values might be valuable information) and append them to the context embeddings, creating feature vectors $e_i ||c_i$ for $v_i, 1 \leq i \leq |V|$ by concatenating the context and the node embeddings. These final embeddings are used as inputs for the decoder. 
 
 \subsection{Decoder}
 The decoder is a regression model that maps the inputs obtained from the node embeddings and the context embedding to scalar values representing scores for the vertices in $V$. We suggest using a simple MLP architecture with a sigmoid activation function on the final layer, mapping the results of the previous layers to scalar values between zero and one. 
@@ -1043,19 +1057,20 @@ As an addition to the node embeddings and the context embedding, the current $d_
 
 \section{Performance}\label{sec:performance}
 
-Since the main difference between the algorithms presented in Chapter \ref{chp:local-search-algorithm} and \ref{chp:gnn} lies in the scoring function used to evaluate vertices during the swap based local search procedure, we want to analyze the effect of using the scoring function $\mathit{gnn}_S$ instead of the scoring function $d_S$. 
+Since the main difference between the algorithms presented in Chapter \ref{chp:local-search-algorithm} and \ref{chp:gnn} lies in the scoring function used to evaluate vertices during the swap based local search procedure, we want to analyze the effect of using the scoring function $\mathit{gnn}_S$ to restrict the neighborhoods instead of the scoring function $d_S$. Note that $d_S$ has to be used in LSBM, even when another scoring function is used to restrict the neighborhoods, as using the $d_S$-values is the most efficient way to keep track of the objective value of candidate solutions. Thus, we know that using the scoring function $\mathit{gnn}_S$ can never be faster than using $d_S$, alone, but we want to analyze, where possible bottlenecks can be found and how to keep the additional computational effort as low as possi8ble.  
 In order to do so, we identify the three main operations during the local search procedure that are influenced by the choice of scoring function: Initialization, restricting neighborhoods, and updating the scoring function.  
 
-\subsection{Initializing the scoring function}
+\subsection{Initializing the scoring function $d_S$}
+
 At the start of the local search procedure, a construction heuristic is used to produce a new candidate solution $S$, which serves as a starting point. 
 The scoring function $d_S$ must then be initialized, as it is dependent on $S$. The initialization procedure can be seen in Algorithm \ref{alg:init-dS}.
-It starts by initializing an array of zeros of size $|V|$. For each vertex $u \in S$, increase the value $d_S[v]$ by one for each neighbor $v$ of $u$. This procedure has a worst-time-complexity of $O(|V|^2)$ time, as the size of $S$ is in $O(|V|)$, and each vertex in $S$ can have $O(|V|)$ neighbors. 
+It starts by initializing an array of zeros of size $n$. For each vertex $u \in S$, increase the value $d_S[v]$ by one for each neighbor $v$ of $u$. This procedure has a worst-time-complexity of $O(n^2)$ time, as the size of $S$ is in $O(n)$, and each vertex in $S$ can have $O(n)$ neighbors. 
 
 \begin{algorithm}
     \DontPrintSemicolon
     \KwIn{Graph $G = (V,E)$, candidate solution $S$}
     \KwOut{Initialized scoring function $d_S$}
-    $d_S \gets [0, \dots, 0]$ // Array of size $|V|$ \;
+    $d_S \gets [0, \dots, 0]$ // Array of size $n$ \;
     \For{$u \in S$}{
         \For{$v \in N_G(u)$}{
             $d_S[v] \gets d_S[v] + 1$
@@ -1066,14 +1081,16 @@ It starts by initializing an array of zeros of size $|V|$. For each vertex $u \i
     \label{alg:init-dS}
 \end{algorithm}
 
-When using the scoring function $gnn_S$, initializing the scoring function is done by computing node embeddings for each vertex in $G$. This is done by first computing node features and then computing node embeddings by passing the node features through a GNN based encoder. The time complexity of this initialization depends on the complexity of the chose node features and the structure of the GNN itself, but in general both will take $O(|V|^2)$ time on graphs that are not sparse. The argument is similar as with $d_S$, as each vertex needs to be evaluated by taking into account all its neighboring vertices. 
-The advantage when using a GNN based scoring function is that this initialization process has to be done only once per graph, and not every time a new candidate solution is generated by the construction heuristic. In subsequent restarts of the local search procedure, only the linear time decoder has to be applied. 
+\subsection{Initializing the scoring function $\mathit{gnn}_S$}
+
+When using the scoring function $gnn_S$, initializing the scoring function is done by computing node embeddings for each vertex in $G$. This is done by first computing node features and then computing node embeddings by passing the node features through a GNN based encoder. The time complexity of this initialization depends on the two parts. Firstly, the chosen node features have to be computed once per graph. This can be as simple as obtaining the node degrees, but can also be much more complex, when for example learning-based node features are used. Thus, initializing the node features takes feature specific time $O(T_{nf})$. Secondly, the convolutional operations defined by the layers of the GNN itself will take $O(n^2)$ time. The argument is similar as with $d_S$, as each vertex needs to be evaluated by taking into account all its neighboring vertices. 
+Note that this initialization process has to be done only once per graph, thus it has a combined runtime of $O(T_{nf} + n^2)$. In subsequent restarts of the local search procedure, the node embeddings are already precomputed, and only the linear time decoder has to be applied. 
 
 Since initialization is only done once per graph or once per restart of the local search procedure, the runtime should not have a great impact on the performance of the algorithm. Therefore, especially with a GNN based scoring function, this time should be used by utilizing an encoder of high enough complexity to produce high quality node embeddings. 
 
-\subsection{Restricting the neighborhood}
+\subsection{Restricting the neighborhood using $d_S$}
 When using the scoring function $d_S$, the neighborhood $\Omega_1$ is searched implicitly, as only swaps that maximize the gain are considered. 
-The restricted candidate sets $X \subseteq S, Y \subseteq V \setminus S$ are generated in time $O(|V|)$, as only the minimum and maximum scores for vertices in $S$ and $V \setminus S$, respectively, have to be determined. As a reminder, the restricted candidate sets are defined as 
+The restricted candidate sets $X \subseteq S, Y \subseteq V \setminus S$ are generated in time $O(n)$, as only the minimum and maximum scores for vertices in $S$ and $V \setminus S$, respectively, have to be determined. As a reminder, the restricted candidate sets are defined as 
 \[
     X = \{ u \mid u \in S, d_S(u) \leq d_{\min} + 1 \}, \\
     Y = \{ v \mid v \in V \setminus S, d_S(v) \geq d_{\max} - 1 \},
@@ -1082,24 +1099,40 @@ with $d_{\min} = \min_{u \in S} d_S(u), d_{\max} = \max_{v \in V \setminus S}$.
 If the swap $u \in S,v \in V \setminus S$ maximizes the gain of the candidate solution, this method of restricting the neighborhood guarantees that $u \in X, v \in Y$.
 While this method produces restricted neighborhoods of variable size, these neighborhoods are usually small and thus can be searched efficiently in practice. In general however, the size of the sets $X, Y$ can be in $O(|V|)$ in the worst case. 
 
-Using the scoring function $\mathit{gnn}_S$, we do not have a guarantee that the swap that maximizes the gain lies among the lowest-scoring vertices in $S$ and the highest-scoring vertices in $V \setminus S$. Moreover, we might not even want to consider such a swap, as the scoring function was trained to search greater neighborhoods than $\Omega_1$, and the swap that maximizes the gain does not lead to the best neighboring solution. We therefore propose to use restricted candidate sets $X,Y$ of a fixed size $k$, where $X$ consists of the $k$ lowest-scoring vertices in $S$, and $Y$ consists of the $k$ highest-scoring vertices in $V \setminus S$. This guarantees that searching the neighborhood takes a fixed amount of time. 
-Obtaining the $k$ highest or lowest scoring vertices can be done in time $O(k |V|)$, which is linear for fixed $k$, but is still more expensive than generating a restricted neighborhood for the scoring function $d_S$. As the restricted neighborhood is searched in every iteration of the local search procedure, its size can therefore also have a great impact on the runtime. It is therefore essential to determine a neighborhood size that strikes a good balance between efficiency and quality of neighboring solutions found in the neighborhood.  
+\subsection{Restricting the neighborhood using $\mathit{gnn}_S$}
+
+Using the scoring function $\mathit{gnn}_S$, we do not have a guarantee that the swap that maximizes the gain lies among the lowest-scoring vertices in $S$ and the highest-scoring vertices in $V \setminus S$. Moreover, we might not even want to consider such a swap, as the scoring function was trained to search greater neighborhoods than $\Omega_1$, and the swap that maximizes the gain does not lead to the best neighboring solution. We therefore propose to use restricted candidate sets $X,Y$ of a fixed size $k^\prime$, where $X$ consists of the $k$ lowest-scoring vertices in $S$, and $Y$ consists of the $k^\prime$ highest-scoring vertices in $V \setminus S$. This guarantees that searching the neighborhood takes a fixed amount of time. 
+Obtaining the $k^\prime$ highest or lowest scoring vertices can be done in time $O(k \cdot n)$, which is linear for fixed $k^\prime$, but is still more expensive than generating a restricted neighborhood for the scoring function $d_S$. As the restricted neighborhood is searched in every iteration of the local search procedure, its size can therefore also have a great impact on the runtime. It is therefore essential to determine a neighborhood size that strikes a good balance between efficiency and quality of neighboring solutions found in the neighborhood.  
 
 
-\subsection{Updating the scoring function}
+\subsection{Updating the scoring function $d_S$}
 After each swap of vertices $u \in S, v \in V \setminus S$ the scoring function needs to be updated, as it is dependent on the current candidate solution $S$. For $d_S$, this update can be efficiently in $O(|V|)$ time by decrementing $d_S[x]$ for $x \in N_G(u)$ and incrementing $d_S[y]$ for $y \in N_G(v)$. All other vertices remain unaffected by a single swap and their corresponding $d_S$-values do not need to be updated. 
+
+\subsection{Updating the scoring function $\mathit{gnn}_S$}
 
 For the scoring function $gnn_S$, we can generally not update the scores incrementally, as the context embedding changes, which is part of the input of all vertices. Therefore, all vertices need to be re-evaluated by the decoder. This still takes time linear in the number of vertices, but, depending on the complexity of the decoder, it can take considerably more time than updating $d_S$ after a swap. As this operation is done in every iteration of the local search procedure, it has a great impact on the performance of the algorithm. Therefore, the complexity of the decoder should be chosen such that it is as small and efficient as possible while still providing high quality predictions. 
 
 \subsection{Conclusion}
-When analyzing the performance aspect of the proposed scoring functions, it seems clear that a GNN based scoring function can in practice not be as fast and efficient as $d_S$. However, we hope to overcome this drawback by keeping the NN - especially the decoder - as small and efficient as possible, by determining a neighborhood size that balances efficiency and solution quality, and by training the NN to provide a better guidance through the search space than $d_S$, leading to solutions of improved quality. 
+When analyzing the performance aspect of the proposed scoring functions, it seems clear that a GNN based scoring function can in practice not be as fast and efficient as the scoring function $d_S$ alone. However, we want to address this weakness of our approach by keeping the NN - especially the decoder - as small and efficient as possible, by determining a neighborhood size that balances efficiency and solution quality, and by training the NN to provide a better guidance through the search space than $d_S$, leading to solutions of improved quality. Finally, in Table \ref{tab:runtime-analysis} we summarize the discussed worst-case time complexity of each of the three main operations. 
 
-\section{Alternative Approach}
+\begin{table}
+    \centering
+    \begin{tabular}{cc | cc | cc}
+        \toprule
+        \multicolumn{2}{c}{Initialization} & \multicolumn{2}{c}{Restricting the neighborhood} & \multicolumn{2}{c}{Update}  \\ \hline
+        $d_S$ & $\mathit{gnn}_S$ & $d_S$ & $\mathit{gnn}_S$ & $d_S$ & $\mathit{gnn}_S$  \\ 
+        $O(n^2)$ & $O(T_{nf} + n^2)$ & $O(n)$ & $O(k^\prime \cdot n)$ & $O(n)$ & $O(n)$ 
+    \end{tabular}
+    \caption{Worst-case time complexity of the main operations used during LSBM when using the scoring functions $d_S$ and $\mathit{gnn}_S$. }
+    \label{tab:runtime-analysis}
+\end{table}
 
-A GNN could also be trained to predict which vertices are in an optimal solution. 
-Here we would need to obtain vertex labels by obtaining optimal or high quality solutions, and labeling the vertices in these solutions with one whereas remaining vertices are labeled with zero. The GNN is then trained on this data. 
+% \section{Alternative Approach}
+% \fxnote{delete this section or discuss it under future work?}
+% A GNN could also be trained to predict which vertices are in an optimal solution. 
+% Here we would need to obtain vertex labels by obtaining optimal or high quality solutions, and labeling the vertices in these solutions with one whereas remaining vertices are labeled with zero. The GNN is then trained on this data. 
 
-The GNN will then be applied only once at the beginning of the local search algorithm. The output of the GNN could be used as a secondary scoring function: When there are two or more swaps with the same gain, the swap that has a higher probability of adding a vertex from the optimal solution will be preferred. 
+% The GNN will then be applied only once at the beginning of the local search algorithm. The output of the GNN could be used as a secondary scoring function: When there are two or more swaps with the same gain, the swap that has a higher probability of adding a vertex from the optimal solution will be preferred. 
 
 
 % \section{First Approach}
