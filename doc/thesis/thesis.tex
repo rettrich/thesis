@@ -483,7 +483,7 @@ When studying the literature related to MDCP, we notice that there is a lack of 
 \chapter{A Local Search Based Metaheuristic for Maximum Clique Relaxations}\label{chp:local-search-algorithm}
 
 In this chapter we present a local search based metaheuristic for relaxations of the MCP in detail, which is the algorithmic fundament of the GNN based algorithm in Chapter~\ref{chp:gnn}. We reference our algorithm as LSBM from now on. 
-At first, we introduce the general structure of LSBM without using GNNs in Section~\ref{sec:algorithm-structure}. Afterwards, we present the components of our algorithm in detail. In Section \ref{sec:lower-bound-heuristic} we present a lower bound heuristic based on beam search that is used to efficiently obtain a feasible initial solution of high quality. Afterwards, we present a construction heuristic in Section~\ref{sec:construction-heuristic} that does not necessarily yield a feasible solution, but is used to explore new regions of the search space not visited yet, as it will be used as a starting point for the local search procedure. In Section~\ref{sec:neighborhood-structure} we define the main move operator used in the local search procedure and define and analyze the corresponding neighborhood structures. Furthermore, we show in detail the local search procedure of LSBM that searches said neighborhood structures. 
+At first, we introduce the general structure of LSBM without using GNNs in Section~\ref{sec:algorithm-structure}. Afterwards, we present the components of our algorithm in detail. In Section \ref{sec:lower-bound-heuristic} we present a lower bound heuristic based on beam search that is used to efficiently obtain a feasible initial solution of high quality. Afterwards, we present a construction heuristic in Section~\ref{sec:construction-heuristic} that does not necessarily yield a feasible solution, but is used to explore new regions of the search space not visited yet, as it will be used as a starting point for the local search procedure. In Section~\ref{sec:neighborhood-structure} we define the main move operator used in the local search procedure and define and analyze the corresponding neighborhood structures. Furthermore, we show in detail the local search procedure of LSBM that searches said neighborhood structures and uses a scoring function to evaluate the vertices in the graph in order to restrict the neighborhood to the most promising moves. Moreover, we introduce such a scoring function that is commonly used in state-of-the-art heuristic approaches for the MQCP. 
 Note that we present our algorithm in the context of the MQCP. As the MQCP and the MDCP are very closely related, the adaption to the MDCP is very simple and the necessary steps to translate LSBM to the MDCP are shown at the end of the Chapter in Section~\ref{sec:adaption-to-mdcp}. 
 
 \section{Algorithm Structure} \label{sec:algorithm-structure}
@@ -493,23 +493,23 @@ As noted by Friden et al. \cite{Friden1989}, a solution for the MCP can be obtai
 The pseudocode of the general structure of our local search algorithm is shown in Algorithm \ref{alg:structure}.
 $\mathit{InitialSolution}$, which is a generalized greedy search, constructs a feasible initial solution. Its main purpose is to obtain a high quality lower bound to obtain a good starting value for $k$. The procedure is described in detail in Section~\ref{sec:lower-bound-heuristic}.
 
-In line \ref{alg:structure-freq} a long-term memory $\mathit{Freq}$ is initialized, where $\mathit{Freq[i]}$ stores how many times each vertex is operated on for $i=1,\dots,n$. This memory is kept when the loop in lines~\ref{alg:structure-while-start}--\ref{alg:structure-while-end} is repeated, but no feasible solution could be found. In $\mathit{ConstructionHeuristic}$, $\mathit{Freq}$ is used to produce a candidate solution that favors vertices that have not been considered yet. This way, new regions of the search space are explored. The idea of using this long-term memory $\mathit{Freq}$ in the construction heuristic to cover a larger area of the search space comes from \cite{chen_nuqclq_2021}. We change their construction heuristic slightly by combining it with a GRASP-like construction step as described in Section~\ref{sec:construction-heuristic}. 
+In Line \ref{alg:structure-freq} a long-term memory $\mathit{Freq}$ is initialized, where $\mathit{Freq[i]}$ stores how many times each vertex is operated on for $i=1,\dots,n$. This memory is kept when the loop in Lines~\ref{alg:structure-while-start}--\ref{alg:structure-while-end} is repeated, but no feasible solution could be found. In $\mathit{ConstructionHeuristic}$, $\mathit{Freq}$ is used to produce a candidate solution that favors vertices that have not been considered yet. This way, new regions of the search space are explored. The idea of using this long-term memory $\mathit{Freq}$ in the construction heuristic to cover a larger area of the search space comes from \cite{chen_nuqclq_2021}. We change their construction heuristic slightly by combining it with a GRASP-like construction step as described in Section~\ref{sec:construction-heuristic}. 
 
-Once a candidate solution is obtained by a construction heuristic, we try to improve it by the local search procedure in line~\ref{alg:structure-local-search}, which is described in detail in Section~\ref{sec:neighborhood-structure} along with the definition of the neighborhood structures. If the resulting solution $S$ is feasible, a simple search is performed in $\mathit{Extend}$ to check if the solution can be extended to a feasible solution of greater size as shown in Algorithm~\ref{alg:extend}.
+Once a candidate solution is obtained by a construction heuristic, we try to improve it by the local search procedure in Line~\ref{alg:structure-local-search}, which is described in detail in Section~\ref{sec:neighborhood-structure} along with the definition of the neighborhood structures. During this local search procedure, we use the scoring function $\mathit{sf}_S$ in each iteration to restrict the neighborhood of a candidate solution $S$ to the most promising moves in order to increase its objective value. If the resulting solution $S$ is feasible, a simple search is performed in $\mathit{Extend}$ to check if the solution can be extended to a feasible solution of greater size as shown in Algorithm~\ref{alg:extend}. 
 Furthermore, $k$ is increased, $\mathit{Freq}$ is reset, and the best-so-far found solution $S^*$ is updated. 
-If the solution obtained by the local search procedure is not feasible, the while-loop is repeated until the stopping criterion is met, e.g., the time limit is reached. 
+If the solution obtained by the local search procedure is not feasible, the while-loop is repeated until the stopping criterion is met, e.g., the time limit or a user defined maximum number of restarts is reached. 
 
 \begin{algorithm}
     \DontPrintSemicolon
     \KwIn{Graph $G$, Target Density $\gamma$}
-    \KwOut{Approximate maximum $\gamma$-quasi clique in $G$}
+    \KwOut{Approximate maximum $\gamma$-quasi clique in $G$, scoring function $\mathit{sf}_S$}
     $S^* \gets \mathit{InitialSolution}(G, \gamma)$ \;
     $k \gets |S^*|$ \; \label{alg:structure-lower-bound}
     $\mathit{Freq} \gets [0, \dots, 0]$ \label{alg:structure-freq} \tcp*{$n$-element Array, initialized with 0} 
 
     \While{stop condition not met}{ \label{alg:structure-while-start}
         $S \gets \mathit{ConstructionHeuristic}(G, \mathit{Freq}, k)$ \; \label{alg:structure-construction}
-        $S \gets \mathit{LocalSearch}(G, Freq, \gamma, S)$ \; \label{alg:structure-local-search}
+        $S \gets \mathit{LocalSearch}(G, \mathit{Freq}, \gamma, S, \mathit{sf})$ \; \label{alg:structure-local-search}
         \If{$S$ is feasible}{\label{alg:feasibility-check-1}
             $S \gets \mathit{Extend}(G, S, \gamma)$ \;
             $S^* \gets S$ \;
@@ -543,32 +543,32 @@ If the solution obtained by the local search procedure is not feasible, the whil
 
 \section{Lower Bound Heuristic}\label{sec:lower-bound-heuristic}
 
-In this section we propose a beam search based heuristic that returns a feasible solution that can be used as a lower bound for the size of a maximum $\gamma$-quasi clique in the input graph. This lower bound is used to obtain a high starting value for $k$ in line~\ref{alg:structure-lower-bound} of Algorithm~\ref{alg:structure}. 
+In this section we propose a beam search based heuristic that returns a feasible solution that can be used as a lower bound for the size of a maximum $\gamma$-quasi clique in the input graph. This lower bound is used to obtain a high starting value for $k$ in Line~\ref{alg:structure-lower-bound} of Algorithm~\ref{alg:structure}. 
 The pseudocode of the beam search is shown in Algorithm~\ref{alg:lower-bound-heuristic}. 
 In the following, note the textual distinction between \emph{nodes} in the search tree and \emph{vertices} in the input graph which is made for the sake of clarity. 
 
 In beam search, a node $v$ of the search tree is in general evaluated by a function $f(v) = g(v) + h(v)$, where $g(v)$ is the cost of the solution corresponding to a node, and $h(v)$ is a heuristically determined value given by a guidance function. 
 We use a simple data structure for nodes of the search tree where a node $v$ has fields $\mathit{v.S}$ containing a feasible $\gamma$-quasi clique that this node represents, $\mathit{v.num\_edges}$, which contains the number of edges in $G[v.S]$, $\mathit{v.d_S}$, which is a vector containing the $d_S$-values for vertices in $G$ in order to allow efficient computation of $\mathit{v.num\_edges}$, and $\mathit{v.h}$, which is the heuristically determined value of the node according to the used guidance function.
 Additionally, we define the cost of a node $v$ as $g(v) = |v.S|$, which is the size of the feasible solution that this node represents.  
-The root node of the beam search tree is then defined by an empty candidate set $\mathit{root.S}$ with $\mathit{root.g}=0, \mathit{root.h}=0$. 
+The root node of the beam search tree is then defined by an empty candidate set $\mathit{root.S}$ with $\mathit{root.g}=0, \mathit{root.h}=0, \mathit{root.d_S} = [0 \dots 0], \mathit{root.num\_edges} = 0$. 
 
-The main loop in line~\ref{alg:exploration-construction-while-start}--\ref{alg:exploration-construction-while-end} expands all nodes in the current beam into feasible successor nodes. 
-Since a node $v$ represents a set of vertices $\mathit{v.S}$ which is a feasible $\gamma$-quasi clique, successor nodes are generated by checking for each vertex $u \in V \setminus \mathit{v.S}$ whether $\mathit{v.S} \cup \{u\}$ is still a feasible $\gamma$-quasi clique. 
-These successor nodes are then added to a list $\mathit{children}$. 
-In order to keep the computational effort low, we introduce a parameter $\varepsilon$ that controls the maximum number of successor nodes for each node in the search tree. Thus, if a node has more than $\varepsilon$ feasible successors, we sort potential successors by the number of edges in their corresponding candidate solutions and add only $\varepsilon$ successor nodes to $\mathit{children}$, as can be seen in line \ref{alg:lower-bound-heuristic-expansion} of the algorithm. 
+The main loop in Lines~\ref{alg:exploration-construction-while-start}--\ref{alg:exploration-construction-while-end} expands all nodes in the current beam into feasible successor nodes. 
+Since a node $v$ represents a set of vertices $\mathit{v.S}$ which is a feasible $\gamma$-quasi clique, successor nodes are generated by checking for each vertex $u \in V \setminus \mathit{v.S}$ whether $\mathit{v.S} \cup \{u\}$ is still a feasible $\gamma$-quasi clique. These successor nodes are then added to a list $\mathit{children}$. 
+Using the information stored in a node $v$ of the beam search tree, it can be checked in $O(1)$ whether any vertex $u \in V \setminus \mathit{v.S}$ in the graph can be used to extend the solution $\mathit{v.S}$ into a feasible $\gamma$-quasi clique. Creating a successor node however takes $O(n)$ time, as the $d_S$ values for the created successor node have to be updated. 
+In order to keep the computational effort low, we introduce a parameter $\varepsilon$ that controls the maximum number of successor nodes for each node in the search tree. Thus, if a node has more than $\varepsilon$ feasible successors, we add only the first $\varepsilon$ successor nodes to $\mathit{children}$, as can be seen in Line \ref{alg:lower-bound-heuristic-expansion} of the algorithm. 
 
 In order to avoid symmetries, i.e. nodes $u,v$ representing the same solutions such that $u.S = v.S$, we use a hash map for each level of the search tree containing all solution vertex sets that were already added for expansion. Before adding a successor node $v$ to $\mathit{children}$, a check is performed to make sure that a node representing $v.S$ is not already contained in $\mathit{children}$. 
-
+ 
 Note that due to this expansion into successor nodes all the solutions corresponding to the nodes on a level of the search tree have the same cardinality, and thus the same $g$-value.  
-Therefore, $g$-values can be ignored in the evaluation, and all nodes in $\mathit{children}$ are evaluated by a guidance function $h$, and the $\beta$ nodes with highest $h$-values form a new beam while the remaining nodes are discarded. 
-Furthermore, since all the solutions corresponding to nodes on a level of the search tree have the same cardinality, a random node is selected to possibly update the best-so-far solution $S^*$ on each level.
+Therefore, $g$-values can be ignored in the evaluation, and all nodes in $\mathit{children}$ are evaluated only by a guidance function $h$. The $\beta$ nodes with highest $h$-values then form a new beam while the remaining nodes are discarded. 
+Furthermore, since all the solutions corresponding to nodes on a level of the search tree have the same cardinality, a random node is selected to update the best-so-far solution $S^*$ on each level.
 Finally, when the beam becomes empty, the maximum cardinality solution is returned. 
 
-The heuristic guidance function $h$ can have a great impact on the quality of the obtained solutions. We therefore propose three guidance functions which we want to consider in the context of this beam search: 
+The heuristic guidance function $h$ can have a great impact on the quality of the obtained solutions, but also the runtime of the beam search. We therefore propose three guidance functions, \emph{Greedy Construction}, \emph{Feasible Neighbors}, and \emph{Number of Edges}, which we want to consider in the context of this beam search: 
 \begin{itemize}
     \item \emph{Greedy Construction}. We use the result of a simple greedy construction as the value of the heuristic function $h$: Given a node $v$ with candidate set $S = v.S$, greedily add the vertex $v = \arg \max_{u \in V \setminus S} d_S(u)$ if $S \cup \{v\}$ is still a feasible $\gamma$-quasi clique, where $d_S(u) = |\{v \mid v \in S, \{u,v\} \in E \}|$. 
     Ties are broken randomly. This greedy extension is repeated until the corresponding solution is maximal, i.e., no single vertex can extend the cardinality of the solution while maintaining feasibility. 
-    The size of the solution obtained this way is then the return value of the guidance function $h(v)$. This greedy guidance function has a time complexity of $O(|S^*|n)$ per iteration, where $|S^*|$ is the size of the best found solution obtained by the greedy construction and $n$ is the number of vertices in $G$. As $|S^*|$ is bound by $n$, the runtime of \emph{Greedy Construction} is $O(n^2)$ per node of the search tree. 
+    The size of the solution obtained this way is then the return value of the guidance function $h(v)$. This greedy guidance function has a time complexity of $O(|S^*|n)$ per iteration, where $|S^*|$ is the size of the best found solution obtained by the greedy construction and $n$ is the number of vertices in $G$. As $|S^*|$ is bound by $n$, the time complexity of \emph{Greedy Construction} is $O(n^2)$ per node of the search tree. 
     \item \emph{Feasible Neighbors}. Consider the following function defined for a node $v$ in the search tree $h_{v.S} \colon V \setminus v.S \rightarrow \mathbb{N}$: 
     \[
         h_{v.S}(w) = 
@@ -577,13 +577,14 @@ The heuristic guidance function $h$ can have a great impact on the quality of th
             \mathit{v.d_S}(w) - n_e & \text{ if $w$ can extend $v.S$ }
         \end{cases},
     \]
-    where $n_e = \gamma \cdot \frac{|S|\cdot (|S|+1)}{2} - \mathit{v.num\_edges}$, i.e. the number of edges that need to be added when extending $\mathit{v.S}$ into a feasible solution of size $|\mathit{v.S}|+1$. 
+    where $n_e = \lceil \gamma \cdot \frac{|\mathit{v.S}|\cdot (|\mathit{v.S}|+1)}{2} \rceil - \mathit{v.num\_edges}$, i.e. the number of edges that need to be added when extending $\mathit{v.S}$ into a feasible solution of size $|\mathit{v.S}|+1$. 
     The heuristic value $h(v)$ for a node $v$ in the search tree is then computed as the sum $\sum_{w \in V \setminus v.S} h_{v.S}(w)$. 
-    For each vertex that can be used to extend $v.S$ - which we call a \emph{feasible neighbor} in this context - we count the surplus of edges that are added to $v.S$ when extending $v.S$ by this vertex. As we have access to $\mathit{v.num\_edges}$, we know that each vertex that adds at least $\frac{|\mathit{v.S}|\cdot|\mathit{v.S}|+1}{2} - \mathit{v.num\_edges}$ edges to the solution can be used to extend $\mathit{v.S}$. As the number of edges gained by adding a vertex is determined by the values in $\mathit{v.d_S}$, this computation can be done in time $O(n)$ per node of the search tree. 
+    For each vertex that can be used to extend $v.S$ - which we call a \emph{feasible neighbor} in this context - we count the surplus of edges that are added to $v.S$ when extending $v.S$ by this vertex. As we have access to $\mathit{v.num\_edges}$, we know that each vertex that adds at least $\frac{|\mathit{v.S}|\cdot|(\mathit{v.S}|+1)}{2} - \mathit{v.num\_edges}$ edges to the solution can be used to extend $\mathit{v.S}$. As the number of edges gained by adding a vertex is determined by the values in $\mathit{v.d_S}$, this computation can be done in time $O(n)$ per node of the search tree. 
     Furthermore, consider two nodes $u, v$ on the same level of the search tree, such that $\mathit{u.num\_edges} = \mathit{v.num\_edges}$, both nodes have the same number of feasible neighbors, but the $d_S$-values for the feasible neighbors of $\mathit{u.S}$ are higher than the $d_S$-values of the feasible neighbors of $\mathit{u.S}$. Intuitively, $u$ is more promising than $v$, as adding one of the feasible neighbors adds more edges to the corresponding solution, which is also reflected in the computation of this heuristic guidance function. 
-    \item \emph{Number of Edges}. We set $h(v) = \mathit{v.num\_edges}$, which means this heuristic guidance function has a time complexity of $O(1)$. 
+    \item \emph{Number of Edges}. We set $h(v) = \mathit{v.num\_edges}$, which means this heuristic guidance function has a time complexity of $O(1)$. This allows for efficient computation at the cost of not obtaining much additional information. 
 \end{itemize}
 
+These heuristic guidance function differ greatly in terms of time complexity per node and information obtained in order to guide the search. As the main purpose of the lower bound heuristic proposed in this Section is to quickly obtain a good approximation, we will prioritize fast computation over solution quality. Nonetheless, for small instances, it could still be useful to consider more expensive guidance functions. 
 
     % \item The second guidance function takes a parameter $l$ and evaluates a node $v$ with candidate set $S = v.S$ by calculating the sum of the $l$ vertices in $V \setminus S$ with the highest values for $d_S(u)$. This guidance function is designed to be more time-efficient than the previous one, as the computation is independent of the solution size. 
     % \fxnote{braucht noch immer $O(n \log n)$ wegen sortieren und performt deutlich schlechter, vielleicht einfach rausstreichen?}
@@ -615,19 +616,19 @@ The heuristic guidance function $h$ can have a great impact on the quality of th
 
 \section{Construction Heuristic}\label{sec:construction-heuristic}
 
-The construction heuristic in line \ref{alg:structure-construction} in Algorithm \ref{alg:structure} aims to return a set of nodes $S$ of fixed size $|S| = k$ that is promising to lead to new local optima when used as a starting point for the local search procedure. The candidate solution returned by this construction heuristic is not necessarily feasible. 
-The construction heuristic includes a parameter $p \in [0,1]$ which controls the balance between choosing nodes that have not been explored yet and nodes that increase the objective value of the current candidate solution. This approach of balancing exploration and objective value is inspired by \cite{chen_nuqclq_2021}, where the authors use a similar strategy during construction. We combine the authors' idea with a GRASP-like approach. The procedure is shown in Algorithm \ref{alg:exploration-construction}. 
-At first, a starting node is selected by choosing a node with the lowest $Freq$-value, breaking ties randomly. In each iteration of the main while loop in line \ref{alg:exploration-construction-while-start}-\ref{alg:exploration-construction-while-end}, with probability $p$ a node with the lowest $Freq$-value in $N_G(S)$ is added to the current candidate solution $S$. If $N_G(S)$ is empty, an arbitrary node with the lowest $Freq$ value from $V\setminus S$ is selected instead. 
-With probability $1-p$ we perform an iteration of a GRASP-like construction step: A restricted candidate list $\mathit{RCL}$ is built by adding all nodes from $V \setminus S$ that fulfill the condition $d_S(u) \geq d_{\max} - \alpha(d_{\max} - d_{\min})$, where $d_S(u)$ denotes the number of neighbors in $S$ for a node $u \in V \setminus S$, and $d_{\max}, d_{\min}$ are the maximum and minimum values $d_S(u)$ over all nodes $u\in V \setminus S$. Here, the parameter $\alpha$ controls the balance between greediness and randomness in a GRASP-like manner: $\alpha=0$ corresponds to a greedy strategy, whereas $\alpha=1$ corresponds to a purely random strategy.  
+The construction heuristic in Line \ref{alg:structure-construction} in Algorithm \ref{alg:structure} aims to return a set of nodes $S$ of fixed size $|S| = k$ that is promising to lead to new local optima when used as a starting point for the local search procedure. The candidate solution returned by this construction heuristic is not necessarily feasible. 
+The construction heuristic includes a parameter $r \in [0,1]$ which controls the balance between choosing nodes that have not been explored yet and nodes that increase the number of edges among vertices in the current candidate solution. This approach of balancing exploration and objective value is inspired by \cite{chen_nuqclq_2021}, where the authors use a similar strategy during construction. We combine the authors' idea with a GRASP-like construction step. The procedure is shown in Algorithm \ref{alg:exploration-construction}. 
+At first, a starting node is selected by choosing a node with the lowest $Freq$-value, breaking ties randomly. In each iteration of the main while loop in line \ref{alg:exploration-construction-while-start}-\ref{alg:exploration-construction-while-end}, with probability $r$ a node with the lowest $Freq$-value in $N_G(S)$ is added to the current candidate solution $S$. If $N_G(S)$ is empty, an arbitrary node with the lowest $Freq$ value from $V\setminus S$ is selected instead. 
+With probability $1-r$ we perform an iteration of a GRASP-like construction step: A restricted candidate list $\mathit{RCL}$ is built by adding all nodes from $V \setminus S$ that fulfill the condition $d_S(u) \geq d_{\max} - \alpha(d_{\max} - d_{\min})$, where $d_S(u)$ denotes the number of neighbors in $S$ for a node $u \in V \setminus S$, and $d_{\max}, d_{\min}$ are the maximum and minimum values $d_S(u)$, respectively, over all nodes $u\in V \setminus S$. Here, the parameter $\alpha$ controls the balance between greediness and randomness in a GRASP-like manner: $\alpha=0$ corresponds to a greedy strategy, whereas $\alpha=1$ corresponds to a purely random strategy.  
 
 \begin{algorithm}
     \DontPrintSemicolon
-    \KwIn{Graph $G$, $n$-element array $Freq$, Target size $k$, GRASP parameter $\alpha$, Exploration parameter $p$}
+    \KwIn{Graph $G$, $n$-element array $Freq$, Target size $k$, GRASP parameter $\alpha$, Exploration parameter $r$}
     \KwOut{Candidate set $S$}
     $u \gets $ node in $G$ with lowest $Freq$-value, break ties randomly \;
     $S \gets \{u\}$ \;
     \While{$|S| < k$}{\label{alg:exploration-construction-while-start}
-        \uIf{$rand() < p$}{
+        \uIf{$rand() < r$}{
             \uIf{$N_G(S)$ not empty}{
                 $u \gets$ Pick random neighbor in $N_G(S)$ with lowest $Freq$-value\;
             }
@@ -650,12 +651,11 @@ With probability $1-p$ we perform an iteration of a GRASP-like construction step
 
 \section{Neighborhood Structure and Local Search} \label{sec:neighborhood-structure}
 
-The neighborhood of a candidate solution $S$ is defined by a move operator that swaps a node $u \in S$ with a node $v \in V \setminus S$. The set of neighboring candidate solutions of $S$ with $|S| = k$ that can be obtained by a single swap move is therefore defined as $\Omega_1 = \{ S \setminus \{u\} \cup \{v\} \mid u \in S, v \in V \setminus S \}$ and has size $|\Omega_1| = k \cdot (|V|-k)$, which is in $O(|V|^2)$. Similarly, we define $\Omega_d$ for $d=1,2,3,\dots$ as the set of neighboring solutions that can be obtained by swapping $d$ nodes from $S$ with $d$ nodes from $V \setminus S$, obtaining a neighborhood of size $|\Omega_d| = \binom{k}{d} \cdot \binom{|V|-k}{d}$, which is in $O(|V|^{2d})$. 
+The neighborhood of a candidate solution $S$ is defined by a move operator that swaps a node $u \in S$ with a node $v \in V \setminus S$. The set of neighboring candidate solutions of $S$ with $|S| = k$ that can be obtained by a single swap move is therefore defined as $\Omega_1 = \{ (S \setminus \{u\}) \cup \{v\} \mid u \in S, v \in V \setminus S \}$ and has size $|\Omega_1| = k \cdot (n-k)$, which is in $O(n^2)$. Similarly, we define $\Omega_d$ for $d=1,2,3,\dots$ as the set of neighboring solutions that can be obtained by swapping $d$ nodes from $S$ with $d$ nodes from $V \setminus S$, obtaining a neighborhood of size $|\Omega_d| = \binom{k}{d} \cdot \binom{n-k}{d}$, which is in $O(n^{2d})$. 
 
+In general, this definition of a neighborhood structure can be applied to many MCP relaxations. The quality of a candidate solution then depends on the considered problem. However, for the MQCP and the MDCP the definition of objective value coincides: a candidate solution $S$ is of higher quality than a neighboring solution $S^\prime$ if $G[S]$ contains more edges than $G[S']$. Thus, we define the objective function $f \colon 2^V \rightarrow \mathbb{N}$ for the local search for MQCP and MDCP as the function that maps a subset of vertices $S \subseteq V$ to the number of edges in the induced subgraph $G[S]$. Therefore, $S$ is of higher quality than $S^\prime$ if and only if $f(S) > f(S^\prime)$. 
 
-The quality of a candidate solution depends on the considered problem. For the MQCP and the MDCP a candidate solution $S$ is of higher quality than a neighboring solution $S^\prime$ if $G[S]$ contains more edges than $G[S']$. Thus, we define the objective function $f \colon 2^V \rightarrow \mathbb{N}$ for the local search for MQCP and MDCP as the function that maps a subset of vertices $S \subseteq V$ to the number of edges in the induced subgraph $G[S]$. Therefore, $S$ is better than $S^\prime$ if and only if $f(S) > f(S^\prime)$. 
-
-Similar algorithms that use local search in order to improve a candidate solution (e.g.,  \cite{chen_nuqclq_2021}, \cite{djeddi_extension_2019}, \cite{zhou_opposition-based_2020}) only search the neighborhood $\Omega_1$ for improving solutions. As the size of this neighborhood is already quadratic in $|V|$, the authors of the mentioned algorithms restrict the neighborhood to promising moves. A scoring function is used to find promising nodes in $V \setminus S$ and in $S$ that can be used for swaps. This scoring function is in most cases defined as $d_S(u) = |\{v \mid v \in S, \{u,v\} \in E \}|$. This way, the change in the objective function value when swapping a node $u \in S$ with a node $v \in V \setminus S$ can efficiently be calculated by $\Delta_{uv} = d_S(v) - d_S(u) - e_{uv}$, where $e_{uv} = 1$ if $\{u,v\} \in E$ and $e_{uv} = 0$ otherwise. 
+Similar algorithms that use local search in order to improve a candidate solution (e.g.,  \cite{chen_nuqclq_2021}, \cite{djeddi_extension_2019}, \cite{zhou_opposition-based_2020}) only search the neighborhood $\Omega_1$ for improving solutions. As the size of this neighborhood is already quadratic in $n$, the authors of the mentioned algorithms restrict the neighborhood to promising moves. A scoring function is used to find promising vertices in $V \setminus S$ and in $S$ that can be used for swaps. This scoring function is in most cases defined as $d_S(u) = |\{v \mid v \in S, \{u,v\} \in E \}|$. This way, the change in the objective function value when swapping a node $u \in S$ with a node $v \in V \setminus S$ can efficiently be calculated by $\Delta_{uv} = d_S(v) - d_S(u) - e_{uv}$, where $e_{uv} = 1$ if $\{u,v\} \in E$ and $e_{uv} = 0$ otherwise. 
 The scoring function $d_S$ is thus used to restrict the neighborhood $\Omega_1$. 
 Let $d_{\min} = \min_{u \in S} d_S(u)$ and $d_{\max} = \max_{u \in V \setminus S} d_S(u)$.
 Furthermore, let 
@@ -664,36 +664,42 @@ Furthermore, let
     Y &= \{ v \mid v \in V \setminus S, d_S(v) \geq d_{\max} - 1 \}.
 \end{align*} The neighborhood $\Omega_1$ of a candidate solution $S$ is then restricted to only those neighboring solutions that can be obtained by swapping a node $u \in X$ with a node $v \in Y$, as all node swaps that maximize $\Delta_{uv}$ are contained in this restricted neighborhood. 
 
-The pseudocode for our local search procedure is shown in Algorithm \ref{alg:local-search-procedure}. 
-In each iteration of the main while-loop the restricted candidate sets $X$ and $Y$ are created from the sets $S$ and $V \setminus S$, respectively. These sets are created as described before, with an additional restriction: To prevent cycling through the same candidate solutions over and over again, a short-term memory is used to further restrict the sets $X$ and $Y$. There are two main methods that can be found in the literature, which we want to evaluate in our algorithm: 
+In LSBM, we want to make use of this scoring function as well. The pseudocode for our local search procedure is shown in Algorithm \ref{alg:local-search-procedure}. Note that a scoring function $\mathit{sf}_S$ is passed as an input parameter to the local search procedure. Within the context of LSBM, any scoring function can be used to restrict the candidate sets $X, Y$, and we plan to replace this scoring function by a GNN-based scoring function in Chapter \ref{chp:gnn}. 
+For this Chapter however, we want to focus on the well-established scoring function $d_S$, i.e., $\mathit{sf}_S$ is instantiated by $d_S$. 
+
+In each iteration of the main while-loop in Algorithm \ref{alg:local-search-procedure} we first define the aspiration val, which is the number of edges that have to be added to the current candidate solution $S$ such that $f(S) > f(S^*)$ holds. 
+Then, the restricted candidate sets $X$ and $Y$ are created from the sets $S$ and $V \setminus S$, respectively by using the scoring function $\mathit{sf}$. 
+The sets $X, Y$ are created as described before, with an additional restriction: To prevent cycling through the same candidate solutions over and over again, a short-term memory mechanism is applied which prevents unblocked vertices from being chosen for a swap if they do not fulfill an aspiration criterion. 
+There are two main methods that can be found in the literature, which we want to evaluate in our algorithm: 
 \begin{itemize}
     \item In \cite{djeddi_extension_2019} and \cite{zhou_opposition-based_2020}, a tabu list is used to prevent cycling. Each time a vertex is added to or removed from the solution, it is added to the tabu list for a fixed number of iterations. While a vertex is in the tabu list, it is blocked and cannot be used in swaps. In \cite{djeddi_extension_2019}, the authors use two tabu lists: One for moving vertices out of the candidate solution, and one for adding vertices to the candidate solution. In \cite{zhou_opposition-based_2020}, a single tabu list is used for both operations. 
     \item In \cite{chen_nuqclq_2021}, the authors use Configuration Checking. In its simplest form, once a vertex $v$ is moved out of the candidate Solution, it is blocked from being moved again until at least one neighbor of $v$ is moved. The authors refine this strategy by using a threshold for each node $v$ that starts with $\mathit{threshold}(v) = 1$ for all $v \in V$. Each time a vertex $v$ is moved into the candidate solution, $\mathit{threshold}(v)$ is increased by 1. When $v$ is moved out of the candidate solution, it is blocked from being moved again, until $\mathit{threshold}(v)$ of its neighbors have been moved. Additionally, if $\mathit{threshold}(v) > \mathit{ub\_threshold}$, where $\mathit{ub\_threshold}$ is a user-defined upper bound, then $\mathit{threshold}(v)$ is reset to 1. 
 \end{itemize}
-If no improving move is possible, or one of the sets $X, Y$ is empty, a swap of two randomly selected unblocked vertices is performed in order to diversify the current local optimum. Furthermore, we define as stopping criteria: If the best solution $S^*$ does not improve for a fixed amount of iterations $\mathit{it}$, the procedure is stopped and $S^*$ is returned. Additionally, if a given time limit is reached, the procedure is stopped as well. 
+In Line \ref{alg:local-search-procedure-search-neighborhood}, the neighborhood defined by $X, Y$ is searched. The subroutine is shown in Algorithm \ref{alg:search-neighborhood}. The neighborhood is searched exhaustively for the swap that maximizes the gain of edges $\Delta_{uv}$. Blocked vertices are not considered for potential swaps, unless the respective gain of edges is greater than the aspiration value. 
+If no improving swap was found, a random unblocked move is chosen $u \in X, v \in Y$. 
+Afterwards, the chosen vertices $u ,v$ are swapped and $\mathit{Freq}$, the short-term memory, and the $d_S$ values are updated correspondingly. 
+Furthermore, we define as stopping criteria: If the best solution $S^*$ does not improve for a fixed amount of iterations $\mathit{max\_iter}$, the procedure is stopped and $S^*$ is returned. Additionally, if a given time limit is reached, the procedure is stopped as well. 
 
 \begin{algorithm}
     \DontPrintSemicolon
-    \KwIn{Graph $G$, Frequency list $Freq$, Target density $\gamma$, Candidate solution $S$}
+    \KwIn{Graph $G$, Frequency list $Freq$, Target density $\gamma$, Candidate solution $S$, scoring function $\mathit{sf}_S$}
     \KwOut{Best found solution $S^*$}
     $k \gets |S|$ \;
     $S^* \gets S$ \;
-    \While{stop criterion not met}{
-        $X \gets $ restricted candidate set from $S$ \;
-        $Y \gets $ restricted candidate set from $V \setminus S$ \;
-        \uIf{$X$ or $Y$ empty}{
-            Choose arbitrary unblocked $u \in S, v \in V \setminus S$\;
-        }
-        \uElseIf{there exists $u \in X, v \in Y$ with positive $\Delta{uv}$}{
-            $u,v \gets $ Choose $u \in X, v \in Y$ with positive $\Delta{uv}$ \;
-        }
-        \Else{
-            \tcp{No improving move possible}
-            $u,v \gets $ Choose $u \in X, v \in Y$ arbitrarily
+    $d_S \gets $ compute $d_S$-values for vertices in $G$ \;
+    \While{stopping criterion not met}{
+        $\mathit{aspiration\_val} \gets f(S^*) - f(S)$ \; 
+        $X, Y \gets $ restrict candidate sets $X \subseteq S, Y \subseteq V \setminus S$ using $\mathit{sf}$\;
+        $B \gets $ blocked vertices according to short-term memory \;
+        $u, v, \Delta_{uv} \gets \mathit{SearchNeighborhood}(G, d_S, X, Y, B, \mathit{aspiration\_val})$ \; \label{alg:local-search-procedure-search-neighborhood}
+        \If{$\Delta_{uv} < 0$}{
+            \tcp{No improving solution found}
+            $u,v \gets$ choose arbitrary (unblocked) $u \in X, v \in S$ \;
         }
         $S \gets $ solution obtained by swapping $u \in X, v \in Y$ \;
-        Update $Freq[u], Freq[v]$ \;
-        Update short-term memory \;
+        Update $\mathit{Freq}[u], \mathit{Freq}[v]$ with swap $u, v$ \;
+        Update short-term memory with swap $u, v$\; 
+        Update $d_S$-values \;
 
         \If{$f(S) > f(S^*)$}{
             $S^* \gets S$
@@ -707,7 +713,26 @@ If no improving move is possible, or one of the sets $X, Y$ is empty, a swap of 
     \label{alg:local-search-procedure}
 \end{algorithm}
 
-Summarizing the previous sections, we present a flowchart visualization of LSBM in Figure \ref{fig:flowchart-local-search-algorithm}. 
+\begin{algorithm}
+    \DontPrintSemicolon
+    \KwIn{Graph $G$, Restricted candidate sets $X, Y$. blocked vertices $B$, aspiration value $\mathit{aspiration\_val}$}
+    \KwOut{Best found swap $u \in X,v \in Y$ and corresponding gain $\Delta_{uv}$}
+    $u_{\mathit{best}}, v_{\mathit{best}}, \Delta_{\mathit{best}} \gets 0 , 0 , -\infty $ \;
+    \For{$u \in X, v \in Y$}{
+        $\Delta_{uv} \gets d_S[v] - d_S[u] - e_{uv}$ \;
+        \If{$\Delta_{uv} \leq \mathit{aspiration\_val} \land (u \in B \lor v \in B)$}{
+            continue \;
+        }
+        \If{$\Delta_{uv} > \Delta_{\mathit{best}}$}{
+            $u_{\mathit{best}}, v_{\mathit{best}}, \Delta_{\mathit{best}} \gets u , v , \Delta_{uv} $ \;
+        }
+    }
+    \Return{$u_{\mathit{best}}, v_{\mathit{best}}, \Delta_{\mathit{best}}$}
+    \caption{Search restricted neighborhood}
+    \label{alg:search-neighborhood}
+\end{algorithm}
+
+Summarizing the previous sections, we present a flowchart visualization of LSBM in Figure \ref{fig:flowchart-local-search-algorithm}.
 
 \begin{figure}
     \centering
@@ -715,9 +740,9 @@ Summarizing the previous sections, we present a flowchart visualization of LSBM 
     \caption{Flowchart of the structure of the Local Search Based Metaheuristic.}
     \label{fig:flowchart-local-search-algorithm}
 \end{figure}
-
+ 
 \section{Adaption to the MDCP}\label{sec:adaption-to-mdcp}
-The MQCP and the MDCP can be approached very similar in the context of a local search based algorithm, as during the local search procedure in both cases we try to find neighboring solutions that maximize the number of edges in the subgraph induced by the current candidate solution. The objective value of a candidate solution as defined in \ref{sec:neighborhood-structure} is equivalent in both problems. Thus, we only have to change the feasibility checks for feasible MQCs in Line~\ref{alg:feasibility-check-1} of Algorithm~\ref{alg:structure}, Line~\ref{alg:feasibility-check-2} of Algorithm~\ref{alg:extend}, and Line~\ref{alg:feasibility-check-3} in Algorithm~\ref{alg:local-search-procedure}, as well as the expansion into feasible successors in the lower bound heuristic in Line~\ref{alg:lower-bound-heuristic-expansion} of Algorithm~\ref{alg:lower-bound-heuristic} to feasibility checks for MDCs. The proposed construction heuristic can be used for the MDCP without any change. 
+The MQCP and the MDCP can be approached very similar in the context of a local search based algorithm, as during the local search procedure in both cases we try to find neighboring solutions that maximize the number of edges in the subgraph induced by the current candidate solution. The objective value of a candidate solution as defined in \ref{sec:neighborhood-structure} is equivalent in both problems. Thus, we only have to change the feasibility checks for feasible MQCs in Line~\ref{alg:feasibility-check-1} of Algorithm~\ref{alg:structure}, Line~\ref{alg:feasibility-check-2} of Algorithm~\ref{alg:extend}, and Line~\ref{alg:feasibility-check-3} in Algorithm~\ref{alg:local-search-procedure}, as well as the expansion into feasible successors in the lower bound heuristic in Line~\ref{alg:lower-bound-heuristic-expansion} of Algorithm~\ref{alg:lower-bound-heuristic} to feasibility checks for MDCs. The proposed construction heuristic can be used for the MDCP without any change.  
 
 \chapter{Using Graph Neural Networks in a Local Search Based Metaheuristic for Maximum Clique Relaxation Problems}\label{chp:gnn}
 
