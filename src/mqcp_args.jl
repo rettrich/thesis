@@ -81,7 +81,7 @@ settings_cfg = ArgParseSettings()
 end
 
 function ArgParse.parse_item(::Type{Vector}, x::AbstractString)
-    return [(name="$(split(file, "/")[end])", graph=load_instance(file)) for file in split(x, ",")]
+    return [(name="$(split(file, "/")[end])", graph=load_instance(file)) for file in split(x, ",") if file != ""]
 end
 
 function get_stm(stm_string)

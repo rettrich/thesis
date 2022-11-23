@@ -5,7 +5,8 @@ using thesis, thesis.LocalSearch, thesis.Instances, thesis.GNNs
 using CSV, DataFrames
 using BSON
 using MHLib
-using SimpleWeightedGraphs, SparseArrays # needed to deserialize gnn with bson
+using Statistics
+# using SimpleWeightedGraphs, SparseArrays # needed to deserialize gnn with bson
 
 
 # To run, provide a graph instance and target density γ, e.g.:
@@ -18,10 +19,10 @@ parse_settings!([settings_cfg, thesis.NodeRepresentationLearning.settings_cfg],
                 [
                     # "--debug=true",
                     # "--stm=cc",
-                    # "--timelimit=120.0",
+                    "--timelimit=300.0",
                     # "--graph=inst/BHOSLIB/frb30-15-1.clq",
                     # "--neighborhood_size=30", 
-                    # "--gamma=0.95",
+                    "--gamma=0.95",
                     # "score_based_sampling"
                 ]))
 
@@ -81,32 +82,35 @@ function run_mqcp(scoring_function=nothing)
     results = Dict()
 
     for inst in settings[:graph]
-        results[inst.name] = Int[]
+        results[inst.name] = (inst.graph, Int[], Real[])
         for i = 1:settings[:runs_per_instance]
             println("Start run $i/$(settings[:runs_per_instance]) for $(inst.name)")
             t = @elapsed solution, _ = run_lsbmh(local_search, inst.graph)
-            push!(results[inst.name], length(solution))
+            push!(results[inst.name][2], length(solution))
+            push!(results[inst.name][3], t)
             println("Found solution: $(sort(solution)), runtime $t")
         end
-        println("Best: $(maximum(results[inst.name])), Avg: $(sum(results[inst.name]) / length(results[inst.name]))")
+        println("Best: $(maximum(results[inst.name][2])), Avg: $(sum(results[inst.name][2]) / length(results[inst.name][2]))")
         println()
     end
 
     if settings[:write_result] != "-"
-        df = DataFrame(GraphID=String[], V=Int[], E=Int[], Dens=Real[], γ=Real[], Avg=Real[], Best=Int[])
-        for (graph_id, sols) in results
+        df = DataFrame(GraphID=String[], GNNID=String[], V=Int[], E=Int[], Dens=Real[], γ=Real[], Avg=Real[], Best=Int[], Runtime=Real[])
+        for (graph_id, (graph, sols, runtimes)) in results
             push!(df, (
                 graph_id,
+                settings[:scoring_function],
                 nv(graph),
                 ne(graph),
                 density(graph),
                 γ,
-                length(sum(sols) / length(sols))),
-                maximum(sols)
-            )
+                mean(sols),
+                maximum(sols),
+                median(runtimes),
+            ))
         end
-        
-        CSV.write("$(settings[:write_result])/$(settings[:scoring_function]).csv", df)
+        path_to_write = joinpath(settings[:write_result], "results.csv")
+        CSV.write(path_to_write, df)
     end
 
 end
