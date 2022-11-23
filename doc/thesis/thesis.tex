@@ -141,44 +141,47 @@
 
 \chapter{Introduction}
 
-This thesis presents our approach of utilizing Graph Neural Networks in the context of a local search based metaheuristic for edge-based relaxations of a well-known combinatorial optimization problem, the Maximum Clique Problem. Section \ref{sec:motivation} discusses the motivation of this work. In Section \ref{sec:considered-problems} we discuss the relevance and applications of the considered problems. Then, Section \ref{sec:methodology} briefly presents an overview of the contributions of this work. Lastly, the structure of this thesis is outlined in Section \ref{sec:outline}.
+This thesis deals with utilizing Graph Neural Networks (GNNs) in the context of a local search based metaheuristic for solving edge-based relaxations of a well-known combinatorial optimization problem (COP), the Maximum Clique Problem (MCP).
+The motivation of this work is presented in Section \ref{sec:motivation}, as well as the relevance and applications of the considered problems. A brief overview of the contributions of this work is provided in Section \ref{sec:methodology}. Lastly, we outline the structure of this thesis in Section \ref{sec:outline}.
 
 \section{Motivation}\label{sec:motivation}
-In many Combinatorial Optimization Problems (COPs), problem instances exhibit clearly defined internal structures that can be expressed as graphs. Here, a graph is a tuple $G = (V, E)$, where $V$ is the set of vertices and the set of edges $E \subseteq V \times V$ defines the relationships among vertices. While there are other methods to deal with inputs of variable size (Fully Convolutional Networks, Recurrent Neural Networks), Graph Neural Networks (GNNs) are Neural Networks tailored specifically to learn from structured input in the form of graphs, making them a valuable tool for Machine Learning (ML) tasks on data with graph-like structure.   
+In many COPs, problem instances exhibit clearly defined internal structures that can be expressed as graphs. Here, a graph is a tuple $G = (V, E)$, where $V$ is the set of vertices and the set of edges $E \subseteq V \times V$ defines the relationships among vertices. While there are other methods to deal with inputs of variable size (Fully Convolutional Networks, Recurrent Neural Networks), Graph Neural Networks (GNNs) are Neural Networks tailored specifically to learn from structured input in the form of graphs, making them a valuable tool for Machine Learning (ML) tasks on data with graph-like structure.   
 
 In recent years, GNNs have gained popularity in their application in the context of COPs. However, current end-to-end ML approaches are in most cases not competitive to state-of-the-art (meta-)heuristic solution approaches, and their application is limited to small instances, where exact algorithms are available. Nonetheless, GNNs show promise in their use in COPs, and there have been many successful applications over the last years, e.g. 
 % \cite{NEURIPS2021_0db2e204}, where a GNN is used to find maximal Independent Sets by imitating a time-expensive Monte-Carlo Tree Search, or
 \cite{Oberweger2022}, where a Large Neighborhood Search is enhanced by a GNN that guides a destroy-operator, or \cite{NEURIPS2021_0db2e204}, where a GNN is used to find maximal Independent Sets by imitating a time-expensive Monte-Carlo Tree Search, producing solutions that reach a solution quality of $99.5\%$ while being three orders of magnitude faster. 
 
-The main motivation of this thesis is to further study the application of GNNs in the context of metaheuristics for COPs defined on graphs. We address the problems of current end-to-end approaches by using a GNN only as a component of a metaheuristic search procedure provides additional heuristic information. More specifically, we consider relaxations of a COP defined on graphs, the Maximum Clique Problem (MCP), that seem to be well-suited for our purpose. 
+The main motivation of this thesis is to further study the application of GNNs in the context of metaheuristics for COPs defined on graphs. We address the problems of current end-to-end approaches by using a GNN only as a component of a metaheuristic search procedure which provides additional heuristic information. More specifically, we consider relaxations of a COP defined on graphs, the Maximum Clique Problem (MCP), that seem to be well-suited for our purpose. 
 
-\section{Considered Problems}\label{sec:considered-problems}
 The MCP is the problem of finding a fully connected subgraph -- a \textit{clique} -- of maximum size in a given graph. It is a fundamental problem in computer science, as its decision variant is one of Karp's 21 NP-complete problems \cite{Karp1972}. The MCP has several practical applications, e.g.,  in bioinformatics \cite{Dognin2010} and social network analysis \cite{Pattillo_network_analysis_2013}. However, for some real-world applications that require identifying dense subgraphs, the MCP is too strict a model. This leads to the introduction of several clique relaxations such as -- among others -- the Maximum Quasi-Clique Problem (MQCP) (introduced in \cite{Abello2002}, Definition \ref{def:mqcp}), and the Maximum $k$-defective Clique Problem (MDCP) (introduced in \cite{Yu2006}, Definition \ref{def:mdcp}). 
 
 As all of these problems are NP-hard optimization problems, it is practically often infeasible to obtain exact solutions for large instances. However, many real-world applications often require solutions for large graphs. Therefore, efficient heuristic methods are needed that produce high quality solutions in an acceptable amount of time. While the MCP has been studied extensively over the last decades, heuristic methods for the MQCP and the MDCP are less abundant. It is therefore another motivation of this thesis to enrich the arsenal of heuristic methods for these relaxations of the MCP and to provide a foundation for future research including the application of GNNs in the context of MCP relaxations. 
 
 \section{Methodological Approach}\label{sec:methodology}
-With this thesis, we want to build upon well-established metaheuristic approaches for MCP relaxations and evaluate, how and where GNNs can be utilized in the context of such algorithms in order to provide additional information. 
+The goal of this thesis is to build upon well-established metaheuristic approaches for MCP relaxations and evaluate, how and where GNNs can be utilized in the context of such algorithms in order to provide additional information. 
 Studying the relevant literature, we found that the most effective metaheuristic approaches for MCP relaxations are based on metaheuristics centered around local search, where neighboring solutions can be reached by swapping a vertex inside the current candidate solution with a vertex outside the candidate solution. In order to evaluate efficiently which vertices seem promising for swapping, a scoring function is used that assigns scores to the vertices in the graph in each iteration of the local search. Using these scores, the neighborhood can be restricted to only promising vertices. 
-Building upon these approaches, we want to utilize a GNN to extract structural information from input graphs that can be used to enhance such a scoring function.  
+Building upon these approaches, we aim at utilizing a GNN to extract structural information from input graphs that can be used to enhance such a scoring function. 
+One of the main contributions of this thesis is therefore the algorithmic design of a local search based metaheuristic named LSBM, that can use a GNN-based scoring function. 
 
 As the considered MCP relaxations are defined on non-attributed graphs, one of the goals of this thesis is to evaluate, which feature initialization methods can be used to effectively extract information from input graphs. Thus, we investigate several centrality-based and learning-based methods within the context of our proposed algorithm that can be found in the literature. 
 
-Furthermore, we propose a training algorithm LSBM-T that is used to generate and label training data in order to train the GNN to make high quality predictions. A training sample consists of the input graph and a candidate solution, and the GNN is trained to predict, which vertices are likely to be in a swap that leads to an improved solution. In order to compute target labels for the vertices in the input graph, we present different methods to search neighborhood structures relative to the candidate solution in a training sample. 
+Furthermore, we propose a training algorithm LSBM-T that is used to generate training data in order to train the GNN to make high quality predictions. A training sample consists of the input graph and a candidate solution, and the GNN is trained to predict, which vertices are likely to be in a swap that leads to an improved solution. In order to compute target labels for the vertices in the input graph, we present different methods to search neighborhood structures relative to the candidate solution in a training sample. 
 
 Finally, we conduct computational experiments in order to evaluate our approach on graphs of different sizes and densities and discuss future work that can be done in order to improve our method. 
 
 \section{Outline of the Thesis}\label{sec:outline}
-Chapter \ref{chp:problems-definitions} presents the notation of graph-related terms and the definitions of the considered problems. Then, in Chapter \ref{chp:related-work} we review and present related work and methodology, namely GNNs, node representation learning, the use of ML in combinatorial optimization, and both exact and heuristic solution approaches for the considered MCP relaxations. In Chapter \ref{chp:local-search-algorithm} we present our algorithm LSBM, which build upon existing algorithms. Chapter \ref{chp:gnn} contains the main contribution of this work, as we present, how a GNN can be incorporated into the previously presented LSBM and how it can be trained using our training algorithm LSBM-T. Then, Chapter \ref{chp:evaluation} shows computational experiments and the evaluation of our proposed methods. Finally, in Chapter \ref{chp:conclusions} we summarize our findings, offer concluding remarks, and discuss promising future work. 
+Firstly, we define the notation of graph-related terms used throughout this thesis and show formal definitions of the considered problems in Chapter \ref{chp:problems-definitions}. 
+Afterwards, we review and discuss related work and methodology, namely GNNs, node representation learning, the use of ML in combinatorial optimization, and the state-of-the-art for both exact and heuristic solution approaches for the considered MCP relaxations in Chapter \ref{chp:related-work}. 
+Then, in Chapter \ref{chp:local-search-algorithm} we propose our algorithm LSBM and its components in detail. The main contribution of our work is contained in Chapter \ref{chp:gnn}, as we present, how a GNN can be incorporated into the previously presented LSBM and how it can be trained using our training algorithm LSBM-T. Thereafter, we show the results of computational experiments and the evaluation of our proposed methods in Chapter \ref{chp:evaluation}. Finally, we summarize our findings, offer concluding remarks, and discuss promising future work in Chapter \ref{chp:conclusions}. 
 
 \chapter{Considered Problems and Definitions}\label{chp:problems-definitions}
 
-In this chapter we want to provide all necessary definitions and notations used throughout this thesis. Section \ref{sec:notation} lists commonly used graph theoretic notations and definitions. Sections \ref{sec:mcp} -- \ref{sec:mdcp} show definitions for the problems considered in this thesis, starting with the Maximum Clique Problem, from which all considered problems are derived. Additionally, we list notable properties of the considered problems that are relevant for developing well-performing algorithms for these problems. 
+In this chapter we provide all necessary definitions and notations used throughout this thesis. We list commonly used graph theoretic notations and defintions in Section \ref{sec:notation}. Afterwards, Sections \ref{sec:mcp} -- \ref{sec:mdcp} show definitions for the problems considered in this thesis, starting with the Maximum Clique Problem, from which all considered problems are derived. Additionally, we list notable properties of the considered problems that are relevant for developing well-performing algorithms for these problems. 
 
 \section{Notation}\label{sec:notation}
 
 Throughout this thesis, we use standard graph theory notation. 
-We consider $G = (V, E)$ to be a graph with vertex set $V$ and edge set $E \subseteq \{\{u,v\} \mid u,v \in V\}$. We use the terms vertex, vertices when denoting elements of $V$ in a graph $G$, and we use the terms node, nodes when denoting elements of a search graph or search tree corresponding to a search algorithm, e.g. in beam search, or nodes in a graph neural network. This distinction helps to keep formulations precise when for instance an algorithm that uses an internal graph structure is applied to a graph input, or to distinguish between vertices of a graph and the corresponding nodes of a graph neural network. 
+We consider $G = (V, E)$ to be a graph with vertex set $V$ and edge set $E \subseteq \{\{u,v\} \mid u,v \in V\}$. We use the terms vertex, vertices when denoting elements of $V$ in a graph $G$, and we use the terms node, nodes when denoting elements of a search graph or search tree corresponding to a search algorithm, e.g. in beam search, or nodes in a GNN. This distinction helps to keep formulations precise when for instance an algorithm that uses an internal graph structure is applied to a graph input, or to distinguish between vertices of a graph and the corresponding nodes of a GNN. 
 If not stated otherwise, $n = |V|$ denotes the number of vertices in $G$, whereas $m = |E|$ denotes the number of edges. 
 For a graph $G$ we also use $V(G), E(G)$ do denote its vertex set and edge set, respectively. 
 A graph $G$ is \emph{simple}, if it contains no self-loops (e.g.,  $\{v,v\} \in E$) or multiple edges between two vertices. In this thesis, we only consider unweighted, undirected, simple graphs, as all the considered problems are defined on such graphs. 
@@ -197,9 +200,9 @@ The neighborhood of a set of vertices is defined similarly: For $S \subseteq V$,
 The degree of a vertex $v$ in a simple graph $G = (V,E)$ is defined as $\mathit{deg}(v) = |N_G(v)|$, which is the number of adjacent vertices for a vertex $v \in V$. Generalizing the concept of vertex degrees, for $S \subseteq V$, let $d_S(v) = |\{w \mid \{v,w\} \in E, w \in S\}|$ be the number of vertices in $S$ that are adjacent to $v \in V$. As can be seen, $\mathit{deg}(v) = d_V(v) $ for all $v \in V$. 
 
 
-\section{The Maximum Clique Problem}\label{sec:mcp}
+\section{The Maximum Clique Problem (MCP)}\label{sec:mcp}
 
-The Maximum Clique Problem (MCP, Definition \ref{def:mcp}) is a fundamental problem in graph theory and computer science. Its decision variant was one of first problems that were shown to be NP-Complete \cite{Karp1972}, from which NP-hardness can be derived for the maximization variant. The MCP is a well-studied problem and has many real-world applications, e.g., in network analysis \cite{Fortunato09}, \cite{Palla2005}, bioinformatics \cite{Depolli2013}, \cite{BUTENKO20061}, circuit design \cite{LeckyMA89}, and telecommunication \cite{DouikSAA14}. 
+The Maximum Clique Problem (MCP) is a fundamental problem in graph theory and computer science. Its decision variant was one of first problems that were shown to be NP-Complete \cite{Karp1972}, from which NP-hardness can be derived for the maximization variant. The MCP is a well-studied problem and has many real-world applications, e.g., in network analysis \cite{Fortunato09}, \cite{Palla2005}, bioinformatics \cite{Depolli2013}, \cite{BUTENKO20061}, circuit design \cite{LeckyMA89}, and telecommunication \cite{DouikSAA14}. 
 Figure \ref{fig:maxclique} depicts a maximum clique in a graph. 
 \begin{figure}
     \centering
@@ -226,9 +229,9 @@ In graph theory, a property $P$ of a graph $G$ is \textit{hereditary} if $P$ als
 
 Furthermore, there exist negative results about the hardness of approximating the maximum clique in a graph in polynomial time: In \cite{Hastad1999} and \cite{Zuckerman2007} the authors show that there exists no fully polynomial time approximation scheme for the MCP, unless $\mathit{P} = \mathit{NP}$, meaning that for a real number $\varepsilon > 0$ there exists no polynomial time algorithm that approximates the maximum clique in a graph with a factor of at least $O(n^{1-\varepsilon})$, where $n$ is the number of vertices in the input graph. More importantly, these hardness results are trivially also valid for relaxations of the MCP. Considering the hardness of approximability of the MCP and its relaxations, it is evident that heuristic approaches are of great importance when tackling large real-world instances that cannot be solved optimally in practice. 
 
-\section{The Maximum Quasi-Clique Problem}\label{sec:mqcp}
+\section{The Maximum Quasi-Clique Problem (MQCP)}\label{sec:mqcp}
 
-The Maximum Quasi-Clique Problem (Definition \ref{def:mqcp}) is a density based relaxation of the MCP, which was first introduced by Abello et al. \cite{Abello2002}. Pattillo et al. show that for any $\gamma$ with $0 < \gamma < 1$, the problem is NP-complete in its decision variant \cite{pattillo_maximum_2013}. 
+The Maximum Quasi-Clique Problem is a density based relaxation of the MCP, which was first introduced by Abello et al. \cite{Abello2002}. Pattillo et al. show that for any $\gamma$ with $0 < \gamma < 1$, the problem is NP-complete in its decision variant \cite{pattillo_maximum_2013}. 
 
 \begin{definition}[Maximum Quasi-Clique Problem]
 	\label{def:mqcp}
@@ -262,9 +265,9 @@ In \cite{Abello2002}, the authors introduce the notion of $\gamma k$\emph{-peela
     \label{fig:preprocessing-mqcp-counterexample}
 \end{figure}
 
-\section{The Maximum Defective Clique Problem}\label{sec:mdcp}
+\section{The Maximum Defective Clique Problem (MDCP)}\label{sec:mdcp}
 
-The Maximum Defective Clique Problem (\ref{def:mdcp}) was first introduced in \cite{Yu2006} in the context of predicting protein-protein interactions. 
+The Maximum Defective Clique Problem was first introduced in \cite{Yu2006} in the context of predicting protein-protein interactions. 
 
 \begin{definition}[Maximum $s$-defective-Clique Problem]
 	\label{def:mdcp}
@@ -294,18 +297,21 @@ When approximating the maximum $s$-defective clique in a graph $G$ by a series o
 
 \chapter{Related Work}\label{chp:related-work}
 
-Utilizing Machine Learning (ML) techniques in combinatorial optimization has been a research field of growing interest in recent years, and especially the application of graph neural networks (GNNs) in the context of combinatorial optimization is growing in popularity. 
-In this chapter we want to provide a concise review of methods and work related to the topics of this thesis, namely ML methods and GNNs in combinatorial optimization, and also work related to the considered problems, the MCP, the MQCP, and the MDCP. Section \ref{sec:gnns} provides an introduction to the necessary concepts related to graph neural networks that are applied in this work, Section \ref{sec:ml-co} reviews the application of ML techniques that are relevant to this work, and \ref{sec:node-representation} presents methods to generate node features in feature-less graphs, which we apply in our algorithm in Chapter \ref{chp:gnn}. Furthermore, we provide an overview of existing heuristic and exact solution approaches for the MQCP in Section \ref{sec:mqcp-related-work} and for the MDCP in Section \ref{sec:mdcp-related-work}. 
+Utilizing ML techniques in combinatorial optimization has been a research field of growing interest in recent years, and especially the application of GNNs in the context of combinatorial optimization is spreading in popularity. 
+In this chapter we provide a concise review of methods and work related to the topics of this thesis, namely ML methods and GNNs in combinatorial optimization, and also work related to the considered problems, the MCP, the MQCP, and the MDCP. Section \ref{sec:gnns} provides an introduction to the necessary concepts related to GNNs that are applied in this work. Afterwards, we review the application of ML techniques that are relevant or related to this work in Section \ref{sec:ml-co}. We present methods to generate node features in feature-less graphs, which we apply in our algorithm in Chapter \ref{chp:gnn}, in Section \ref{sec:node-representation}. Furthermore, we provide an overview of existing heuristic and exact solution approaches for the MQCP in Section \ref{sec:mqcp-related-work} and for the MDCP in Section \ref{sec:mdcp-related-work}. 
 
 \section{Graph Neural Networks}\label{sec:gnns}
 % graph neural networks
-Problems that are defined on graphs, e.g. the Traveling Salesperson Problem (TSP), pose new challenges in utilizing machine learning effectively: Utilized methods should be able to effectively capture and exploit the structure of input graphs, while taking into account that graphs do not have a unique representation and no fixed order of vertices, i.e. they should be \emph{order invariant}. Furthermore, graphs of all sizes should be considered as input, therefore utilized methods need to be \emph{scale invariant}. Ideally, the results of the training should generalize on unseen instances that might also be of different size than the instances seen during training. In order to address these challenges, researches have come up with machine learning architectures known as Graph Neural Networks (GNNs). 
+Problems that are defined on graphs, e.g. the Traveling Salesperson Problem (TSP), pose new challenges in utilizing machine learning effectively: Utilized methods should be able to effectively capture and exploit the structure of input graphs, while taking into account that graphs do not have a unique representation and no fixed order of vertices, i.e. they should be \emph{order invariant}. Furthermore, graphs of all sizes should be considered as input, therefore utilized methods need to be \emph{scale invariant}. Ideally, the results of the training should generalize on unseen instances that might also be of different size than the instances seen during training. In order to address these challenges, researches have come up with machine learning architectures known as GNNs. 
 
 The authors of \cite{Sperduti1997} were the first to research the application of neural networks on graphs. Since then, many researches have advanced the field by developing new architectures and methods. 
 A comprehensive overview of the taxonomy of GNNs and a review of applications and methods can be found in \cite{Wu2019} and \cite{Zhou2020}. 
 
 In \cite{Wu2019}, GNNs are classified into four main categories: Recurrent GNNs, Convolutional GNNs (ConvGNNs), Graph autoencoders, and Spatial-temporal graph neural networks. In the following, we conform to the authors' definitions of GNN-related concepts. 
+ConvGNNs can further be categorized as spectral-based and spatial-based GNNs. Spectral-based GNNs are based on signal processing theory, and a graph is in this context thus seen as a signal which is transformed to a spectral domain by a graph Fourier transform. The convolution operation is then conducted in the spectral domain, whereafter the graph signal is transformed back using the inverse graph Fourier transform. 
+In contrast, spatial-based ConvGNNs apply convolution operations directly on the input graph based on its topology. 
 In the context of our work, spatial-based ConvGNNs are the most relevant. 
+
 The Message Passing Neural Network (MPNN) \cite{GilmerSRVD17} is a framework of spatial-based ConvGNNs, which captures several different concrete realizations due to its generality. 
 Here, information corresponding to vertex $v$ in a graph is represented by a feature vector $x_v$, and convolution operations are defined to aggregate information of the neighboring vertices by passing messages over the edges of the graph. A convolutional layer then aggregates the features of neighboring vertices for all vertices in the graph. The general idea of this convolution operation is sketched in Figure \ref{fig:conv-gnn}, 
 where the updated value for vertex $v_0$ is computed by aggregating the messages passed from its neighbors. MPNN uses a fixed number of layers to compute the final node embeddings. 
@@ -328,7 +334,7 @@ GNNs can be used for different tasks such as node-level tasks, e.g. the classifi
 
 \section{Machine Learning in Combinatorial Optimization}\label{sec:ml-co}
 
-In many exact and heuristic algorithms for COPs, ML techniques are a determining factor in the effectiveness of said algorithms. There a many ways ML can be applied: It can be used in an end-to-end fashion to directly produce a solution, to replace or enhance key components of existing algorithms, to provide additional information to heuristics or metaheuristic, to obtain quick approximations for otherwise computationally heavy parts of an algorithm, or to make decisions within an algorithm, e.g. variable selection in branch-and-bound algorithms. A driving motivation in utilizing ML in COPs thus is to (partially) automate the process of hand-crafting heuristic algorithm components. 
+In many exact and heuristic algorithms for COPs, ML techniques are a determining factor in the effectiveness of said algorithms. There a many ways ML can be applied: It can be used in an end-to-end fashion to directly produce a solution, to replace or enhance key components of existing algorithms, e.g., by obtaining quick approximations for otherwise computationally heavy parts of an algorithm, to provide additional information to heuristics or metaheuristic, or to make decisions within an algorithm, e.g. variable selection in branch-and-bound algorithms. A driving motivation in utilizing ML in COPs thus is to (partially) automate the process of hand-crafting heuristic algorithm components. 
 
 Most of the current ML-based approaches are based on supervised learning, as stated in \cite{Cappart2021}. This often requires labeled training data in the form of optimal solutions to computationally hard problems, which is a great restriction. 
 The two most common approaches to tackle this challenge are to either limit the training data to only incorporate labeled data of small instances that can be solved optimally within reasonable time, or to use high quality approximations, and thus decrease the solution quality. The former approach additionally poses the challenge to develop methods that translate well to unseen and possibly larger real-world instances that are relevant in practice. 
@@ -353,19 +359,19 @@ However, many problems and tasks utilizing GNNs are defined on inherently featur
 To tackle this challenge, researchers have come up with two different approaches regarding feature initialization. The first approach is to use centrality-based input features that can be derived directly from the graph, e.g. the degree of a vertex in the graph. Secondly, researches have come up with learning-based approaches that try to extract input features directly from the graph structure. In \cite{Duong2019} the authors investigate both centrality-based and learning-based feature initialization methods and evaluate the quality of the produced feature embeddings in a node-level classification task on several well-established benchmark sets. The results of the authors' experiments show that learning-based approaches outperform centrality-based feature initialization methods. 
 
 One of the most popular approaches in node representation learning is based on ideas from natural language processing (NLP) and word representation learning. In \cite{Mikolov2013}, the authors propose their method word2vec, which was developed to embed words into an embedding space such that words with a similar meaning are mapped closer together. While in other NLP tasks it is common to predict the next word in a sequence from a context, word2vec turns the problem on its head and tries to predict the context from a word, where the context is defined as the words that appear at a certain distance before and after a word. 
-In \cite{Perozzi2014}, the authors translate this idea to node representation learning by sampling random walks of a fixed length from a graph and by considering the vertices of the graph as a vocabulary and the random walks as sentences over this vocabulary. Here, a random walk starts at some vertex, and at each step of the random walk, a random neighbor that can be reached from the current vertex is chosen as the successor, and all neighbors of a node are equally likely to be chosen. Multiple random walks are sampled, starting from each vertex of the graph. 
+In \cite{Perozzi2014}, the authors present DeepWalk, which translates this idea to node representation learning by sampling random walks of a fixed length from a graph and by considering the vertices of the graph as a vocabulary and the random walks as sentences over this vocabulary. Here, a random walk starts at some vertex, and at each step of the random walk, a random neighbor that can be reached from the current vertex is chosen as the successor, and all neighbors of a node are equally likely to be chosen. Multiple random walks are sampled, starting from each vertex of the graph. 
 The node embeddings are initialized randomly. Each random walk is then used as a sentence to update the embeddings using the SkipGram language model, as in word2vec. This is done by maximizing for each vertex appearing in a random walk the probability of predicting the vertices that appear at a fixed distance before and after said vertex. The authors use stochastic gradient descent to maximize said probability and show the success of their proposed method by evaluating the learned representations in a multi-label classification task. 
 
 Node2Vec \cite{GroverL16} builds upon DeepWalk and introduces another method to sample random walks from graphs, which the authors call second order random walks. Here, two hyperparameters $p, q$ are introduced to provide additional control over the exploration of the graph during random walks. 
 Assuming a random walk just traversed an edge $(t, v)$, a successor is then chosen among the neighbors of $v$ by assigning each neighbor $x$ of $v$ an unnormalized transition probability $\pi_{vx} = \alpha_{pq}(t,x) \cdot w_{vx}$, defined as  
 \[
     \alpha_{pq}(t,x) = \begin{cases}
-        \frac{1}{p} & if d_{tx} = 0 \\
-        1 & if d_{tx} = 1 \\
-        \frac{1}{q} & if d_{tx} = 2 
+        \frac{1}{p} & \text{ if } d_{tx} = 0 \\
+        1 & \text{ if } d_{tx} = 1 \\
+        \frac{1}{q} & \text{ if } d_{tx} = 2 
     \end{cases},    
 \] 
-where $w_{vx}$ is the edge weight of edge $(v,x)$ and $d_{tx}$ is the distance of the shortest path between $t$ and $x$ (depicted in Figure \ref{fig:node2vec}). The next vertex in the random walk is chosen by selecting a vertex from the neighborhood of $v$ by weighted sampling according to the normalized transition probabilities. 
+where $w_{vx}$ is the edge weight of edge $(v,x)$ and $d_{tx}$ is the distance of the shortest path between $t$ and $x$ (a small example is depicted in Figure \ref{fig:node2vec}). The next vertex in the random walk is chosen by selecting a vertex from the neighborhood of $v$ by weighted sampling according to the normalized transition probabilities. 
 The parameter $p$ then controls the probability of returning to the most recently visited vertex, whereas the parameter $q$ controls the probability of either staying close to a vertex $t$ or exploring regions of the graph at a greater distance from $t$. The authors show that different parameterizations can be used to capture either homophily and structural equivalence in the produced embeddings. 
 
 \begin{figure}
@@ -391,7 +397,7 @@ The authors show that the proposed method of sampling random walks from a multi-
 Other notable approaches in node representation learning include HOPE \cite{Mingdong2016}, which was developed specifically to preserve properties of directed graphs and DeepGL \cite{Rossi17a}, which is a deep learning framework for node representation learning that is designed such that learned embeddings transfer well across different networks. Beyond the scope of node representation learning much research has also been done in other areas of network representation learning, e.g. edge representation learning and graph representation learning. In our work we chose to consider and evaluate primarily Node2Vec and Struct2Vec, as these methods are simple to implement and seem the most suited to our application, as they are able to capture local and structural features for non-attributed graphs. 
 
 
-\section{Solution Approaches for the MQCP}\label{sec:mqcp-related-work}
+\section{Maximum Quasi-Clique Problem}\label{sec:mqcp-related-work}
 
 \subsection{Exact Approaches}\label{milp-mqcp}
 Pattillo et al. \cite{pattillo_maximum_2013} propose a Mixed Integer Linear Programming formulation with a number of variables that is quadratic in the size of the vertex set $V$. 
@@ -461,7 +467,7 @@ The authors report new best results on several instances that were not included 
 
 As we have extensively studied the literature regarding heuristic solution approaches, we found that most state-of-the-art methods are based on or utilize metaheuristics based on the local search paradigm. Therefore, we let previous work on the MQCP lead our way and plan to build our work upon the local search paradigm as well. 
 
-\section{Solution Approaches for the MDCP}\label{sec:mdcp-related-work}
+\section{Maximum Defective Clique Problem}\label{sec:mdcp-related-work}
 
 Compared to the MQCP, only a few solution approaches have been proposed for the MDCP. 
 The first algorithm is proposed in \cite{Yu2006}, along with the first formal definition of the problem. The authors develop their approach for the use case of link prediction for protein-protein interactions. Even before that, the problem has been considered in the context of transportation planning \cite{Sherali2002}, where MILP formulations of the problem are analyzed and discussed. 
@@ -480,10 +486,14 @@ More recently, exact solution approaches are proposed in~\cite{chen2021computing
 
 When studying the literature related to MDCP, we notice that there is a lack of heuristic approaches. Due to the close relation of the MQCP and the MDCP we hope that our algorithm can also be used for the MDCP with only slight adaptions, which is why we focus our approach to build upon existing heuristic algorithms for the MQCP. 
 
-\chapter{A Local Search Based Metaheuristic for Maximum Clique Relaxations}\label{chp:local-search-algorithm}
+\chapter{A Local Search Based Metaheuristic for Edge-Based Relaxations of the Maximum Clique Problem}\label{chp:local-search-algorithm}
 
-In this chapter we present a local search based metaheuristic for relaxations of the MCP in detail, which is the algorithmic fundament of the GNN based algorithm in Chapter~\ref{chp:gnn}. We reference our algorithm as LSBM from now on. 
-At first, we introduce the general structure of LSBM without using GNNs in Section~\ref{sec:algorithm-structure}. Afterwards, we present the components of our algorithm in detail. In Section \ref{sec:lower-bound-heuristic} we present a lower bound heuristic based on beam search that is used to efficiently obtain a feasible initial solution of high quality. Afterwards, we present a construction heuristic in Section~\ref{sec:construction-heuristic} that does not necessarily yield a feasible solution, but is used to explore new regions of the search space not visited yet, as it will be used as a starting point for the local search procedure. In Section~\ref{sec:neighborhood-structure} we define the main move operator used in the local search procedure and define and analyze the corresponding neighborhood structures. Furthermore, we show in detail the local search procedure of LSBM that searches said neighborhood structures and uses a scoring function to evaluate the vertices in the graph in order to restrict the neighborhood to the most promising moves. Moreover, we introduce such a scoring function that is commonly used in state-of-the-art heuristic approaches for the MQCP. 
+In this chapter we present a local search based metaheuristic for relaxations of the MCP in detail, which is the algorithmic fundament of the GNN-based algorithm presented in Chapter~\ref{chp:gnn}. We reference our algorithm as LSBM from now on. 
+At first, we introduce the general structure of LSBM without using GNNs in Section~\ref{sec:algorithm-structure}, followed by a detailed inspection of the components of our algorithm. We propose a lower bound heuristic based on beam search (BS) in Section \ref{sec:lower-bound-heuristic} that is used to efficiently obtain a feasible initial solution of high quality. 
+Afterwards, we discuss the construction heuristic used within LSBM in Section~\ref{sec:construction-heuristic}. This construction heuristic does not necessarily yield a feasible solution, but is used to explore new regions of the search space not visited yet, as it will be used as a starting point for the local search procedure. 
+The main move operator used in the local search procedure is defined in Section~\ref{sec:neighborhood-structure}. Moreover, we define analyze the corresponding neighborhood structures. 
+Thereafter, we show in detail the local search procedure of LSBM that searches said neighborhood structures and uses a scoring function to evaluate the vertices in the graph in order to restrict the neighborhood to the most promising moves. We introduce such a scoring function, namely the function $d_S$, that denotes for a vertex in the input graph the number of neighbors in the current candidate solution $S$. This scoring function is commonly used in state-of-the-art heuristic approaches for the MQCP, but we also discuss that any other scoring function can be used within LSBM. 
+
 Note that we present our algorithm in the context of the MQCP. As the MQCP and the MDCP are very closely related, the adaption to the MDCP is very simple and the necessary steps to translate LSBM to the MDCP are shown at the end of the Chapter in Section~\ref{sec:adaption-to-mdcp}. 
 
 \section{Algorithm Structure} \label{sec:algorithm-structure}
@@ -491,25 +501,26 @@ Note that we present our algorithm in the context of the MQCP. As the MQCP and t
 As noted by Friden et al. \cite{Friden1989}, a solution for the MCP can be obtained by finding a series of $k$-cliques for increasing values of $k$. Based on this observation, Wu et al. \cite{WuH13} develop an adaptive multistart tabu search algorithm for the MCP that in each iteration searches for a clique of size $k$ using a tabu search procedure. If such a clique can be found, $k$ is increased and the algorithm is restarted. The largest clique found this way is returned as the solution. Djeddi et al. \cite{djeddi_extension_2019} show that this idea can be extended to the MQCP by following the same principle: The maximum $\gamma$-quasi clique in a graph is approximated by finding a series of $k$-$\gamma$-quasi cliques, where the tabu search is restarted with increased $k$ each time a $k$-$\gamma$-quasi clique is found. This idea is applied successfully also in other state-of-the art algorithms for the MQCP, namely \cite{zhou_opposition-based_2020} and \cite{chen_nuqclq_2021}, which is why we want to base the general structure of our algorithm on this idea as well. 
 
 The pseudocode of the general structure of our local search algorithm is shown in Algorithm \ref{alg:structure}.
-$\mathit{InitialSolution}$, which is a generalized greedy search, constructs a feasible initial solution. Its main purpose is to obtain a high quality lower bound to obtain a good starting value for $k$. The procedure is described in detail in Section~\ref{sec:lower-bound-heuristic}.
+$\mathit{InitialSolution}$, which is a generalized greedy search, constructs a feasible initial solution. Its main purpose is to obtain a high quality lower bound that can be used as a good starting value for $k$. The procedure is described in detail in Section~\ref{sec:lower-bound-heuristic}.
 
 In Line \ref{alg:structure-freq} a long-term memory $\mathit{Freq}$ is initialized, where $\mathit{Freq[i]}$ stores how many times each vertex is operated on for $i=1,\dots,n$. This memory is kept when the loop in Lines~\ref{alg:structure-while-start}--\ref{alg:structure-while-end} is repeated, but no feasible solution could be found. In $\mathit{ConstructionHeuristic}$, $\mathit{Freq}$ is used to produce a candidate solution that favors vertices that have not been considered yet. This way, new regions of the search space are explored. The idea of using this long-term memory $\mathit{Freq}$ in the construction heuristic to cover a larger area of the search space comes from \cite{chen_nuqclq_2021}. We change their construction heuristic slightly by combining it with a GRASP-like construction step as described in Section~\ref{sec:construction-heuristic}. 
 
-Once a candidate solution is obtained by a construction heuristic, we try to improve it by the local search procedure in Line~\ref{alg:structure-local-search}, which is described in detail in Section~\ref{sec:neighborhood-structure} along with the definition of the neighborhood structures. During this local search procedure, we use the scoring function $\mathit{sf}_S$ in each iteration to restrict the neighborhood of a candidate solution $S$ to the most promising moves in order to increase its objective value. If the resulting solution $S$ is feasible, a simple search is performed in $\mathit{Extend}$ to check if the solution can be extended to a feasible solution of greater size as shown in Algorithm~\ref{alg:extend}. 
+Once a candidate solution is obtained by a construction heuristic, we try to improve it by the local search procedure in Line~\ref{alg:structure-local-search}, which is described in detail in Section~\ref{sec:neighborhood-structure} along with the definition of the neighborhood structures. During this local search procedure, we use the scoring function $f_S$ in each iteration to restrict the neighborhood of a candidate solution $S$ to the most promising moves in order to increase its objective value. 
+If the resulting solution $S$ is feasible, a simple search is performed in $\mathit{Extend}$ to check if the solution can be extended to a feasible solution of greater size as shown in Algorithm~\ref{alg:extend}. 
 Furthermore, $k$ is increased, $\mathit{Freq}$ is reset, and the best-so-far found solution $S^*$ is updated. 
 If the solution obtained by the local search procedure is not feasible, the while-loop is repeated until the stopping criterion is met, e.g., the time limit or a user defined maximum number of restarts is reached. 
 
 \begin{algorithm}
     \DontPrintSemicolon
     \KwIn{Graph $G$, Target Density $\gamma$}
-    \KwOut{Approximate maximum $\gamma$-quasi clique in $G$, scoring function $\mathit{sf}_S$}
+    \KwOut{Approximate maximum $\gamma$-quasi clique in $G$, scoring function $f_S$}
     $S^* \gets \mathit{InitialSolution}(G, \gamma)$ \;
     $k \gets |S^*|$ \; \label{alg:structure-lower-bound}
     $\mathit{Freq} \gets [0, \dots, 0]$ \label{alg:structure-freq} \tcp*{$n$-element Array, initialized with 0} 
 
     \While{stop condition not met}{ \label{alg:structure-while-start}
         $S \gets \mathit{ConstructionHeuristic}(G, \mathit{Freq}, k)$ \; \label{alg:structure-construction}
-        $S \gets \mathit{LocalSearch}(G, \mathit{Freq}, \gamma, S, \mathit{sf})$ \; \label{alg:structure-local-search}
+        $S \gets \mathit{LocalSearch}(G, \mathit{Freq}, \gamma, S, f_S)$ \; \label{alg:structure-local-search}
         \If{$S$ is feasible}{\label{alg:feasibility-check-1}
             $S \gets \mathit{Extend}(G, S, \gamma)$ \;
             $S^* \gets S$ \;
@@ -543,24 +554,24 @@ If the solution obtained by the local search procedure is not feasible, the whil
 
 \section{Lower Bound Heuristic}\label{sec:lower-bound-heuristic}
 
-In this section we propose a beam search based heuristic that returns a feasible solution that can be used as a lower bound for the size of a maximum $\gamma$-quasi clique in the input graph. This lower bound is used to obtain a high starting value for $k$ in Line~\ref{alg:structure-lower-bound} of Algorithm~\ref{alg:structure}. 
+In this section we propose a BS based heuristic that returns a feasible solution that can be used as a lower bound for the size of a maximum $\gamma$-quasi clique in the input graph. This lower bound is used to obtain a high starting value for $k$ in Line~\ref{alg:structure-lower-bound} of Algorithm~\ref{alg:structure}. 
 The pseudocode of the beam search is shown in Algorithm~\ref{alg:lower-bound-heuristic}. 
 In the following, note the textual distinction between \emph{nodes} in the search tree and \emph{vertices} in the input graph which is made for the sake of clarity. 
 
-In beam search, a node $v$ of the search tree is in general evaluated by a function $f(v) = g(v) + h(v)$, where $g(v)$ is the cost of the solution corresponding to a node, and $h(v)$ is a heuristically determined value given by a guidance function. 
-We use a simple data structure for nodes of the search tree where a node $v$ has fields $\mathit{v.S}$ containing a feasible $\gamma$-quasi clique that this node represents, $\mathit{v.num\_edges}$, which contains the number of edges in $G[v.S]$, $\mathit{v.d_S}$, which is a vector containing the $d_S$-values for vertices in $G$ in order to allow efficient computation of $\mathit{v.num\_edges}$, and $\mathit{v.h}$, which is the heuristically determined value of the node according to the used guidance function.
+In BS, a node $v$ of the search tree is in general evaluated by a function $f(v) = g(v) + h(v)$, where $g(v)$ is the cost of the solution corresponding to a node, and $h(v)$ is a heuristically determined value given by a guidance function, which predicts the cost-to-go to complete the partial solution corresponding to a node. 
+We use a simple data structure for nodes of the search tree where a node $v$ has fields $v.S$ containing a feasible $\gamma$-quasi clique that this node represents, $v.n_e$, which contains the number of edges in $G[v.S]$, $v.d_S$, which is a vector containing the $d_S$-values for vertices in $G$ in order to allow efficient computation of $v.n_e$, and $v.h$, which is the heuristically determined value of the node according to the used guidance function.
 Additionally, we define the cost of a node $v$ as $g(v) = |v.S|$, which is the size of the feasible solution that this node represents.  
-The root node of the beam search tree is then defined by an empty candidate set $\mathit{root.S}$ with $\mathit{root.g}=0, \mathit{root.h}=0, \mathit{root.d_S} = [0 \dots 0], \mathit{root.num\_edges} = 0$. 
+The root node $r$ of the BS tree is then defined by an empty candidate set $r.S$ with $r.g=0, r.h=0, r.d_S = [0 \dots 0], r.n_e = 0$. 
 
 The main loop in Lines~\ref{alg:exploration-construction-while-start}--\ref{alg:exploration-construction-while-end} expands all nodes in the current beam into feasible successor nodes. 
-Since a node $v$ represents a set of vertices $\mathit{v.S}$ which is a feasible $\gamma$-quasi clique, successor nodes are generated by checking for each vertex $u \in V \setminus \mathit{v.S}$ whether $\mathit{v.S} \cup \{u\}$ is still a feasible $\gamma$-quasi clique. These successor nodes are then added to a list $\mathit{children}$. 
-Using the information stored in a node $v$ of the beam search tree, it can be checked in $O(1)$ whether any vertex $u \in V \setminus \mathit{v.S}$ in the graph can be used to extend the solution $\mathit{v.S}$ into a feasible $\gamma$-quasi clique. Creating a successor node however takes $O(n)$ time, as the $d_S$ values for the created successor node have to be updated. 
-In order to keep the computational effort low, we introduce a parameter $\varepsilon$ that controls the maximum number of successor nodes for each node in the search tree. Thus, if a node has more than $\varepsilon$ feasible successors, we add only the first $\varepsilon$ successor nodes to $\mathit{children}$, as can be seen in Line \ref{alg:lower-bound-heuristic-expansion} of the algorithm. 
+Since a node $v$ represents a set of vertices $v.S$ which is a feasible $\gamma$-quasi clique, successor nodes are generated by checking for each vertex $u \in V \setminus v.S$ whether $v.S \cup \{u\}$ is still a feasible $\gamma$-quasi clique. These successor nodes are then added to a set $C$, containing all expanded nodes of the next level of the search tree. 
+Using the information stored in a node $v$ of the beam search tree, it can be checked in $O(1)$ whether any vertex $u \in V \setminus v.S$ in the graph can be used to extend the solution $v.S$ into a feasible $\gamma$-quasi clique. Creating a successor node however takes $O(n)$ time, as the $d_S$-values for the created successor node have to be updated. 
+In order to keep the computational effort low, we introduce a parameter $\varepsilon$ that controls the maximum number of successor nodes for each node in the search tree. Thus, if a node has more than $\varepsilon$ feasible successors, we add only the first $\varepsilon$ successor nodes to $C$, as can be seen in Line \ref{alg:lower-bound-heuristic-expansion} of the algorithm. 
 
-In order to avoid symmetries, i.e. nodes $u,v$ representing the same solutions such that $u.S = v.S$, we use a hash map for each level of the search tree containing all solution vertex sets that were already added for expansion. Before adding a successor node $v$ to $\mathit{children}$, a check is performed to make sure that a node representing $v.S$ is not already contained in $\mathit{children}$. 
+In order to avoid symmetries, i.e. nodes $u,v$ representing the same solutions such that $u.S = v.S$, we use a hash map for each level of the search tree containing all solution vertex sets that were already added for expansion. Before adding a successor node $v$ to $C$, a check is performed to make sure that a node representing $v.S$ is not already contained in $C$. 
  
-Note that due to this expansion into successor nodes all the solutions corresponding to the nodes on a level of the search tree have the same cardinality, and thus the same $g$-value.  
-Therefore, $g$-values can be ignored in the evaluation, and all nodes in $\mathit{children}$ are evaluated only by a guidance function $h$. The $\beta$ nodes with highest $h$-values then form a new beam while the remaining nodes are discarded. 
+Note that due to this expansion into successor nodes all the solutions corresponding to the nodes on a level of the search tree have the same cardinality, and thus the same $g$-value. 
+Therefore, $g$-values can be ignored in the evaluation, and all nodes in $C$ are evaluated only by a guidance function $h$. The $\beta$ nodes with highest $h$-values then form a new beam while the remaining nodes are discarded. 
 Furthermore, since all the solutions corresponding to nodes on a level of the search tree have the same cardinality, a random node is selected to update the best-so-far solution $S^*$ on each level.
 Finally, when the beam becomes empty, the maximum cardinality solution is returned. 
 
@@ -574,14 +585,14 @@ The heuristic guidance function $h$ can have a great impact on the quality of th
         h_{v.S}(w) = 
         \begin{cases}
             0 & \text{ if $w$ cannot extend $v.S$ into a feasible solution}\\
-            \mathit{v.d_S}(w) - n_e & \text{ if $w$ can extend $v.S$ }
+            \mathit{v.d_S}(w) - \delta & \text{ if $w$ can extend $v.S$ }
         \end{cases},
     \]
-    where $n_e = \lceil \gamma \cdot \frac{|\mathit{v.S}|\cdot (|\mathit{v.S}|+1)}{2} \rceil - \mathit{v.num\_edges}$, i.e. the number of edges that need to be added when extending $\mathit{v.S}$ into a feasible solution of size $|\mathit{v.S}|+1$. 
+    where $\delta = \lceil \gamma \cdot \frac{|v.S|\cdot (|v.S|+1)}{2} \rceil - v.n_e$, i.e. the number of edges that need to be added when extending $v.S$ into a feasible solution of size $|v.S|+1$. 
     The heuristic value $h(v)$ for a node $v$ in the search tree is then computed as the sum $\sum_{w \in V \setminus v.S} h_{v.S}(w)$. 
-    For each vertex that can be used to extend $v.S$ - which we call a \emph{feasible neighbor} in this context - we count the surplus of edges that are added to $v.S$ when extending $v.S$ by this vertex. As we have access to $\mathit{v.num\_edges}$, we know that each vertex that adds at least $\frac{|\mathit{v.S}|\cdot|(\mathit{v.S}|+1)}{2} - \mathit{v.num\_edges}$ edges to the solution can be used to extend $\mathit{v.S}$. As the number of edges gained by adding a vertex is determined by the values in $\mathit{v.d_S}$, this computation can be done in time $O(n)$ per node of the search tree. 
-    Furthermore, consider two nodes $u, v$ on the same level of the search tree, such that $\mathit{u.num\_edges} = \mathit{v.num\_edges}$, both nodes have the same number of feasible neighbors, but the $d_S$-values for the feasible neighbors of $\mathit{u.S}$ are higher than the $d_S$-values of the feasible neighbors of $\mathit{u.S}$. Intuitively, $u$ is more promising than $v$, as adding one of the feasible neighbors adds more edges to the corresponding solution, which is also reflected in the computation of this heuristic guidance function. 
-    \item \emph{Number of Edges}. We set $h(v) = \mathit{v.num\_edges}$, which means this heuristic guidance function has a time complexity of $O(1)$. This allows for efficient computation at the cost of not obtaining much additional information. 
+    For each vertex that can be used to extend $v.S$ - which we call a \emph{feasible neighbor} in this context - we count the surplus of edges that are added to $v.S$ when extending $v.S$ by this vertex. As we have access to $v.n_e$, we know that each vertex that adds at least $\frac{|v.S|\cdot|(v.S|+1)}{2} - v.n_e$ edges to the solution can be used to extend $v.S$. As the number of edges gained by adding a vertex is determined by the values in $v.d_S$, this computation can be done in time $O(n)$ per node of the search tree. 
+    Furthermore, consider two nodes $u, v$ on the same level of the search tree, such that $u.n_e = v.n_e$, both nodes have the same number of feasible neighbors, but the $d_S$-values for the feasible neighbors of $u.S$ are higher than the $d_S$-values of the feasible neighbors of $u.S$. Intuitively, $u$ is more promising than $v$, as adding one of the feasible neighbors adds more edges to the corresponding solution, which is also reflected in the computation of this heuristic guidance function. 
+    \item \emph{Number of Edges}. We set $h(v) = v.n_e$, which means this heuristic guidance function has a time complexity of $O(1)$. This allows for efficient computation at the cost of not obtaining much additional information. 
 \end{itemize}
 
 These heuristic guidance function differ greatly in terms of time complexity per node and information obtained in order to guide the search. As the main purpose of the lower bound heuristic proposed in this Section is to quickly obtain a good approximation, we will prioritize fast computation over solution quality. Nonetheless, for small instances, it could still be useful to consider more expensive guidance functions. 
@@ -594,20 +605,20 @@ These heuristic guidance function differ greatly in terms of time complexity per
     \DontPrintSemicolon
     \KwIn{Graph $G$, Target density $\gamma$, guidance function $h$, beam width $\beta$, expansion control parameter $\varepsilon$}
     \KwOut{A feasible $\gamma$-quasi clique $S$}
-    $\mathit{root.S} \gets \emptyset$ \;
-    $S^* \gets \emptyset$ \;
-    $\mathit{beam} \gets \{root\}$ \;
-    \While{$\mathit{beam}$ not empty}{\label{alg:lower-bound-heuristic-while-start}
-        $\mathit{children} \gets \emptyset$ \;
-        \For{$\mathit{node} \in \mathit{beam}$}{
-            Expand $\mathit{node.S}$ into up to $\varepsilon$ successor nodes that can be obtained by adding a vertex from $V \setminus \mathit{node.S}$ \; \label{alg:lower-bound-heuristic-expansion}
-            $\mathit{children} \gets $ add feasible successor nodes obtained from expanding $\mathit{node}$ \;
+    $r.S, r.g, r.h, r.n_e \gets \emptyset, 0, 0, 0$ \tcp*{Root node $r$} 
+    $S^* \gets \emptyset$ \tcp*{Best obtained solution}
+    $B \gets \{root\}$ \tcp*{Beam $B$}
+    \While{$B$ not empty}{\label{alg:lower-bound-heuristic-while-start}
+        $C \gets \emptyset$ \tcp*{Set of successors (children) of nodes in $B$}
+        \For{$v \in B$}{
+            Expand $v.S$ into up to $\varepsilon$ successor nodes that can be obtained by adding a vertex from $V \setminus v.S$ \; \label{alg:lower-bound-heuristic-expansion}
+            $C \gets $ add feasible successor nodes obtained from expanding $v$ \;
         }
-        \If{$children$ not empty}{
-            $S^* \gets \mathit{node.S}$ for some arbitrary node in $\mathit{children}$ 
+        \If{$C$ not empty}{
+            $S^* \gets v.S$ for some arbitrary node in $C$ 
         }
-        Evaluate nodes in $children$ by guidance function $h$ \;
-        $\mathit{beam} \gets $ Choose $\beta$ nodes with highest $h$-values
+        Evaluate nodes in $C$ by guidance function $h$ \;
+        $B \gets $ Choose $\beta$ nodes with highest $h$-values as new beam
     }\label{alg:lower-bound-heuristic-while-end}
     \Return{$S^*$}
     \caption{Lower Bound heuristic based on Beam Search}
@@ -664,34 +675,34 @@ Furthermore, let
     Y &= \{ v \mid v \in V \setminus S, d_S(v) \geq d_{\max} - 1 \}.
 \end{align*} The neighborhood $\Omega_1$ of a candidate solution $S$ is then restricted to only those neighboring solutions that can be obtained by swapping a node $u \in X$ with a node $v \in Y$, as all node swaps that maximize $\Delta_{uv}$ are contained in this restricted neighborhood. 
 
-In LSBM, we want to make use of this scoring function as well. The pseudocode for our local search procedure is shown in Algorithm \ref{alg:local-search-procedure}. Note that a scoring function $\mathit{sf}_S$ is passed as an input parameter to the local search procedure. Within the context of LSBM, any scoring function can be used to restrict the candidate sets $X, Y$, and we plan to replace this scoring function by a GNN-based scoring function in Chapter \ref{chp:gnn}. 
-For this Chapter however, we want to focus on the well-established scoring function $d_S$, i.e., $\mathit{sf}_S$ is instantiated by $d_S$. 
+In LSBM, we want to make use of this scoring function as well. The pseudocode for our local search procedure is shown in Algorithm \ref{alg:local-search-procedure}. Note that a scoring function $f_S$ is passed as an input parameter to the local search procedure. Within the context of LSBM, any scoring function can be used to restrict the candidate sets $X, Y$, and we plan to replace this scoring function by a GNN-based scoring function in Chapter \ref{chp:gnn}. 
+For this Chapter however, we want to focus on the well-established scoring function $d_S$, i.e., $f_S$ is instantiated by $d_S$. 
 
-In each iteration of the main while-loop in Algorithm \ref{alg:local-search-procedure} we first define the aspiration val, which is the number of edges that have to be added to the current candidate solution $S$ such that $f(S) > f(S^*)$ holds. 
-Then, the restricted candidate sets $X$ and $Y$ are created from the sets $S$ and $V \setminus S$, respectively by using the scoring function $\mathit{sf}$. 
+In each iteration of the main while-loop in Algorithm \ref{alg:local-search-procedure} we first define the aspiration val $a$, which is the number of edges that have to be added to the current candidate solution $S$ such that $f(S) > f(S^*)$ holds. 
+Then, the restricted candidate sets $X$ and $Y$ are created from the sets $S$ and $V \setminus S$, respectively by using the scoring function $f_S$. 
 The sets $X, Y$ are created as described before, with an additional restriction: To prevent cycling through the same candidate solutions over and over again, a short-term memory mechanism is applied which prevents unblocked vertices from being chosen for a swap if they do not fulfill an aspiration criterion. 
 There are two main methods that can be found in the literature, which we want to evaluate in our algorithm: 
 \begin{itemize}
     \item In \cite{djeddi_extension_2019} and \cite{zhou_opposition-based_2020}, a tabu list is used to prevent cycling. Each time a vertex is added to or removed from the solution, it is added to the tabu list for a fixed number of iterations. While a vertex is in the tabu list, it is blocked and cannot be used in swaps. In \cite{djeddi_extension_2019}, the authors use two tabu lists: One for moving vertices out of the candidate solution, and one for adding vertices to the candidate solution. In \cite{zhou_opposition-based_2020}, a single tabu list is used for both operations. 
     \item In \cite{chen_nuqclq_2021}, the authors use Configuration Checking. In its simplest form, once a vertex $v$ is moved out of the candidate Solution, it is blocked from being moved again until at least one neighbor of $v$ is moved. The authors refine this strategy by using a threshold for each node $v$ that starts with $\mathit{threshold}(v) = 1$ for all $v \in V$. Each time a vertex $v$ is moved into the candidate solution, $\mathit{threshold}(v)$ is increased by 1. When $v$ is moved out of the candidate solution, it is blocked from being moved again, until $\mathit{threshold}(v)$ of its neighbors have been moved. Additionally, if $\mathit{threshold}(v) > \mathit{ub\_threshold}$, where $\mathit{ub\_threshold}$ is a user-defined upper bound, then $\mathit{threshold}(v)$ is reset to 1. 
 \end{itemize}
-In Line \ref{alg:local-search-procedure-search-neighborhood}, the neighborhood defined by $X, Y$ is searched. The subroutine is shown in Algorithm \ref{alg:search-neighborhood}. The neighborhood is searched exhaustively for the swap that maximizes the gain of edges $\Delta_{uv}$. Blocked vertices are not considered for potential swaps, unless the respective gain of edges is greater than the aspiration value. 
+In Line \ref{alg:local-search-procedure-search-neighborhood}, the neighborhood defined by $X, Y$ is searched. The subroutine is shown in Algorithm \ref{alg:search-neighborhood}. The neighborhood is searched exhaustively for the swap that maximizes the gain of edges $\Delta_{uv}$. Blocked vertices are not considered for potential swaps, unless the respective gain of edges is greater than the aspiration value $a$. 
 If no improving swap was found, a random unblocked move is chosen $u \in X, v \in Y$. 
 Afterwards, the chosen vertices $u ,v$ are swapped and $\mathit{Freq}$, the short-term memory, and the $d_S$ values are updated correspondingly. 
 Furthermore, we define as stopping criteria: If the best solution $S^*$ does not improve for a fixed amount of iterations $\mathit{max\_iter}$, the procedure is stopped and $S^*$ is returned. Additionally, if a given time limit is reached, the procedure is stopped as well. 
 
 \begin{algorithm}
     \DontPrintSemicolon
-    \KwIn{Graph $G$, Frequency list $Freq$, Target density $\gamma$, Candidate solution $S$, scoring function $\mathit{sf}_S$}
+    \KwIn{Graph $G$, Frequency list $Freq$, Target density $\gamma$, Candidate solution $S$, scoring function $f_S$}
     \KwOut{Best found solution $S^*$}
     $k \gets |S|$ \;
     $S^* \gets S$ \;
     $d_S \gets $ compute $d_S$-values for vertices in $G$ \;
     \While{stopping criterion not met}{
-        $\mathit{aspiration\_val} \gets f(S^*) - f(S)$ \; 
-        $X, Y \gets $ restrict candidate sets $X \subseteq S, Y \subseteq V \setminus S$ using $\mathit{sf}$\;
+        $a \gets f(S^*) - f(S)$ \tcp*{aspiration value} 
+        $X, Y \gets $ restrict candidate sets $X \subseteq S, Y \subseteq V \setminus S$ using $f_S$\;
         $B \gets $ blocked vertices according to short-term memory \;
-        $u, v, \Delta_{uv} \gets \mathit{SearchNeighborhood}(G, d_S, X, Y, B, \mathit{aspiration\_val})$ \; \label{alg:local-search-procedure-search-neighborhood}
+        $u, v, \Delta_{uv} \gets \mathit{SearchNeighborhood}(G, d_S, X, Y, B, a)$ \; \label{alg:local-search-procedure-search-neighborhood}
         \If{$\Delta_{uv} < 0$}{
             \tcp{No improving solution found}
             $u,v \gets$ choose arbitrary (unblocked) $u \in X, v \in S$ \;
@@ -715,12 +726,12 @@ Furthermore, we define as stopping criteria: If the best solution $S^*$ does not
 
 \begin{algorithm}
     \DontPrintSemicolon
-    \KwIn{Graph $G$, Restricted candidate sets $X, Y$. blocked vertices $B$, aspiration value $\mathit{aspiration\_val}$}
+    \KwIn{Graph $G$, Restricted candidate sets $X, Y$. blocked vertices $B$, aspiration value $a$}
     \KwOut{Best found swap $u \in X,v \in Y$ and corresponding gain $\Delta_{uv}$}
     $u_{\mathit{best}}, v_{\mathit{best}}, \Delta_{\mathit{best}} \gets 0 , 0 , -\infty $ \;
     \For{$u \in X, v \in Y$}{
         $\Delta_{uv} \gets d_S[v] - d_S[u] - e_{uv}$ \;
-        \If{$\Delta_{uv} \leq \mathit{aspiration\_val} \land (u \in B \lor v \in B)$}{
+        \If{$\Delta_{uv} \leq a \land (u \in B \lor v \in B)$}{
             continue \;
         }
         \If{$\Delta_{uv} > \Delta_{\mathit{best}}$}{
@@ -1251,6 +1262,7 @@ Section \ref{sec:train-params} shows our evaluation of parameters of LSBM-T. Her
 \end{table}
 
 \section{Evaluation of Algorithm Parameters}\label{sec:alg-params}
+\fxnote{Maybe first evaluate training parameters, and afterwars algorithm specific parameters? }
 In this Section we focus on evaluating the components or ideas that distinguish LSBM from similar existing algorithms, namely the lower bound heuristic, and the use of a restricted neighborhood of fixed size. Furthermore, we want to evaluate the effectivity of using different short term memory types (Tabu List \cite{djeddi_extension_2019}\cite{zhou_opposition-based_2020}, Configuration Checking \cite{chen_nuqclq_2021}) that can be found in similar algorithms. The remaining components of LSBM build on the work of other authors, namely the idea of using a frequency-based construction heuristic as in \cite{chen_nuqclq_2021} and the general algorithm structure of \cite{djeddi_extension_2019}, which is why we use the reported best found parameters for these components. 
 
 \subsection{Lower Bound Heuristic}
@@ -1336,6 +1348,7 @@ We conclude that \emph{Greedy Completion} works well on instances where smaller 
 
 
 \subsection{Size of Restricted Neighborhood}
+Try different neighborhood sizes and see how results change.
 
 
 \section{Evaluation of Training Parameters}\label{sec:train-params}
@@ -1351,14 +1364,11 @@ We conclude that \emph{Greedy Completion} works well on instances where smaller 
 
 \subsection{Node Features}
 
-
 Ten runs each for
 \begin{itemize}
     \item Degree
     \item EgoNet-1
-    \item Degree,EgoNet1
     \item EgoNet1,EgoNet2
-    \item Degree,EgoNet-1,EgoNet-2
     \item Node2Vec
     \item Struct2Vec
     \item Node2Vec,Struct2Vec
@@ -1367,15 +1377,29 @@ Ten runs each for
     \item EgoNet1, Struct2Vec
     \item EgoNet1, Node2Vec
 \end{itemize}
-with lookahead depth 1 and 2. Compare results for average of 30 test instances. 
+with lookahead depth 1. See how well neighborhood can be learned using these features
 
-\subsection{Scale Invariance}
+\subsection{Lookahead Search Parameters}
+See how well the gnn trained with lookahead depth 1, 2, 3 is able to perform on unseen training data. 
 
-\subsection{GNN Hyperparameters}
+Check on samples of different size how close lookahead search with restricted neighborhood gets to actual best neighbor 
 
-\subsection{Look-ahead Search Hyperparameters}
+\subsection{Graph Densities}
+In general: Low density graphs are not that interesting consider, as exact methods can be applied for very sparse graphs. 
+
+Argue that Learning based features are not as useful when used on high density graphs
+
+\subsection{GNN Parameters}
+See how layer sizes, number of attention heads affect solution quality and runtime 
 
 \section{Benchmark Results}\label{sec:benchmark-results}
+Try selected benchmark instances that are not too large and not too dense and show best results. 
+Ideally, use some of the BHOSLIB instances, as one model can be trained for a set of 5 instances. 
+
+Train for DIMACS instances with fixed $|V|, dens(G)$?
+
+Maybe train some models for sparse instances and check the large sparse graphs. 
+
 Table containing benchmark instances for reference
 \begin{table}
     \centering
@@ -1534,6 +1558,7 @@ Contributions:
 Future work:
 \begin{itemize}
     \item Replace $d_S$ completely by defining stronger context
+    \item Evaluate other feature initialization method, especially ones more suitable for very dense graphs
     \item utilize GPU
     \item train specifically for specific instances
     \item adapt to other mcp relaxations
