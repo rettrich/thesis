@@ -165,7 +165,7 @@ One of the main contributions of this thesis is therefore the algorithmic design
 
 As the considered MCP relaxations are defined on non-attributed graphs, one of the goals of this thesis is to evaluate, which feature initialization methods can be used to effectively extract information from input graphs. Thus, we investigate several centrality-based and learning-based methods within the context of our proposed algorithm that can be found in the literature. 
 
-Furthermore, we propose a training algorithm LSBM-T that is used to generate training data in order to train the GNN to make high quality predictions. A training sample consists of the input graph and a candidate solution, and the GNN is trained to predict, which vertices are likely to be in a swap that leads to an improved solution. In order to compute target labels for the vertices in the input graph, we present different methods to search neighborhood structures relative to the candidate solution in a training sample. 
+Furthermore, we propose a training algorithm LSBM-T that is used to generate training data in order to train the GNN to make high quality predictions. A training sample consists of the input graph, a candidate solution, and target values obtained by a look-ahead search that searches a neighborhood structure for a neighboring solution with a higher objective value. Using this data, the GNN is trained to predict, which vertices are likely to be in a swap that leads to an improved solution. In order to compute target labels for the vertices in the input graph, we present different methods to search neighborhood structures relative to the candidate solution in a training sample. 
 
 Finally, we conduct computational experiments in order to evaluate our approach on graphs of different sizes and densities and discuss future work that can be done in order to improve our method. 
 
@@ -757,14 +757,14 @@ The MQCP and the MDCP can be approached very similar in the context of a local s
 
 \chapter{Using Graph Neural Networks in a Local Search Based Metaheuristic Edge-Based Relaxations of the Maximum Clique Problem}\label{chp:gnn}
 
-In this chapter we extend LSBM presented in Chapter \ref{chp:local-search-algorithm} by utilizing a GNN as a learnable scoring function in order to enhance the algorithm. 
-Section \ref{sec:gnn-local-search} presents our idea of utilizing a GNN in the previously described local search algorithm and the general structure of our training algorithm LSBM-T that can be used to train the GNN to predict, which vertices in the neighborhood relative to a candidate solution $S$ are more promising than others. 
-In the following Sections we present in detail the components of LSBM-T. Section \ref{sec:gnn-training} concerns the definition of training samples, and how training data is obtained. 
-In Section \ref{sec:lookahead-search} we present our idea of using a look-ahead search that takes into account the current candidate solution and returns the best neighboring solution in order to obtain target values for training the GNN. 
-We discuss relevant GNN models and architectures in Section \ref{sec:gnn-architecture}. 
+In this chapter we extend our algorithm LSBM presented in Chapter \ref{chp:local-search-algorithm} by utilizing a GNN as a learnable scoring function in order to enhance the algorithm. 
+Section \ref{sec:gnn-local-search} discusses the motivation of using a GNN within LSBM and points out weaknesses of current approaches that we hope to overcome. Moreover, we show the general structure of our training algorithm LSBM-T that can be used to train the GNN to predict, which vertices in the neighborhood relative to a candidate solution $S$ are more promising than others. 
+In the following Sections we present in detail the components of LSBM-T. The definition of training samples is presented in Section \ref{sec:gnn-training}, and we explain how training data is generated.  
+In Section \ref{sec:lookahead-search} we present our idea of using a look-ahead search that takes into account the current candidate solution and returns the best neighboring solution with respect to a user-defined neighborhood structure in order to obtain target values for training the GNN. 
+Our proposed GNN architecture is shown in Section \ref{sec:gnn-architecture}. 
 Finally, we analyze the effect of using a GNN as a scoring function on the runtime of the algorithm compared to using only $d_S$ as a scoring function in Section \ref{sec:performance}. 
 
-Note that all the methods presented in this Chapter can be used both for the MQCP and the MDCP. Only LSBM has to be adapted as discussed previously in Section \ref{sec:adaption-to-mdcp}, but no changes have to be made in training data generation and during the look-ahead search, as the definition of objective value of a candidate solution and its neighbors coincides for the both problems. 
+Note that all the methods presented in this Chapter can be used both for the MQCP and the MDCP. Only LSBM itself has to be adapted as discussed previously in Section \ref{sec:adaption-to-mdcp}, but no changes have to be made in training data generation and during the look-ahead search, as the definition of objective value of a candidate solution and its neighbors coincides for both problems. 
 
 \section{Using a GNN in Local Search for Maximum Clique Relaxation Problems}\label{sec:gnn-local-search}
 
@@ -798,10 +798,10 @@ We aim to tackle these challenges in Sections \ref{sec:gnn-training} and \ref{se
 The general approach of the training algorithm LSBM-T is structured as depicted in Algorithm~\ref{alg:training}. A visualization of the algorithm structure is presented in the flowchart in Figure \ref{fig:flowchart-training-algorithm}. 
 At the start, the GNN-based scoring function $\mathit{gnn}_S$ is initialized randomly. Then, in each iteration of the training loop a random representative instance is generated on the fly and LSBM is started with a fixed time limit and a maximum number of restarts and - most importantly - with the scoring function $\mathit{gnn_S}$ that is used to restrict the neighborhood during the local search procedure instead of the scoring function $d_S$. The size of the restricted neighborhood during this local search is defined by input parameter $k^\prime$, which sets the maximum cardinality for the restricted candidate sets $X, Y$.
 
-We adapt LSBM slightly to return a $\mathit{swap\_history}$ in Line \ref{alg:training-swap-history} besides the best found solution $S^*$. This swap history contains an entry for each call to the local search procedure during the execution of LSBM. An entry consists of the candidate solution that is generated by the construction heuristic at the start of the local search procedure, and a chronological list of pairs of vertices in the input graph that correspond to the vertices swapped during the local search procedure. This way, all information about the trajectory of the search can be restored. 
+We adapt LSBM slightly to return a swap history $H$ in Line \ref{alg:training-swap-history} besides the best found solution $S^*$. This swap history is a simple vector-like data structure that contains an entry for each call to the local search procedure during the execution of LSBM. An entry consists of the candidate solution that is generated by the construction heuristic at the start of the local search procedure and a chronological list of pairs of vertices in the input graph that correspond to the vertices swapped during the local search procedure. This way, all information about the trajectory of the search can be restored. 
 After the execution of LSBM has finished, $n_s$ encountered candidate solutions are sampled using this swap history. 
-A look-ahead search is applied to compute the best neighboring solutions and the target values for vertices in $G$. From $G, S, \mathit{targets}$, a training sample is created and added to the replay buffer. For a detailed description of how target values for these samples are computed, we refer to Subsection \ref{subsec:target-values} Section and \ref{sec:lookahead-search}, where we propose and discuss different methods to identify improving neighboring solutions. 
-At the end of each iteration of the training loop, the GNN is trained with data from the replay buffer, if it has reached at least half of its maximum fill capacity. 
+A look-ahead search is applied to compute the best neighboring solutions and a vector $t$ of target values for the vertices in $G$. From $G, S, t$, a training sample is created and added to the replay buffer $R$. For a detailed description of how target values for these samples are computed, we refer to Section and \ref{sec:lookahead-search} and Subsection \ref{subsec:target-values}, where we propose and discuss different methods to identify and compute improving neighboring solutions. 
+At the end of each iteration of the training loop, the GNN is trained with data from the replay buffer, if it has reached at least half of its maximum fill capacity $\rho$. 
 This process is repeated for $z$ iterations, until the GNN is sufficiently trained. 
 
 Using the NN during training data generation is typical practice in reinforcement learning, where the NN is often improved by ``self-play''. 
@@ -815,11 +815,11 @@ We justify this algorithmic design choice by arguing about the trajectory of the
     Initialize Replay Buffer $R$ \;
     \For{$z$ iterations}{
         $G \gets$ create representative graph instance \;
-        $S^*, \mathit{swap\_history} \gets \mathit{LSBM}$($G$, $\gamma$, $\mathit{gnn}_S$) \; \label{alg:training-swap-history}
-        $\mathit{candidates} \gets $ sample $n_s$ training samples from $\mathit{swap\_history}$ \;
-        \For{$S \in \mathit{candidates}$}{
-            $S, \mathit{targets} \gets \mathit{LookaheadSearch(G, S)}$ \;
-            Add $G, S, \mathit{targets}$ to $R$
+        $S^*, H \gets \mathit{LSBM}$($G$, $\gamma$, $\mathit{gnn}_S$) \; \label{alg:training-swap-history}
+        $\mathcal{S} \gets $ sample $n_s$ candidate solutions from $H$ \;
+        \For{$S \in \mathcal{S}$}{
+            $S, t \gets \mathit{LookaheadSearch(G, S)}$ \;
+            Add $G, S, t$ to $R$
         }
         \If{$|R| > \frac{\rho}{2}$}{
             Train $\mathit{gnn}_S$ with data from $R$ \;
@@ -838,7 +838,7 @@ We justify this algorithmic design choice by arguing about the trajectory of the
 \end{figure}
 
 \subsection{Obtaining Target Values}\label{subsec:target-values}
-As already mentioned, a training sample consists of a graph $G = (V,E)$ and a candidate solution $S$. Training is done in an imitation learning setting: In order to obtain target values for the vertices in $V$, we apply a look-ahead search to the candidate solution $S$ as described in Section \ref{sec:lookahead-search}, and the GNN is then trained to imitate this look-ahead search. 
+As already mentioned, a training sample consists of a graph $G = (V,E)$, a candidate solution $S$, and a vector of target values $t$ containing target values for each vertex in $G$. Training is done in an imitation learning setting: In order to obtain target values for the vertices in $V$, we apply a look-ahead search to the candidate solution $S$ as described in Section \ref{sec:lookahead-search}, and the GNN is then trained to imitate this look-ahead search. 
 The look-ahead search returns a set of $j$ neighboring solutions $Y = \{S_1, S_2, \dots, S_j\}$ such that $S_1, S_2, \dots, S_j \subset V$ and $|S| = |S_1| = |S_2| = \dots = |S_j|$. Furthermore, all sets in $Y$ returned by the look-ahead search are the best neighboring solutions with respect to $S$ with equal objective value $f(S) < f(S_1) = f(S_2) = \dots = f(S_j)$. Note that if $S$ is already a local optimum with respect to the neighborhood structure searched by the look-ahead search, then $Y$ might be empty. Targets for the vertices in $V$ are then given by a mapping $y \colon V \rightarrow \{0,1\}$ which is defined the following way: For each $S_i \in Y$, let $S_{i}^1 = S_i \setminus S$, $S_{i}^0 = S \setminus S_i$. In other words, $S_i^1$ contains all vertices in $S_i$ that are outside $S$, and $S_i^0$ contains all vertices inside $S$ that are not in $S_i$. For $v \in (\bigcup_{S_i \in Y} S_i^1) \cup (S \setminus \bigcup_{S_i \in Y} S_i^0)$ we define $y(v) = 1$, and for $u \in \bigcup_{S_i \in Y} S_i^0$ we define $y(u) = 0 $. We demonstrate this mapping by a small example in Figure \ref{fig:target-values}. 
 
 % \fxnote{RE: Anmerkung von Günther: eventuell könnte man hier Prediction aufzuteilen in zwei Werte - 1. Knoten außerhalb von $S$, die hinzugefügt werden sollen, 2. Knoten innerhalb von $S$, die behalten werden sollen. Der derzeitige Ansatz funktioniert aber recht gut, daher wäre dieser Ansatz vielleicht später oder in zukünftiger Arbeit noch zu verfolgen. }
@@ -943,9 +943,9 @@ Recall that during the execution of LSBM we restrict the cardinality of the sets
 Furthermore, by using a fixed size neighborhood determined by $k^*$, the computation scales well on larger graphs. 
 In order to make this training process more stable, we propose to start training with targets computed by searching a small neighborhood like $\Omega_1$ that can be searched exhaustively without restriction, and then changing to a restricted, bigger neighborhood. 
 
-In order to make the training process more stable, introduce a user-defined parameter $\mathit{warmup\_it} \in \mathbb{N}$ to the look-ahead search. This parameter dictates the number of iterations that the scoring function $d_S$ is used to restrict the neighborhood during the look-ahead search instead of the scoring function $\mathit{gnn}_S$, as the latter is initially untrained and thus unlikely to restrict the neighborhood to the most promising vertices. After the first $\mathit{warmup_it}$ iterations of the LSBM-T are completed, the look-ahead search then uses the scoring function $\mathit{gnn}_S$ to restrict the neighborhood. 
+In order to make the training process more stable, introduce a user-defined parameter $\omega \in \mathbb{N}$ to the look-ahead search. This parameter dictates the number of iterations that the scoring function $d_S$ is used to restrict the neighborhood during the look-ahead search instead of the scoring function $\mathit{gnn}_S$, as the latter is initially untrained and thus unlikely to restrict the neighborhood to the most promising vertices. After the first $\omega$ iterations of the training loop in LSBM-T are completed, the look-ahead search then uses the scoring function $\mathit{gnn}_S$ to restrict the neighborhood. 
 
-Furthermore, notice that the optimizations we proposed to exhaustively search the neighborhood $\bigcup_{i=1}^d \Omega_i$ can also be applied to this neighborhood restricted by a scoring function. 
+Furthermore, notice that the optimizations we proposed to exhaustively search the neighborhood $\bigcup_{i=1}^d \Omega_i$ can also be applied to this neighborhood restricted by a GNN-based scoring function. 
 
 % \subsubsection{A Beam Search Based Approach}
 
@@ -1020,35 +1020,35 @@ For centrality-based features, we evaluate \emph{Degree} initialization, where e
 Learning-based feature initialization models are mostly based on generating variations of random walks on the original graph or a derived graph, and then mapping vertices closer together in the feature space that often occur in these random walks together at a certain distance. Notable methods are \emph{DeepWalk} \cite{Perozzi2014}, its generalization \emph{Node2Vec} \cite{GroverL16} that introduces hyperparameters for the random walks, and \emph{Struct2Vec} \cite{FigueiredoRS17}. Whereas DeepWalk and Node2Vec take locality and distance between vertices into account, Struct2Vec is focused on structural similarities, i.e. vertices with structurally similar neighborhoods are mapped closer together, even though they can be at a great distance in the actual graph. We therefore propose to evaluate different parameterizations of Node2Vec and Struct2Vec in the context of our algorithm. 
 
 \subsection{Encoder}
-In general, any graph convolutional network (GCN) model can be used as an encoder. We refer to Residual Gated Graph Convolutional Networks (\cite{Bresson2017}), and GATv2 networks (\cite{Velickovic2018}, \cite{Brody2021}), which we will use in our experiments. Based on these GCN models, we propose two architectures. In the following we denote by $dim_i$ the input dimension of layer $i, 0 \leq i \leq l_e$ of the network, where $l_e$ is the number of layers used in the encoder, $dim_0$ corresponds to the feature dimension of the node features, and for $1 \leq i \leq l_e$ $dim_i$ corresponds to the output dimension of layer $i$. 
+In general, any ConGNN model can be used as an encoder. In recent applications of GNNs in the context of COPs (e.g., \cite{Kool2019}, \cite{Joshi2021}, \cite{Hudson2021}) attention based GNNs seem especially promising, which is why we want to build our proposed GNN architecture on an attention-based encoder as well. 
+In the following we denote by $\mathit{dim}_i$ the input dimension of layer $i, 0 \leq i \leq l_e$ of the network, where $l_e$ is the number of layers used in the encoder, $dim_0$ corresponds to the feature dimension of the node features, and for $1 \leq i \leq l_e$ $\mathit{dim}_i$ corresponds to the output dimension of layer $i$. 
 
-\subsubsection{Residual Gated Graph Convolutional Encoder}
-The update function of a Gated Graph Convolutional layer is defined in \cite{Bresson2017} as 
-\[
-    h_i^{l+1} = f_{\text{G-GCNN}}^l(h_i^l, \{ h_j^l \colon j \rightarrow i \}) = \text{ReLU} \Big( U^l h_i^l + \sum_{j \rightarrow i} \eta_{ij} \odot V^l h^l_j \Big),
-\]
-where $\eta_{ij} = \sigma(A^l h_i^l + B^l h_j^l)$. Here, $A^l, B^l, U^l, V^l$ are learnable parameter matrices and $\odot$ denotes the hadamard-product. 
-Furthermore, the authors define the Residual Gated Graph Convolutional layer by adding the identity operator: 
-\[
-    h_i^{l+1} = f_{\text{G-GCNN}}^l(h_i^l, \{ h_j^l \colon j \rightarrow i \}) + h_i^l
-\]
-The authors suggest that residual layers should be used on successive convolutional layers. 
-We add a batch normalization (\cite{IoffeS15}) layer after every GCN layer, which results in a final update function 
+% \subsubsection{Residual Gated Graph Convolutional Encoder}
+% The update function of a Gated Graph Convolutional layer is defined in \cite{Bresson2017} as 
+% \[
+%     h_i^{l+1} = f_{\text{G-GCNN}}^l(h_i^l, \{ h_j^l \colon j \rightarrow i \}) = \text{ReLU} \Big( U^l h_i^l + \sum_{j \rightarrow i} \eta_{ij} \odot V^l h^l_j \Big),
+% \]
+% where $\eta_{ij} = \sigma(A^l h_i^l + B^l h_j^l)$. Here, $A^l, B^l, U^l, V^l$ are learnable parameter matrices and $\odot$ denotes the hadamard-product. 
+% Furthermore, the authors define the Residual Gated Graph Convolutional layer by adding the identity operator: 
+% \[
+%     h_i^{l+1} = f_{\text{G-GCNN}}^l(h_i^l, \{ h_j^l \colon j \rightarrow i \}) + h_i^l
+% \]
+% The authors suggest that residual layers should be used on successive convolutional layers. 
+% We add a batch normalization (\cite{IoffeS15}) layer after every GCN layer, which results in a final update function 
 
-\[
-    h_i^{l+1} = \text{BN} \Big( f_{\text{G-GCNN}}^l(h_i^l, \{ h_j^l \colon j \rightarrow i \}) + h_i^l \Big),
-\]
-where BN denotes batch normalization. 
+% \[
+%     h_i^{l+1} = \text{BN} \Big( f_{\text{G-GCNN}}^l(h_i^l, \{ h_j^l \colon j \rightarrow i \}) + h_i^l \Big),
+% \]
+% where BN denotes batch normalization. 
 
-We therefore propose a ConvGNN model \textit{RG-GCN}, which makes use of these layers and is structured as follows: 
-\begin{itemize}
-    \item Layer 0: We apply a learnable linear transformation with weight matrix $A_0$ and bias vector $b_0$, these weights are shared among all vertices. 
-    \item Layer 1: We apply a Gated Graph Convolutional layer that maps the feature vectors of dimension $dim_0$ to embeddings of dimension $dim_1$, followed by batch normalization.
-    \item Layers 2, \dots, $l_e$: For layer $i, 2 \leq i \leq l_e$ we apply a Residual Gated Graph Convolutional layer, followed by batch normalization, mapping inputs of dimension $dim_{i-1}$ to dimension $dim_i$. 
-\end{itemize}
+% We therefore propose a ConvGNN model \textit{RG-GCN}, which makes use of these layers and is structured as follows: 
+% \begin{itemize}
+%     \item Layer 0: We apply a learnable linear transformation with weight matrix $A_0$ and bias vector $b_0$, these weights are shared among all vertices. 
+%     \item Layer 1: We apply a Gated Graph Convolutional layer that maps the feature vectors of dimension $dim_0$ to embeddings of dimension $dim_1$, followed by batch normalization.
+%     \item Layers 2, \dots, $l_e$: For layer $i, 2 \leq i \leq l_e$ we apply a Residual Gated Graph Convolutional layer, followed by batch normalization, mapping inputs of dimension $dim_{i-1}$ to dimension $dim_i$. 
+% \end{itemize}
 
-\subsubsection{GATv2 Encoder}
-We build upon the work of \cite{Kool2019}, in which the authors use Attention based GNNs to solve the Euclidean 2D TSP. We use their encoder architecture in this proposed ConvGNN model \textit{GATv2-GCN} and slightly adapt it to our purpose:
+The architecture of our encoder builds upon the work presented in \cite{Kool2019}, in which the authors use attention-based GNNs to solve the Euclidean 2D TSP. We use their encoder architecture in this proposed ConvGNN model and slightly adapt it to our purpose:
 \begin{itemize}
     \item Layer 1: We apply a linear transformation $A_1 x_i + b_1$ with learnable parameters $A_1, b_1$ for each feature vector $x_i, 1 \leq i \leq n$.
     \item Layers 2, \dots, $l_e$: Following the ConvGNN model used by \cite{Kool2019}, each attention layer consists of two sub-layers: A multi-head attention (MHA) layer and a dense, fully connected feed-forward (FF) layer. Each sub-layer also applies a skip-connection and batch-normalization. The following sub-layer definitions are given by the authors: 
@@ -1057,18 +1057,18 @@ We build upon the work of \cite{Kool2019}, in which the authors use Attention ba
         h_i^{(l)} &= \text{BN}^l(\hat{h}_i + FF^l(\hat{h}_i))
     \end{align*}
 \end{itemize}
-In \cite{Kool2019}, the authors use as the MHA layer an attention mechanism which is based on the transformer architecture in \cite{VaswaniSPUJGKP17}. We replace this layer by the newer GATv2 layer from \cite{Brody2021}, which was developed as an improved version of the Graph Attention Network \cite{Velickovic2018}. Here, a GATv2 attention layer is defined by update function 
+In \cite{Kool2019}, the authors use as the MHA layer an attention mechanism which is based on the transformer architecture in \cite{VaswaniSPUJGKP17}. We replace this layer by the newer GATv2 layer from \cite{Brody2021}, which was developed as an improved version of the Graph Attention Network \cite{Velickovic2018}. Here, a GATv2 attention layer is defined by the update function 
 \[
     h_i^{(l)} = \sum_{j \in N_G[i]} \alpha_{ij} W_{1}^{(l)} h_j^{(l-1)}.    
 \]
 The attention coefficients $\alpha_{ij}$ are defined as 
 \[
-    \alpha_{ij} = \frac{1}{z_i} \exp(a^T \mathit{LearkyReLU(W_2^{(l)}h_i^{(l-1)} + W_1 h_j^{(l-1)} )}),    
+    \alpha_{ij} = \frac{1}{z_i} \exp(a^T \mathit{LeakyReLU(W_2^{(l)}h_i^{(l-1)} + W_1 h_j^{(l-1)} )}),    
 \]
 where $z_i$ is a normalization factor and $a, W_1, W_2$ are learned layers. 
 
 \subsection{Context}
-The context is determined by the current candidate solution $S$ and is computed by aggregating the columns of the node embedding matrix that correspond to the vertices in $S$. In general, any order invariant aggregation function $\mathit{agg} \in \{\mathit{sum, mean, max}\}$ can be used, but similar in similar applications $\mathit{mean}$ seems to be the best choice, which is why we primarily use this aggregation function to compute the context. Furthermore, we derive features from the function $d_S$ (the $d_S$-values can of course be used, but also the mean and standard deviation of all $d_S$-values might be valuable information) and append them to the context embeddings, creating feature vectors $e_i ||c_i$ for $v_i, 1 \leq i \leq |V|$ by concatenating the context and the node embeddings. These final embeddings are used as inputs for the decoder. 
+The context is determined by the current candidate solution $S$ and is computed by aggregating the columns of the node embedding matrix that correspond to the vertices in $S$. In general, any order invariant aggregation function $\mathit{agg} \in \{\mathit{sum, mean, max}\}$ can be used, but similar in similar applications $\mathit{mean}$ seems to be the best choice, which is why we primarily use this aggregation function to compute the context. Furthermore, we derive features from the function $d_S$ (the $d_S$-values can of course be used, but also the mean and standard deviation of all $d_S$-values might be valuable information) and append them to the context embeddings, creating feature vectors $e_i \; || \; c_i$ for $v_i, 1 \leq i \leq |V|$ by concatenating the context and the node embeddings. These final embeddings are used as inputs for the decoder. 
 
 \subsection{Decoder}
 The decoder is a regression model that maps the inputs obtained from the node embeddings and the context embedding to scalar values representing scores for the vertices in $V$. We suggest using a simple MLP architecture with a sigmoid activation function on the final layer, mapping the results of the previous layers to scalar values between zero and one. 
