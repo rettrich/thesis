@@ -405,7 +405,7 @@ The parameter $p$ then controls the probability of returning to the most recentl
     \label{fig:node2vec}
 \end{figure}
 
-While Node2Vec is able to capture some structural similarities between vertices in the input graph, it only does so if vertices are at a certain maximum distance of each other, as the random walks traverse the edges of the original graph. Struct2Vec \cite{FigueiredoRS17} is a method for learning node representations from structural identity alone, not considering locality. 
+While Node2Vec is able to capture some structural similarities between vertices in the input graph, it only does so if vertices are at a certain maximum distance of each other, as the random walks traverse the edges of the original graph. Struc2Vec \cite{FigueiredoRS17} is a method for learning node representations from structural identity alone, not considering locality. 
 This is done by creating a multi-layer graph, where each layer is composed of a complete graph containing the vertices of the original graph, but edges between the vertices are weighted by their structural similarity. 
 For a vertex $v$, let $R_k(v)$ be the set of vertices at distance $k$ from $v$, but cannot be reached by a path of length $< k$ from $v$. 
 The authors define the structural similarity of two vertices $u,v$ in layer $k$ in the multi-layer graph as the similarity between the ordered degree sequences of the vertex sets $R_k(u), R_k(v)$.
@@ -418,7 +418,7 @@ Random walks are then sampled from the constructed multi-layer graph. Before eac
 The authors show that the proposed method of sampling random walks from a multi-layer graph can capture structural similarities despite vertices being far apart in the input graph. 
 
 % other notable concepts
-Other notable approaches in node representation learning include HOPE \cite{Mingdong2016}, which was developed specifically to preserve properties of directed graphs and DeepGL \cite{Rossi17a}, which is a deep learning framework for node representation learning that is designed such that learned embeddings transfer well across different networks. Beyond the scope of node representation learning much research has also been done in other areas of network representation learning, e.g. edge representation learning and graph representation learning. In our work we chose to consider and evaluate primarily Node2Vec and Struct2Vec, as these methods are simple to implement and seem the most suited to our application, as they are able to capture local and structural features for non-attributed graphs. 
+Other notable approaches in node representation learning include HOPE \cite{Mingdong2016}, which was developed specifically to preserve properties of directed graphs and DeepGL \cite{Rossi17a}, which is a deep learning framework for node representation learning that is designed such that learned embeddings transfer well across different networks. Beyond the scope of node representation learning much research has also been done in other areas of network representation learning, e.g. edge representation learning and graph representation learning. In our work we chose to consider and evaluate primarily Node2Vec and Struc2Vec, as these methods are simple to implement and seem the most suited to our application, as they are able to capture local and structural features for non-attributed graphs. 
 
 
 \section{Maximum Quasi-Clique Problem}\label{sec:mqcp-related-work}
@@ -713,7 +713,7 @@ There are two main methods that can be found in the literature, which we want to
 In Line \ref{alg:local-search-procedure-search-neighborhood}, the neighborhood defined by $X, Y$ is searched. The subroutine is shown in Algorithm \ref{alg:search-neighborhood}. The neighborhood is searched exhaustively for the swap that maximizes the gain of edges $\Delta_{uv}$. Blocked vertices are not considered for potential swaps, unless the respective gain of edges is greater than the aspiration value $a$. 
 If no improving swap was found, a random unblocked move is chosen $u \in X, v \in Y$. 
 Afterwards, the chosen vertices $u ,v$ are swapped and $\mathit{Freq}$, the short-term memory, and the $d_S$ values are updated correspondingly. 
-Furthermore, we define as stopping criteria: If the best solution $S^*$ does not improve for a fixed amount of iterations $\mathit{max\_iter}$, the procedure is stopped and $S^*$ is returned. Additionally, if a given time limit is reached, the procedure is stopped as well. 
+Furthermore, we define as stopping criteria: If the best solution $S^*$ does not improve for a fixed amount of iterations $r_{\max}$, the procedure is stopped and $S^*$ is returned. Additionally, if a given time limit is reached, the procedure is stopped as well. 
 
 \begin{algorithm}
     \DontPrintSemicolon
@@ -1041,7 +1041,7 @@ We therefore investigate both the application of centrality-based and learning-b
 
 For centrality-based features, we evaluate \emph{Degree} initialization, where each vertex is initialized by its degree, and \emph{EgoNet} initialization: Given a graph $G = (V, E)$, and vertex $v \in V$, let $N(v, d)$ be the set of vertices reachable from $v$ by a path of length at most $d$. The induced subgraph $G[N(v, d)]$ is the $d$-hop-EgoNet of vertex $v$. Note that for $d=1$, $N(v, d)$ is the closed neighborhood of $v$ in $G$. We derive three features from the EgoNet of each vertex in $V$: the size $|N(v, d)|$, the number of edges in the subgraph induced by the EgoNet $|E(G[N(v, d)])|$, and the number of edges that leave $N(v, d)$, i.e. ${\{u, v\} \mid u \in N(v,d), v \notin N(v,d), \{u,v\} \in E}$.     
 
-Learning-based feature initialization models are mostly based on generating variations of random walks on the original graph or a derived graph, and then mapping vertices closer together in the feature space that often occur in these random walks together at a certain distance. Notable methods are \emph{DeepWalk} \cite{Perozzi2014}, its generalization \emph{Node2Vec} \cite{GroverL16} that introduces hyperparameters for the random walks, and \emph{Struct2Vec} \cite{FigueiredoRS17}. Whereas DeepWalk and Node2Vec take locality and distance between vertices into account, Struct2Vec is focused on structural similarities, i.e. vertices with structurally similar neighborhoods are mapped closer together, even though they can be at a great distance in the actual graph. We therefore propose to evaluate different parameterizations of Node2Vec and Struct2Vec in the context of our algorithm. 
+Learning-based feature initialization models are mostly based on generating variations of random walks on the original graph or a derived graph, and then mapping vertices closer together in the feature space that often occur in these random walks together at a certain distance. Notable methods are \emph{DeepWalk} \cite{Perozzi2014}, its generalization \emph{Node2Vec} \cite{GroverL16} that introduces hyperparameters for the random walks, and \emph{Struc2Vec} \cite{FigueiredoRS17}. Whereas DeepWalk and Node2Vec take locality and distance between vertices into account, Struc2Vec is focused on structural similarities, i.e. vertices with structurally similar neighborhoods are mapped closer together, even though they can be at a great distance in the actual graph. We therefore propose to evaluate different parameterizations of Node2Vec and Struc2Vec in the context of our algorithm. 
 
 \subsection{Encoder}
 In general, any ConGNN model can be used as an encoder. In recent applications of GNNs in the context of COPs (e.g., \cite{Kool2019}, \cite{Joshi2021}, \cite{Hudson2021}) attention based GNNs seem especially promising, which is why we want to build our proposed GNN architecture on an attention-based encoder as well. 
@@ -1237,12 +1237,18 @@ When analyzing the performance aspect of the proposed scoring functions, it seem
 
 \chapter{Computational Experiments \& Evaluation}\label{chp:evaluation}
 
-We implemented LSBM and LSBM-T in Julia 1.8.2 using Flux \footnote{https://github.com/FluxML/Flux.jl} and GraphNeuralNetworks \footnote{https://github.com/CarloLucibello/GraphNeuralNetworks.jl}\cite{Lucibello2021GNN} for the implementation of the GNN, and Word2Vec \footnote{https://github.com/JuliaText/Word2Vec.jl} for the implementation of Node2Vec and Struct2Vec. All computational experiments in this chapter are executed on an Intel Xeon E5-2640 processor with 2.40\,GHz. For training the NNs, we use a memory limit of 32GB, whereas for all other experiments a memory limit of 20GB is used. 
+We conduct several computational experiments to evaluate the components and parameter settings of LSBM and LSBM-T. An overview of parameter settings for LSBM and LSBM-T is given in Tables \ref{tab:parameters-lsbm} and \ref{tab:parameters-lsbm-t}. 
+The evaluation of the BS based lower bound heuristic is shown in Section \ref{sec:lbh}, where we compare the runtimes and quality of obtained solutions of the proposed guidance functions with several parameter configurations. 
+Next, we use Section \ref{sec:lsbm-t} to analyze in detail how the different parameter settings of LSBM-T affect the performance of the trained GNNs on graphs of different sizes and densities. We evaluate different feature initialization methods and combinations thereof, values for the look-ahead search parameters $d, k^*$, and layer sizes for the encoder and decoder. Furthermore, we investigate how our approach generalizes to bigger, unseen instances. 
+Afterwards, we show, how different LSBM-specific parameters affect runtime and solution quality in Section \ref{sec:lsbm}. 
+Finally, the performance of our approach is evaluated on well-established benchmark instances and we compare the results to the state-of-the-art. 
 
-In this chapter we present the evaluation of the different components and parameter settings of LSBM and LSBM-T. The parameters of the algorithm itself are listed in Table \ref{tab:parameters-lsbm}, whereas training specific parameter settings are listed in Table \ref{tab:parameters-lsbm-t}. 
-In Section \ref{sec:alg-params} we report experiments regarding the execution and components of LSBM. 
-Section \ref{sec:train-params} shows our evaluation of parameters of LSBM-T. Here, we evaluate, how well the GNN is able to classify vertices with respect to a candidate solution on instances of different sizes and densities, and which training parameter settings lead to the best results. Finally, we evaluate our algorithm on well-established sets of benchmark instances for the MQCP and the MDCP and report the results in Section \ref{sec:benchmark-results}. 
+\subsubsection{A Note on Random Graphs}
+All random graphs are generated using the Erd\H{o}s-Rényi random graph model \cite{erdos59a}, also referred to as \emph{uniform} random graphs, where, given $n \in \mathbb{N}, m \in \mathbb{N}, m \leq \binom{n}{2}$, a random graph is sampled with uniform probability from all graphs with $n$ vertices and $m$ edges. Let it be noted that instead of using the parameter $m$ directly, we are given a density $0 \leq \mathrm{dens}(G) \leq 1$ from which $m$ can be easily obtained as $\lceil \mathrm{dens}(G) \binom{n}{2} \rceil = m$. 
+We use this random graph model to generate graph instances in all our experiments due to its generality and ease of implementation. 
+However, we note that there are other methods to generate random graphs (e.g., \cite{Aiello2001}), and any method can be used within our approach. Especially if some structural properties of the graphs encountered at test time are known, it can lead to improved performance if these structural properties are also present in the generated random instances during training. 
 
+We generally sample $n, \mathrm{dens}(G)$ from distributions $\mathcal{V}, \mathcal{D}$ in order to make the training more robust towards small variations in size and density of the input graphs. The instances generated are thus defined by a tuple, e.g., $(\mathcal{V} \sim \mathcal{N}(200, 10), \mathcal{D} \sim \mathcal{U}(0.45, 0.55))$ denotes that instances are generated by sampling the number of vertices $n$ from a normal distribution with $\mu=200, \sigma^2 = 10$ and the density of the graph is sampled from a uniform distribution with $a=0.45, b=0.55$.
 
 \begin{table}
     \centering
@@ -1251,12 +1257,13 @@ Section \ref{sec:train-params} shows our evaluation of parameters of LSBM-T. Her
         Parameter & Description \\ \hline
         $\mathit{stm}$ & Short Term Memory type (TabuList, ConfigurationChecking) \\
         $\alpha$ & GRASP control variable of construction heuristic, controls randomness \\
-        $p$ & Control variable $p$ for construction heuristic \\
+        $r$ & Parameter $r$ for construction heuristic \\
         $\beta$ & Beam width of beam search used as lower bound heuristic \\
         $\varepsilon$ & Maximum number of successor nodes for a node in lower bound heuristic \\
-        $\mathit{timelimit}$ & Cutoff time for execution of algorithm \\
-        $\mathit{max\_iter}$ & Local search is restarted after $\mathit{max\_iter}$ iterations without improvement \\
-        $k$ & Maximum size of sets $X, Y$ in restricted neighborhood during local search 
+        $t_{\max}$ & Cutoff time for execution of algorithm \\
+        $i_{\max}$ & Local search is restarted after $i_{\max}$ iterations without improvement \\
+        $r_{\max}$ & Execution is terminated after $r_{\max}$ restarts without improvement \\
+        $k^\prime$ & Maximum size of sets $X, Y$ in restricted neighborhood during local search 
     \end{tabular}
     \caption{LSBM parameters}
     \label{tab:parameters-lsbm}
@@ -1268,7 +1275,7 @@ Section \ref{sec:train-params} shows our evaluation of parameters of LSBM-T. Her
         \hline
         Parameter & Description \\ \hline
         $d$ & Depth of lookahead search \\
-        $k^\prime$ & Maximum size of sets $X,Y$ in restricted neighborhood in look-ahead search \\
+        $k^*$ & Maximum size of sets $X,Y$ in restricted neighborhood in look-ahead search \\
         $\mathit{dim}^{\mathit{conv}}_e$ & Dimension of Convolutional layers of encoder \\
         $\mathit{dim}^{\mathit{ff}}_e$ & Dimensions of Feed Forward layers of encoder \\
         $l_e$ & Number of layers in encoder \\
@@ -1276,20 +1283,24 @@ Section \ref{sec:train-params} shows our evaluation of parameters of LSBM-T. Her
         $l_d$ & Number of layers in decoder \\
         $\rho$ & Maximum replay buffer capacity \\
         $z$ & Number of iterations of training loop \\
-        $\mathcal{V} \sim \mathcal{N}(\mu, \sigma^2)$ & Normal distribution for sampling number of vertices of random instances \\
-        $\mathcal{D} \sim \mathcal{U}(a_1, a_2) $ & Uniform distribution for sampling edge density of random instances \\
-        $\mathit{nf}$ & List of node features extracted from the input graph  \\
-        & (Degree, EgoNet, Node2Vec, Struct2Vec)
+        $\mathcal{V}$ & Distribution for sampling number of vertices of random instances \\
+        $\mathcal{D}$ & Distribution for sampling edge density of random instances \\
+        $n_f$ & List of node features extracted from the input graph  \\
+        & (Degree, EgoNet, Node2Vec, Struc2Vec)
     \end{tabular}
-    \caption{LSBM-T}
+    \caption{LSBM-T parameters}
     \label{tab:parameters-lsbm-t}
 \end{table}
 
-\section{Evaluation of Algorithm Parameters}\label{sec:alg-params}
-\fxnote{Maybe first evaluate training parameters, and afterwars algorithm specific parameters? }
-In this Section we focus on evaluating the components or ideas that distinguish LSBM from similar existing algorithms, namely the lower bound heuristic, and the use of a restricted neighborhood of fixed size. Furthermore, we want to evaluate the effectivity of using different short term memory types (Tabu List \cite{djeddi_extension_2019}\cite{zhou_opposition-based_2020}, Configuration Checking \cite{chen_nuqclq_2021}) that can be found in similar algorithms. The remaining components of LSBM build on the work of other authors, namely the idea of using a frequency-based construction heuristic as in \cite{chen_nuqclq_2021} and the general algorithm structure of \cite{djeddi_extension_2019}, which is why we use the reported best found parameters for these components. 
+\subsubsection{Experiment Setup}
+We implemented LSBM and LSBM-T in Julia 1.8.3 using Flux \footnote{https://github.com/FluxML/Flux.jl} and GraphNeuralNetworks \footnote{https://github.com/CarloLucibello/GraphNeuralNetworks.jl}\cite{Lucibello2021GNN} for the implementation of the GNN, and Word2Vec \footnote{https://github.com/JuliaText/Word2Vec.jl} for the implementation of Node2Vec and Struc2Vec. All computational experiments in this chapter are executed on an Intel Xeon E5-2640 processor with 2.40\,GHz. For training the NNs, we use a memory limit of 32GB, whereas for all other experiments a memory limit of 20GB is used. 
 
-\subsection{Lower Bound Heuristic}
+
+% \section{Evaluation of Algorithm Parameters}\label{sec:alg-params}
+% \fxnote{Maybe first evaluate training parameters, and afterwars algorithm specific parameters? }
+% In this Section we focus on evaluating the components or ideas that distinguish LSBM from similar existing algorithms, namely the lower bound heuristic, and the use of a restricted neighborhood of fixed size. Furthermore, we want to evaluate the effectivity of using different short term memory types (Tabu List \cite{djeddi_extension_2019}\cite{zhou_opposition-based_2020}, Configuration Checking \cite{chen_nuqclq_2021}) that can be found in similar algorithms. The remaining components of LSBM build on the work of other authors, namely the idea of using a frequency-based construction heuristic as in \cite{chen_nuqclq_2021} and the general algorithm structure of \cite{djeddi_extension_2019}, which is why we use the reported best found parameters for these components. 
+
+\section{Lower Bound Heuristic}\label{sec:lbh}
 The Beam Search based lower bound heuristic proposed in Section \ref{sec:lower-bound-heuristic} is a heuristic method that produces a feasible solution on its own. We presented three different heuristic guidance functions: \emph{Greedy Completion}, which has a complexity of $O(|S^*|n)$ per node of the beam search tree, where $|S^*|$ is the size of the best found solution, \emph{Feasible Neighbors}, which has a complexity of $O(n)$ per node, and \emph{Number of Edges}, which returns in $O(1)$ the density of the candidate solution represented by a node in the search tree and thus corresponds to a simple generalized greedy construction in the context of Beam Search. 
 
 Our proposed Beam Search is controlled by two hyperparameters, namely the beam width $\beta \in \mathbb{N}$ and the expansion control variable $\varepsilon \in \mathbb{N}$, which is the maximum number of successor nodes for each node in the search tree. Clearly, these two parameters control the breadth of the search tree and thus can be used to balance runtime and solution quality. 
@@ -1303,6 +1314,8 @@ We can also see that the difference in runtime between \emph{Feasible Neighbors}
 Table %\ref{tab:bs-heuristics-bhoslib} 
 shows the results when evaluating instances of the BHOSLIB benchmark set, which are very similar to those obtained on random instances. 
 We conclude that \emph{Greedy Completion} works well on instances where smaller solutions are expected, but on large instances with high densities and low $\gamma$ the much more efficient \emph{Feasible Neighbors} heuristic should be used. 
+
+%Comparison with same runtime
 
 \begin{figure}
     \centering
@@ -1368,15 +1381,8 @@ We conclude that \emph{Greedy Completion} works well on instances where smaller 
     \label{fig:bs-heuristics-random-4}
 \end{figure}
 
-% \subsection{Short Term Memory Type}
 
-
-\subsection{Size of Restricted Neighborhood}
-Try different neighborhood sizes and see how results change.
-
-
-\section{Evaluation of Training Parameters}\label{sec:train-params}
-
+\section{Evaluation of Training Parameters}\label{sec:lsbm-t}
 
 \begin{itemize}
     \item Node Features
@@ -1387,6 +1393,11 @@ Try different neighborhood sizes and see how results change.
 \end{itemize}
 
 \subsection{Node Features}
+In Chapter \ref{chp:gnn} we proposed four different feature initialization methods: Degree (D), EgoNet of size $s \in \{1,2\}$ (E1, E2), Node2Vec (N2V), and Struc2Vec (S2V). What follows is an evaluation of these feature initialization methods and combinations thereof: D+N2V, D+S2V, E1+N2V, E1+S2V, N2V+S2V, and E1+E2. In total we thus investigate ten different node features.
+
+We note that N2V and S2V node features are learned using the recommended settings from the respective papers (\cite{GroverL16}, \cite{FigueiredoRS17}): we sample 20 random walks of length 80 for each vertex in the input graph, and node contexts are generated with a window size of five to produce node embeddings of size 64. Furthermore, for N2V we use a return parameter $p=2$ and a in/out-parameter $q=4$ in order to focus on locality, and for S2V we use a layer transition probability of $0.3$, which is the default setting in the authors S2V implementation. 
+
+
 
 Ten runs each for
 \begin{itemize}
@@ -1394,11 +1405,11 @@ Ten runs each for
     \item EgoNet-1
     \item EgoNet1,EgoNet2
     \item Node2Vec
-    \item Struct2Vec
-    \item Node2Vec,Struct2Vec
-    \item Degree,Struct2Vec
+    \item Struc2Vec
+    \item Node2Vec,Struc2Vec
+    \item Degree,Struc2Vec
     \item Degree,Node2Vec
-    \item EgoNet1, Struct2Vec
+    \item EgoNet1, Struc2Vec
     \item EgoNet1, Node2Vec
 \end{itemize}
 with lookahead depth 1. See how well neighborhood can be learned using these features
@@ -1416,7 +1427,9 @@ Argue that Learning based features are not as useful when used on high density g
 \subsection{GNN Parameters}
 See how layer sizes, number of attention heads affect solution quality and runtime 
 
-\section{Benchmark Results}\label{sec:benchmark-results}
+\section{Evaluation of LSBM Parameters}\label{sec:lsbm}
+
+\section{Results on Benchmark Instances}\label{sec:benchmark-results}
 Try selected benchmark instances that are not too large and not too dense and show best results. 
 Ideally, use some of the BHOSLIB instances, as one model can be trained for a set of 5 instances. 
 
@@ -1584,8 +1597,9 @@ Future work:
     \item Replace $d_S$ completely by defining stronger context
     \item Evaluate other feature initialization method, especially ones more suitable for very dense graphs
     \item utilize GPU
-    \item train specifically for specific instances
-    \item adapt to other mcp relaxations
+    \item Parallelization: GNNs are parallelizable, multiple local search procedures with different initial candidate solutions, gathering training data can be parallelized
+    \item gather real-world datasets and train to specifically distributed instances
+    \item adapt to other mcp relaxations 
     \item split prediction between vertices inside / outside 
     \item investigate other approaches to include gnns into search 
 \end{itemize}
