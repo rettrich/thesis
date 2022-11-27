@@ -1402,6 +1402,7 @@ We note that N2V and S2V node features are learned using the recommended setting
 
 In each experimental run, we trained ten models for each node feature on uniform random graphs of different sizes and densities. 
 Furthermore, in each run we use 20 unseen graphs drawn from the same distribution and evaluate the trained models by the average solution quality obtained on these test instances. The results are then grouped by the feature initialization method. 
+Moreover, all models are trained with a look-ahead depth $d=1$, as we want to find out which node features are most suited to imitate such a look-ahead search. 
 
 The first experiment is done to investigate the effect of the choice of feature initialization methods on relatively small graphs including a wider range of densities: $\mathcal{V} \sim \mathcal{N}(200, 5), \mathcal{D} \sim \mathcal{U}(0.45, 0.55)$. We set $\gamma=0.95$. The results are shown in \ref{fig:V200-node-features}, and while the differences seem marginal, we notice a slightly higher mean and more stable results for D+N2V, E1, and N2V+S2V. 
 
