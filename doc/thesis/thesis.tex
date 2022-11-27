@@ -1243,6 +1243,8 @@ Next, we use Section \ref{sec:lsbm-t} to analyze in detail how the different par
 Afterwards, we show, how different LSBM-specific parameters affect runtime and solution quality in Section \ref{sec:lsbm}. 
 Finally, the performance of our approach is evaluated on well-established benchmark instances and we compare the results to the state-of-the-art. 
 
+% We focus our evaluation on dense graphs, 
+
 \subsubsection{A Note on Random Graphs}
 All random graphs are generated using the Erd\H{o}s-Rényi random graph model \cite{erdos59a}, also referred to as \emph{uniform} random graphs, where, given $n \in \mathbb{N}, m \in \mathbb{N}, m \leq \binom{n}{2}$, a random graph is sampled with uniform probability from all graphs with $n$ vertices and $m$ edges. Let it be noted that instead of using the parameter $m$ directly, we are given a density $0 \leq \mathrm{dens}(G) \leq 1$ from which $m$ can be easily obtained as $\lceil \mathrm{dens}(G) \binom{n}{2} \rceil = m$. 
 We use this random graph model to generate graph instances in all our experiments due to its generality and ease of implementation. 
@@ -1311,9 +1313,10 @@ we show the obtained solution qualities and runtimes of the three heuristics on 
 As to be expected, \emph{Greedy Completion} outperforms the other heuristics in terms of solution quality, but due to its time complexity, it should only be used when smaller solutions are to be expected, as the time complexity per node of the search tree is dependent on the solution length when using this heuristic evaluation function. 
 In comparison, the solution quality obtained when using \emph{Feasible Neighbors} is slightly lower, but especially when larger solution are expected, the speedup is significant.  
 We can also see that the difference in runtime between \emph{Feasible Neighbors} and \emph{Number of Edges} is marginal, while the former produces better results in all tested hyperparameter settings. 
-Table %\ref{tab:bs-heuristics-bhoslib} 
-shows the results when evaluating instances of the BHOSLIB benchmark set, which are very similar to those obtained on random instances. 
+% Table %\ref{tab:bs-heuristics-bhoslib} 
+% shows the results when evaluating instances of the BHOSLIB benchmark set, which are very similar to those obtained on random instances. 
 We conclude that \emph{Greedy Completion} works well on instances where smaller solutions are expected, but on large instances with high densities and low $\gamma$ the much more efficient \emph{Feasible Neighbors} heuristic should be used. 
+Thus, we set $\beta=10, \varepsilon=10$ in all further experiments and use the heuristic guidance function \emph{Feasible Neighbors}, as we argue that the speedup compared to \emph{Greedy Completion} outweighs the loss in solution quality within the context of LSBM. 
 
 %Comparison with same runtime
 
@@ -1393,26 +1396,35 @@ We conclude that \emph{Greedy Completion} works well on instances where smaller 
 \end{itemize}
 
 \subsection{Node Features}
-In Chapter \ref{chp:gnn} we proposed four different feature initialization methods: Degree (D), EgoNet of size $s \in \{1,2\}$ (E1, E2), Node2Vec (N2V), and Struc2Vec (S2V). What follows is an evaluation of these feature initialization methods and combinations thereof: D+N2V, D+S2V, E1+N2V, E1+S2V, N2V+S2V, and E1+E2. In total we thus investigate ten different node features.
+In Chapter \ref{chp:gnn} we proposed four different feature initialization methods: Degree (D), EgoNet of size 1 and 2, (E1, E2), Node2Vec (N2V), and Struc2Vec (S2V). What follows is an evaluation of these feature initialization methods and combinations thereof: D+N2V, D+S2V, E1+N2V, E1+S2V, N2V+S2V, and E1+E2. In total we thus investigate ten different node features. 
 
 We note that N2V and S2V node features are learned using the recommended settings from the respective papers (\cite{GroverL16}, \cite{FigueiredoRS17}): we sample 20 random walks of length 80 for each vertex in the input graph, and node contexts are generated with a window size of five to produce node embeddings of size 64. Furthermore, for N2V we use a return parameter $p=2$ and a in/out-parameter $q=4$ in order to focus on locality, and for S2V we use a layer transition probability of $0.3$, which is the default setting in the authors S2V implementation. 
 
+In each experimental run, we trained ten models for each node feature on uniform random graphs of different sizes and densities. 
+Furthermore, in each run we use 20 unseen graphs drawn from the same distribution and evaluate the trained models by the average solution quality obtained on these test instances. The results are then grouped by the feature initialization method. 
+
+The first experiment is done to investigate the effect of the choice of feature initialization methods on relatively small graphs including a wider range of densities: $\mathcal{V} \sim \mathcal{N}(200, 5), \mathcal{D} \sim \mathcal{U}(0.45, 0.55)$. We set $\gamma=0.95$. The results are shown in \ref{fig:V200-node-features}, and while the differences seem marginal, we notice a slightly higher mean and more stable results for D+N2V, E1, and N2V+S2V. 
+
+In order to investigate the performance of the models on high density graphs, we conduct a second experiment with graphs of fixed size $|V|=450$ and a density $\mathcal{D} \sim \mathcal{0.82, 0.825}$, which corresponds to the size and densities of the benchmark instances frb30-15-$i, 1\leq i \leq 5$. 
+Note that we have eliminated the node feature E1+E2 in this test run, as the generated graphs are so dense that the EgoNet of size two is equivalent to the input graph itself and does not provide any useful information. 
+Again, we set $\gamma=0.95$ and show the average solution quality per model on 20 unseen graphs in Figure \ref{fig:V450-node-features}. 
+Interestingly, the performance of the best model for each feature initialization method is almost identical. 
+However, when taking into account all trained models, E1, E1+N2V perform best, followed by the learning-based feature initialization methods N2V, S2V, N2V+S2V. 
 
 
-Ten runs each for
-\begin{itemize}
-    \item Degree
-    \item EgoNet-1
-    \item EgoNet1,EgoNet2
-    \item Node2Vec
-    \item Struc2Vec
-    \item Node2Vec,Struc2Vec
-    \item Degree,Struc2Vec
-    \item Degree,Node2Vec
-    \item EgoNet1, Struc2Vec
-    \item EgoNet1, Node2Vec
-\end{itemize}
-with lookahead depth 1. See how well neighborhood can be learned using these features
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{graphics/V200-045-055.pdf}
+    \caption[]{Results for uniform random graphs with $ \mathcal{V} \sim \mathcal{N}(200, 5), \mathcal{D} \sim \mathcal{U}(0.45, 0.55)$, MQCP parameter $\gamma=0.95$. We trained ten models for each feature initialization method and group results by average solution quality per model on unseen test instances. }
+    \label{fig:V200-node-features}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{graphics/V450-082-0825.pdf}
+    \caption[]{Results for uniform random graphs with $ |V| = 450, \mathcal{D} \sim \mathcal{U}(0.82, 0.825)$. }
+    \label{fig:V450-node-features}
+\end{figure}
 
 \subsection{Lookahead Search Parameters}
 See how well the gnn trained with lookahead depth 1, 2, 3 is able to perform on unseen training data. 
