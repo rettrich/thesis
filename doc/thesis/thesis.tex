@@ -176,7 +176,7 @@ Then, in Chapter \ref{chp:local-search-algorithm} we propose our algorithm LSBM 
 
 \chapter{Considered Problems and Definitions}\label{chp:problems-definitions}
 
-In this chapter we provide all necessary definitions and notations used throughout this thesis. We list commonly used graph theoretic notations and defintions in Section \ref{sec:notation}. Afterwards, Sections \ref{sec:mcp} -- \ref{sec:mdcp} show definitions for the problems considered in this thesis, starting with the Maximum Clique Problem, from which all considered problems are derived. Additionally, we list notable properties of the considered problems that are relevant for developing well-performing algorithms for these problems. 
+In this chapter we provide all necessary definitions and notations used throughout this thesis. We list commonly used graph theoretic notations and definitons in Section \ref{sec:notation}. Afterwards, Sections \ref{sec:mcp} -- \ref{sec:mdcp} show definitions for the problems considered in this thesis, starting with the Maximum Clique Problem, from which all considered problems are derived. Additionally, we list notable properties of the considered problems that are relevant for developing well-performing algorithms for these problems. 
 
 \section{Notation}\label{sec:notation}
 
@@ -281,7 +281,7 @@ The MDCP was first introduced in \cite{Yu2006} in the context of predicting prot
 
 \subsection{Properties of the MDCP}
 
-Although the MQCP and the MDCP are similar relaxations of the MCP, there are some key differences between the problems. It can easily be seen that the property of being a $s$-defective clique is hereditary: If $S$ is an $s$-defective clique with at most $s$ edges missing in $G[S]$, the removal of a vertex $v \in S$ cannot ``introduce'' any new missing edges.  
+Although the MQCP and the MDCP are similar relaxations of the MCP, there are some key differences between the problems. It can easily be seen that the property of being an $s$-defective clique is hereditary: If $S$ is an $s$-defective clique with at most $s$ edges missing in $G[S]$, the removal of a vertex $v \in S$ cannot ``introduce'' any new missing edges.  
 However, for a fixed size $k$, the two problems become interreducible: 
 Finding a $k$-$s$-defective clique is equivalent to finding a $k$-$\gamma$-quasi clique with $\gamma = \frac{\binom{k}{2} - s}{\binom{k}{2}} $, and finding a $k$-$\gamma$-quasi clique is equivalent to finding a $k$-$s$-defective clique, where $s = \binom{k}{2} - \lceil \gamma \binom{k}{2} \rceil$. 
 When approximating the maximum $s$-defective clique in a graph $G$ by a series of $s$-defective cliques of increasing size, the problem can therefore be reduced to finding a series of $\gamma$-quasi cliques and vice-versa.
@@ -311,7 +311,7 @@ The authors of \cite{Sperduti1997} were the first to research the application of
 A comprehensive overview of the taxonomy of GNNs and a review of applications and methods can be found in \cite{Wu2019} and \cite{Zhou2020}. 
 
 In \cite{Wu2019}, GNNs are classified into four main categories: Recurrent GNNs, Convolutional GNNs (ConvGNNs), Graph autoencoders, and Spatial-temporal graph neural networks. In the following, we conform to the authors' definitions of GNN-related concepts. 
-ConvGNNs can further be categorized as spectral-based and spatial-based GNNs. Spectral-based GNNs are based on signal processing theory, and a graph is in this context thus seen as a signal which is transformed to a spectral domain by a graph Fourier transform. The convolution operation is then conducted in the spectral domain, whereafter the graph signal is transformed back using the inverse graph Fourier transform. 
+ConvGNNs can further be categorized as spectral-based and spatial-based GNNs. Spectral-based GNNs are based on signal processing theory, and a graph is in this context thus seen as a signal which is transformed to a spectral domain by a graph Fourier transform. The convolution operation is then conducted in the spectral domain, and afterwards the graph signal is transformed back using the inverse graph Fourier transform. 
 In contrast, spatial-based ConvGNNs apply convolution operations directly on the input graph based on its topology. 
 In the context of our work, spatial-based ConvGNNs are the most relevant. 
 
@@ -330,7 +330,7 @@ More precisely, to update the representation $h_v^{(k)}$ of a node $v$ in layer 
     h_v^{(k)} = U_k (h_v^{(k-1)}, \sum_{u \in N_G(v)} M_k(h_v^{(k-1)}, h_u^{(k-1)}, x_{vu}^{e}))
 \]
 Here, $U_k(\cdot), M_k(\cdot)$ are functions with learnable parameters, $h_v^{(0)} = x_v$, and $x_{vu}^{e}$ is the feature vector of the (directed) edge from $v$ to $u$. Note that edge features are however not required, as also our work in this thesis utilizes spatial-based ConvGNNs on graphs that only contain information about vertices, but not about edges. 
-The functions $U_k, M_k$ can be realized by any learnable function and thus cover many concrete realizations of the concept, for example $M_k$ can be an Multi-Layer Perceptron (MLP) that takes the concatenation of $(h_v^{(k-1)}, h_u^{(k-1)}, x_{vu}^{e})$ as inputs to compute its message, and $U_k$ is often realized by a ReLU activation function, followed by a batch-normalization \cite{IoffeS15} layer with learnable parameters. 
+The functions $U_k, M_k$ can be realized by any learnable function and thus cover many concrete realizations of the concept, for example $M_k$ can be a Multi-Layer Perceptron (MLP) that takes the concatenation of $(h_v^{(k-1)}, h_u^{(k-1)}, x_{vu}^{e})$ as inputs to compute its message, and $U_k$ is often realized by a ReLU activation function, followed by a batch-normalization \cite{IoffeS15} layer with learnable parameters. 
 
 In recent years, researchers have developed attention-based spatial ConvGNNs (e.g., \cite{Velickovic2018}, \cite{Zhang2018}, \cite{Brody2021}) in order to translate the popular attention mechanism, which was originally introduced in the context of sequence-based tasks (\cite{Bahdanau2015}, \cite{VaswaniSPUJGKP17}), to graph-based tasks. In contrast to the basic spatial-based convolution operator discussed before, attention-based convolution operators assign different weights for different neighbors in an attempt to filter noise and focus the ``attention'' only on the most relevant information. 
 Most prominently, the graph attention network (GAT) proposed in \cite{Velickovic2018} computes the state of a node $v$ by the following update function: 
@@ -479,7 +479,7 @@ In recent years, several heuristic solution approaches have been presented. In \
 
 A multi-start tabu search algorithm is presented in \cite{djeddi_extension_2019}. It builds upon an adaptive multistart tabu search algorithm that was initially proposed for the MCP. The authors offer an analysis of the considered neighborhood structures used during the tabu search and adapt the intensification and diversification mechanisms of this algorithm to be suitable for the MQCP. The results of the computational experiments by the authors show that the performance of their tabu search algorithm is highly competitive to the state-of-the-art and performs well on established benchmark instances. 
 
-Furthermore, in \cite{zhou_opposition-based_2020}, an opposition-based memetic algorithm for the MQCP is presented. The authors combine the ideas of using a genetic algorithm to build a population of candidate solutions with a tabu search that is used to improve these solutions. Their main contribution is the incorporation of an opposition-based construction heuristic. Every time an offspring, which corresponds to a candidate solution $S$, is created by means of a recombination operator, another offspring $\overline{S}$ is created that does not share any vertices with $S$. Both opposing individuals $S, \overline{S}$ are then improved by a tabu search procedure, and the indiviual that leads to a better solution through tabu search is then added to the population. The authors compare the performance of their algorithm to RIG~\cite{oliveira2013construction}, and three variations of BRKGA \cite{pinto2015biased},\cite{pinto_biased_2018}, \cite{pinto2021brkga} and show that their algorithm outperforms these approaches.
+Furthermore, in \cite{zhou_opposition-based_2020}, an opposition-based memetic algorithm for the MQCP is presented. The authors combine the ideas of using a genetic algorithm to build a population of candidate solutions with a tabu search that is used to improve these solutions. Their main contribution is the incorporation of an opposition-based construction heuristic. Every time an offspring, which corresponds to a candidate solution $S$, is created by means of a recombination operator, another offspring $\overline{S}$ is created that does not share any vertices with $S$. Both opposing individuals $S, \overline{S}$ are then improved by a tabu search procedure, and the individual that leads to a better solution through tabu search is then added to the population. The authors compare the performance of their algorithm to RIG~\cite{oliveira2013construction}, and three variations of BRKGA \cite{pinto2015biased},\cite{pinto_biased_2018}, \cite{pinto2021brkga} and show that their algorithm outperforms these approaches.
 
 In \cite{chen_nuqclq_2021}, another local search based algorithm is presented. The authors make two main contributions to existing local search based approaches: Firstly, they identify weaknesses in the scoring function used to determine, which vertices should be used during iterations of the local search procedure. Their computational experiments show that in most iterations, there are several vertices with the same score, thus they provide a secondary scoring function that serves as a tiebreaker. The value of this secondary scoring function is proportional to the number of iterations that a vertex was not moved during local search, thus it strongly encourages exploration of the search space. Secondly, they replace the commonly used tabu list by configuration checking, which is another short term memory type that can be used to prevent cycling through the search space. The authors present their own variation of configuration checking, which they call BoundedCC. 
 In general, configuration checking is a short term memory mechanism that blocks a vertex $v$ from being considered in local search until one of its (unblocked) neighbors is moved. BoundedCC refines this strategy by keeping track of the values $\mathit{confChange(v)}, \mathit{threshold(v)}$, and it is parameterized by a user-defined value $\mathit{ub\_threshold} \in \mathbb{N}$. A vertex is blocked, if $\mathit{confChange(v)} < \mathit{threshold(v)}$ holds. There are three update rules that are defined as follows: 
@@ -490,7 +490,7 @@ In general, configuration checking is a short term memory mechanism that blocks 
 \end{itemize}
 The authors compare their algorithm to those presented in \cite{pinto2021brkga}, \cite{djeddi_extension_2019}, and \cite{zhou_opposition-based_2020} and show that their algorithm outperforms similar algorithms in terms of solution quality and runtime. 
 
-Finally, the most recent heuristic solution approach for the MQCP at the time of writing this thesis is presented in \cite{peng_solving_2021}. Here, the authors propose a hybrid artificial bee colony algorithm (HBAC), which incorporates an opposition-based construction phase and then adapts the artificial bee colony framework to the MQCP. The algorithm again uses tabu search to improve initially constructed candidate solutions. 
+Finally, the most recent heuristic solution approach for the MQCP at the time of writing this thesis is presented in \cite{peng_solving_2021}. Here, the authors propose a hybrid artificial bee colony algorithm, which incorporates an opposition-based construction phase and then adapts the artificial bee colony framework to the MQCP. The algorithm again uses tabu search to improve initially constructed candidate solutions. 
 The authors report new best results on several instances that were not included in the evaluation of \cite{chen_nuqclq_2021}. A comparison is made only with RIG~\cite{oliveira2013construction}, and \cite{pinto2015biased}, \cite{pinto_biased_2018}, and \cite{pinto2021brkga}, which are outperformed on other instances by \cite{chen_nuqclq_2021} and \cite{zhou_opposition-based_2020}. 
 
 As we have extensively studied the literature regarding heuristic solution approaches, we found that most state-of-the-art methods are based on or utilize metaheuristics based on the local search paradigm. Therefore, we let previous work on the MQCP lead our way and plan to build our work upon the local search paradigm as well. 
@@ -712,7 +712,7 @@ The sets $X, Y$ are created as described before, with an additional restriction:
 There are two main methods that can be found in the literature, which we want to evaluate in our algorithm: 
 \begin{itemize}
     \item In \cite{djeddi_extension_2019} and \cite{zhou_opposition-based_2020}, a tabu list is used to prevent cycling. Each time a vertex is added to or removed from the solution, it is added to the tabu list for a fixed number of iterations. While a vertex is in the tabu list, it is blocked and cannot be used in swaps. In \cite{djeddi_extension_2019}, the authors use two tabu lists: One for moving vertices out of the candidate solution, and one for adding vertices to the candidate solution. In \cite{zhou_opposition-based_2020}, a single tabu list is used for both operations. 
-    \item In \cite{chen_nuqclq_2021}, the authors use Configuration Checking. In its simplest form, once a vertex $v$ is moved out of the candidate Solution, it is blocked from being moved again until at least one neighbor of $v$ is moved. The authors refine this strategy by using a threshold for each node $v$ that starts with $\mathit{threshold}(v) = 1$ for all $v \in V$. Each time a vertex $v$ is moved into the candidate solution, $\mathit{threshold}(v)$ is increased by 1. When $v$ is moved out of the candidate solution, it is blocked from being moved again, until $\mathit{threshold}(v)$ of its neighbors have been moved. Additionally, if $\mathit{threshold}(v) > \mathit{ub\_threshold}$, where $\mathit{ub\_threshold}$ is a user-defined upper bound, then $\mathit{threshold}(v)$ is reset to 1. 
+    \item Configuration Checking is used by the authors of \cite{chen_nuqclq_2021}. In its simplest form, once a vertex $v$ is moved out of the candidate Solution, it is blocked from being moved again until at least one neighbor of $v$ is moved. The authors refine this strategy by using a threshold for each node $v$ that starts with $\mathit{threshold}(v) = 1$ for all $v \in V$. Each time a vertex $v$ is moved into the candidate solution, $\mathit{threshold}(v)$ is increased by 1. When $v$ is moved out of the candidate solution, it is blocked from being moved again, until $\mathit{threshold}(v)$ of its neighbors have been moved. Additionally, if $\mathit{threshold}(v) > \mathit{ub\_threshold}$, where $\mathit{ub\_threshold}$ is a user-defined upper bound, then $\mathit{threshold}(v)$ is reset to 1. 
 \end{itemize}
 In Line \ref{alg:local-search-procedure-search-neighborhood}, the neighborhood defined by $X, Y$ is searched. The subroutine is shown in Algorithm \ref{alg:search-neighborhood}. The neighborhood is searched exhaustively for the swap that maximizes the gain of edges $\Delta_{uv}$. Blocked vertices are not considered for potential swaps, unless the respective gain of edges is greater than the aspiration value $a$. 
 If no improving swap was found, a random unblocked move is chosen $u \in X, v \in Y$. 
@@ -869,8 +869,8 @@ We justify this algorithmic design choice by arguing about the trajectory of the
 \subsection{Obtaining Target Values}\label{subsec:target-values}
 As already mentioned, a training sample consists of a graph $G = (V,E)$, a candidate solution $S$, and a vector of target values $t$ containing target values for each vertex in $G$. Training is done in an imitation learning setting: In order to obtain target values for the vertices in $V$, we apply a look-ahead search to the candidate solution $S$ as described in Section \ref{sec:lookahead-search}, and the GNN is then trained to imitate this look-ahead search. 
 
-The computation of target vector $t$ is shown in Algorithm \ref{alg:target-values}.
-The look-ahead search first computes the set $\mathcal{T} = \{(X_1, Y_1), \dots, (X_j, Y_j)\}$ of vertices $X_i \in S, Y_i \in V \setminus S, 1 \leq i \leq j$ that need to be removed from and added to the current candidate solution $S$, respectively, in order to obtain a neighboring solution with respect to $S$ that maximizes the objective value. 
+The computation of target vector $t$ is shown in Algorithm \ref{alg:target-values}. It is a subroutine called at the end of the look-ahead search. 
+The look-ahead search first computes the set $\mathcal{T} = \{(X_1, Y_1), \dots, (X_j, Y_j)\}$ of vertices $X_i \in S, Y_i \in V \setminus S, 1 \leq i \leq j$ that need to be removed from and added to the current candidate solution $S$, respectively, in order to obtain a neighboring solution with respect to $S$ that maximizes the objective value. This set $\mathcal{T}$ is passed as an input argument in Algorithm \ref{alg:target-values} to compute the target vector $t$.   
 Note that there might be multiple such neighboring solutions with equal objective value, or none, if $S$ is a local optimum. 
 The target vector $t$ is then initialized by setting $t[u] = 0$ for $u \in V \setminus S$, and $t[v] = 1$ for $v \in V \setminus S$. Then, for every pair of vertex sets $(X_i, Y_i) \in \mathcal{T}$ we set $t[u] = 0$ for $u \in X_i$ and $t[v] = 1$ for $v \in Y_i$. The resulting target vector $t$ is then returned. 
 We demonstrate this computation by a small example in Figure \ref{fig:target-values}. 
@@ -882,9 +882,8 @@ We demonstrate this computation by a small example in Figure \ref{fig:target-val
 
 \begin{algorithm}
     \DontPrintSemicolon
-    \KwIn{Graph $G$, Candidate solution $S$}
+    \KwIn{Graph $G$, Candidate solution $S$, Set $\mathcal{T}$}
     \KwOut{Vector of target values $t$}
-    $\mathcal{T} \gets \mathit{LookaheadSearch}(G, S)$ \;
     $t \gets [0 \dots 0]$ \tcp*{$n$-element vector}
     \For{$u \in S$}{
         $t[u] = 1$\;
@@ -1070,7 +1069,7 @@ In the remaining Section we will discuss feature selection, the structure of the
 \subsection{Node Features}
 Since the node embeddings are only computed once per graph, it is essential that the computed node features represent the vertices in a meaningful way by extracting similarities and differences of vertices and their surrounding neighborhoods. More precisely, high quality features should map vertices with similar neighborhoods closer together in the feature space, whereas vertices that are very distant from each other and do not share any structural similarities should be further apart. Moreover, it is essential that the chosen feature initialization method is generalizes well on unseen graphs, as the GNN used in our algorithm is trained offline on representative problem instances that differ from the instances encountered during execution. 
 
-In \cite{Duong2019} the authors analyze the effect of different node feature initialization methods on node classification task. They distinguish between centrality based approaches (e.g. degree based initialization, number of triangles that a vertex participates in, etc), and learning-based approaches (e.g. DeepWalk \cite{Perozzi2014}, where vertices are mapped closer together, if the probability that they occur in a random walk together is higher). 
+In \cite{Duong2019} the authors analyze the effect of different node feature initialization methods on node classification task. They distinguish between centrality based approaches (e.g. degree based initialization, number of triangles that a vertex participates in, etc.), and learning-based approaches (e.g. DeepWalk \cite{Perozzi2014}, where vertices are mapped closer together, if the probability that they occur in a random walk together is higher). 
 The authors conclude that centrality-based approaches are generally not as suitable as learning-based approaches by evaluating different feature initialization approaches in a node classification setting. 
 We therefore investigate both the application of centrality-based and learning-based feature initialization methods. 
 
@@ -1079,7 +1078,7 @@ For centrality-based features, we evaluate \emph{Degree} initialization, where e
 Learning-based feature initialization models are mostly based on generating variations of random walks on the original graph or a derived graph, and then mapping vertices closer together in the feature space that often occur in these random walks together at a certain distance. Notable methods are \emph{DeepWalk} \cite{Perozzi2014}, its generalization \emph{Node2Vec} \cite{GroverL16} that introduces hyperparameters for the random walks, and \emph{Struc2Vec} \cite{FigueiredoRS17}. Whereas DeepWalk and Node2Vec take locality and distance between vertices into account, Struc2Vec is focused on structural similarities, i.e. vertices with structurally similar neighborhoods are mapped closer together, even though they can be at a great distance in the actual graph. We therefore propose to evaluate different parameterizations of Node2Vec and Struc2Vec in the context of our algorithm. 
 
 \subsection{Encoder}
-In general, any ConGNN model can be used as an encoder. In recent applications of GNNs in the context of COPs (e.g., \cite{Kool2019}, \cite{Joshi2021}, \cite{Hudson2021}) attention based GNNs seem especially promising, which is why we want to build our proposed GNN architecture on an attention-based encoder as well. 
+In general, any ConGNN model can be used as an encoder. Recent applications of GNNs in the context of COPs (e.g., \cite{Kool2019}, \cite{Joshi2021}, \cite{Hudson2021}) show that attention based GNNs seem especially promising, which is why we want to build our proposed GNN architecture on an attention-based encoder as well. 
 In the following we denote by $\mathit{dim}_i$ the input dimension of layer $i, 0 \leq i \leq l_e$ of the network, where $l_e$ is the number of layers used in the encoder, $dim_0$ corresponds to the feature dimension of the node features, and for $1 \leq i \leq l_e$ $\mathit{dim}_i$ corresponds to the output dimension of layer $i$. 
 
 % \subsubsection{Residual Gated Graph Convolutional Encoder}
@@ -1276,7 +1275,7 @@ We conduct several computational experiments to evaluate the components and para
 The evaluation of the BS based lower bound heuristic is shown in Section \ref{sec:lbh}, where we compare the runtimes and quality of obtained solutions of the proposed guidance functions with several parameter configurations. 
 Next, we use Section \ref{sec:lsbm-t} to analyze in detail how the different parameter settings of LSBM-T affect the performance of the trained GNNs on graphs of different sizes and densities. We evaluate different feature initialization methods and combinations thereof, values for the look-ahead search parameters $d, k^*$, and layer sizes for the encoder and decoder. Furthermore, we investigate how our approach generalizes to bigger, unseen instances. 
 Afterwards, we show, how different LSBM-specific parameters affect runtime and solution quality in Section \ref{sec:lsbm}. 
-Finally, the performance of our approach is evaluated on well-established benchmark instances and we compare the results to the state-of-the-art. 
+Finally, the performance of our approach is evaluated on well-established benchmark instances, and we compare the results to the state-of-the-art. 
 
 % We focus our evaluation on dense graphs, 
 
@@ -1311,7 +1310,7 @@ We generally sample $n, \mathrm{dens}(G)$ from distributions $\mathcal{V}, \math
     \begin{tabular}{ll}
         \hline
         Parameter & Description \\ \hline
-        $d$ & Depth of lookahead search \\
+        $d$ & Depth of look-ahead search \\
         $k^*$ & Maximum size of sets $X,Y$ in restricted neighborhood in look-ahead search \\
         $\mathit{dim}^{\mathit{conv}}_e$ & Dimension of Convolutional layers of encoder \\
         $\mathit{dim}^{\mathit{ff}}_e$ & Dimensions of Feed Forward layers of encoder \\
@@ -1424,7 +1423,7 @@ Thus, we set $\beta=10, \varepsilon=10$ in all further experiments and use the h
 
 \begin{itemize}
     \item Node Features
-    \item Lookahead Depth, Lookahead Breadth
+    \item Look-ahead Depth, Look-ahead Breadth
     \item Generalization on bigger graphs
     \item Parameters and runtime
     \item Evaluation on (selected) instances from DIMACS, BHOSLIB 
