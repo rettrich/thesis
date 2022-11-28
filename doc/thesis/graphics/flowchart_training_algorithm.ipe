@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE ipe SYSTEM "ipe.dtd">
 <ipe version="70218" creator="Ipe 7.2.24">
-<info created="D:20220901161823" modified="D:20220901161823"/>
+<info created="D:20220901161823" modified="D:20221128145050"/>
 <ipestyle name="basic">
 <symbol name="arrow/arc(spx)">
 <path stroke="sym-stroke" fill="sym-stroke" pen="sym-pen">
@@ -312,18 +312,18 @@ h
 <page>
 <layer name="alpha"/>
 <view layers="alpha" active="alpha"/>
-<text layer="alpha" matrix="1 0 0 1 -62.5407 7.00475" transformations="translations" pos="80 720" stroke="black" type="label" width="63.996" height="6.918" depth="0" valign="baseline">Initialize GNN</text>
+<text layer="alpha" matrix="1 0 0 1 -62.5407 7.00475" transformations="translations" pos="80 720" stroke="black" type="label" width="51.758" height="6.926" depth="1.93" valign="baseline">Initialize $g_S$</text>
 <text matrix="1 0 0 1 -62.5407 7.00475" transformations="translations" pos="80 704" stroke="black" type="label" width="25.575" height="6.529" depth="0" valign="baseline" style="math">\mathit{it} = 0</text>
 <text matrix="1 0 0 1 -49.1149 0" transformations="translations" pos="192 720" stroke="black" type="label" width="114.75" height="6.918" depth="0" valign="baseline">Generate random instance</text>
-<text matrix="1 0 0 1 4.12415 9.76412" transformations="translations" pos="336 720" stroke="black" type="label" width="125.142" height="6.926" depth="1.93" valign="baseline">Run Local Search Algorithm</text>
-<text matrix="1 0 0 1 4.12415 9.76412" transformations="translations" pos="336 704" stroke="black" type="label" width="142.175" height="7.479" depth="1.93" valign="baseline">with GNN as scoring function *
+<text matrix="1 0 0 1 4.12415 9.76412" transformations="translations" pos="336 720" stroke="black" type="label" width="109.534" height="6.926" depth="1.93" valign="baseline">Run LSBM with scoring </text>
+<text matrix="1 0 0 1 4.12415 9.76412" transformations="translations" pos="336 704" stroke="black" type="label" width="61.167" height="7.479" depth="1.93" valign="baseline">function $g_S$  *
 </text>
 <text matrix="1 0 0 1 -85.9552 -79.1359" transformations="translations" pos="448 720" stroke="black" type="label" width="87.616" height="6.926" depth="1.93" valign="baseline">Replay buffer filled?</text>
-<text matrix="1 0 0 1 100.387 -6.71289" transformations="translations" pos="272 576" stroke="black" type="label" width="72.326" height="6.918" depth="0" valign="baseline">Train GNN with</text>
+<text matrix="1 0 0 1 100.387 -6.71289" transformations="translations" pos="272 576" stroke="black" type="label" width="60.088" height="6.926" depth="1.93" valign="baseline">Train $g_S$ with</text>
 <text matrix="1 0 0 1 100.387 -6.71289" transformations="translations" pos="272 560" stroke="black" type="label" width="71.454" height="6.918" depth="0" valign="baseline">data from buffer</text>
 <text matrix="1 0 0 1 53.5054 9.5246" transformations="translations" pos="128 640" stroke="black" type="label" width="36.091" height="6.536" depth="1.93" valign="baseline" style="math">\mathit{it} += 1;
 </text>
-<text matrix="1 0 0 1 35.4098 9.81647" transformations="translations" pos="128 624" stroke="black" type="label" width="86.482" height="6.918" depth="0.39" valign="baseline">$it &lt;$ iteration limit?</text>
+<text matrix="1 0 0 1 54.112 10.0867" transformations="translations" pos="128 624" stroke="black" type="label" width="30.643" height="6.918" depth="0.39" valign="baseline">$it &lt;$ $z$?</text>
 <path matrix="1 0 0 1 39.4959 18.5724" stroke="black">
 160 592 m
 240 624 l
@@ -345,7 +345,7 @@ h
 448.52 583.366 l
 h
 </path>
-<path matrix="1 0 0 1 -4.84202 2.75937" stroke="black">
+<path matrix="0.890019 0 0 1 32.4816 2.75937" stroke="black">
 339.363 740.389 m
 339.363 703.614 l
 485.879 703.614 l
@@ -367,7 +367,7 @@ h
 h
 </path>
 <text matrix="1 0 0 1 -1.75119 5.86783" transformations="translations" pos="17.1445 638.528" stroke="black" type="label" width="64.951" height="6.918" depth="0" valign="baseline">Return trained</text>
-<text matrix="1 0 0 1 -1.75119 2.94918" transformations="translations" pos="17.1445 628.605" stroke="black" type="label" width="22.762" height="6.808" depth="0" valign="baseline">GNN</text>
+<text matrix="1 0 0 1 -1.75119 2.94918" transformations="translations" pos="17.1445 628.605" stroke="black" type="label" width="10.523" height="4.297" depth="1.93" valign="baseline">$g_S$</text>
 <path matrix="1 0 0 1 -1.75119 5.86783" stroke="black">
 11.599 651.37 m
 11.599 621.308 l
@@ -413,6 +413,10 @@ h
 199.496 610.572 m
 199.464 566.144 l
 365.617 565.246 l
+</path>
+<path stroke="white">
+384 544 m
+416 544 l
 </path>
 </page>
 </ipe>
