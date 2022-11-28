@@ -115,11 +115,34 @@
 \addstatementpage
 
 \begin{danksagung*}
-\todo{Ihr Text hier.}
+
+Zuerst möchte mich bei meinen Eltern bedanken, die es mir ermöglicht haben, mich an einem zweiten Studium zu versuchen. 
+Ohne euch hätte ich vielleicht nie meine Leidenschaft für die Informatik entdeckt. Danke für eure langjährige Unterstützung. 
+
+Mein großer Dank gebührt außerdem Günther Raidl und Marc Huber, deren großartige Betreuung im Rahmen dieser Diplomarbeit weit über das hinaus gegangen ist, was ich mir erwartet habe. 
+In unseren zahlreichen Meetings habt ihr mir den Weg gewiesen, wenn ich nicht weiter wusste, und stets wertvolle Ideen, Einwände und Feedback beigesteuert. 
+
+Danke an die Algorithms and Complexity Group der TU Wien, die mir die notwendige Infrastruktur und Rechenleistung zur Verfügung gestellt hat, um die Experimente in dieser Arbeit durchzuführen. 
+
+Ebenfalls möchte ich mich bei Elinna Rönnberg bedanken, die einige interessante Ideen beigesteuert hat. 
+
+Abschließend möchte ich mich bei meiner Freundin Rabea bedanken. 
+Du hast mir die Kraft und Motivation gegeben weiterzumachen, wenn es mir schwer gefallen ist. 
+
 \end{danksagung*}
 
 \begin{acknowledgements*}
-\todo{Enter your text here.}
+First, I would like to thank my parents, who made it possible for me to go for another education. Without you, I maybe would never have discovered my passion for computer science. Thank you for your support throughout all these years. 
+
+Special thanks go to my supervisors Günther Raidl and Marc Huber, whose support in this thesis was nothing but outstanding. 
+In countless meetings, you lead my way when I did not know how to continue, and continually contributed valuable ideas, corrections, and feedback to this thesis. 
+
+Furthermore, I would like to thank the Algorithms and Complexity Group at TU Wien, who provided me with the necessary infrastructure and computation power to do the computational experiments in this thesis. 
+
+I would also like to thank Elinna Rönnberg, who contribute some interesting ideas to this thesis. 
+
+Finally, I want to thank my girlfriend Rabea. You gave me the strength and motivation to continue when I struggled. 
+
 \end{acknowledgements*}
 
 \begin{kurzfassung}
@@ -1430,17 +1453,17 @@ Thus, we set $\beta=10, \varepsilon=10$ in all further experiments and use the h
 \end{itemize}
 
 \subsection{Node Features}
-In Chapter \ref{chp:gnn} we proposed four different feature initialization methods: Degree (D), EgoNet of size 1 and 2, (E1, E2), Node2Vec (N2V), and Struc2Vec (S2V). What follows is an evaluation of these feature initialization methods and combinations thereof: D+N2V, D+S2V, E1+N2V, E1+S2V, N2V+S2V, and E1+E2. In total we thus investigate ten different node features. 
+In Chapter \ref{chp:gnn} we proposed four different feature initialization methods: Degree (D), EgoNet of size 1 and 2, (E1, E2), Node2Vec (N2V), and Struc2Vec (S2V). What follows is an evaluation of these feature initialization methods and combinations thereof: D+N2V, D+S2V, E1+N2V, E1+S2V, N2V+S2V, and E1+E2. In total, we thus investigate ten different node features. 
 
-We note that N2V and S2V node features are learned using the recommended settings from the respective papers (\cite{GroverL16}, \cite{FigueiredoRS17}): we sample 20 random walks of length 80 for each vertex in the input graph, and node contexts are generated with a window size of five to produce node embeddings of size 64. Furthermore, for N2V we use a return parameter $p=2$ and a in/out-parameter $q=4$ in order to focus on locality, and for S2V we use a layer transition probability of $0.3$, which is the default setting in the authors S2V implementation. 
+We note that N2V and S2V node features are learned using the recommended settings from the respective papers (\cite{GroverL16}, \cite{FigueiredoRS17}): we sample 20 random walks of length 80 for each vertex in the input graph, and node contexts are generated with a window size of five to produce node embeddings of size 64. Furthermore, for N2V we use a return parameter $p=2$ and an in/out-parameter $q=4$, as preliminary results have shown these parameter settings to be suitable to focus on locality-based feature extraction, and for S2V we use a layer transition probability of $0.3$, which is the default setting in the authors' S2V implementation. 
 
 In each experimental run, we trained ten models for each node feature on uniform random graphs of different sizes and densities. 
-Furthermore, in each run we use 20 unseen graphs drawn from the same distribution and evaluate the trained models by the average solution quality obtained on these test instances. The results are then grouped by the feature initialization method. 
-Moreover, all models are trained with a look-ahead depth $d=1$, as we want to find out which node features are most suited to imitate such a look-ahead search. 
+Furthermore, in each run, we use 20 unseen graphs drawn from the same distribution and evaluate the trained models by the average solution quality obtained on these test instances. The results are then grouped by the feature initialization method. Additionally, we compare the results obtained on random instances to selected benchmark instances that are similar in size and density to those seen during training. 
+Moreover, all models are trained with a look-ahead depth $d=1$, as we want to find out which node features are suited to imitate such a look-ahead search before trying higher and thus more computationally expensive values for look-ahead depth. 
 
-The first experiment is done to investigate the effect of the choice of feature initialization methods on relatively small graphs including a wider range of densities: $\mathcal{V} \sim \mathcal{N}(200, 5), \mathcal{D} \sim \mathcal{U}(0.45, 0.55)$. We set $\gamma=0.95$. The results are shown in \ref{fig:V200-node-features}, and while the differences seem marginal, we notice a slightly higher mean and more stable results for D+N2V, E1, and N2V+S2V. 
+The first experiment is done to investigate the effect of the choice of feature initialization methods on relatively small graphs including a wider range of densities: $\mathcal{V} \sim \mathcal{N}(200, 5), \mathcal{D} \sim \mathcal{U}(0.45, 0.55)$. We set $\gamma=0.95$. The results are shown in \ref{fig:V200-node-features}, and while the differences seem marginal, we notice slightly higher mean and more stable results for D+N2V, E1, and N2V+S2V. 
 
-In order to investigate the performance of the models on high density graphs, we conduct a second experiment with graphs of fixed size $|V|=450$ and a density $\mathcal{D} \sim \mathcal{0.82, 0.825}$, which corresponds to the size and densities of the benchmark instances frb30-15-$i, 1\leq i \leq 5$. 
+In order to investigate the performance of the models on high-density graphs, we conduct a second experiment with graphs of fixed size $|V|=450$ and a density $\mathcal{D} \sim \mathcal{0.82, 0.825}$, which corresponds to the size and densities of the benchmark instances frb30-15-$i, 1\leq i \leq 5$. 
 Note that we have eliminated the node feature E1+E2 in this test run, as the generated graphs are so dense that the EgoNet of size two is equivalent to the input graph itself and does not provide any useful information. 
 Again, we set $\gamma=0.95$ and show the average solution quality per model on 20 unseen graphs in Figure \ref{fig:V450-node-features}. 
 Interestingly, the performance of the best model for each feature initialization method is almost identical. 
@@ -1639,17 +1662,37 @@ Contributions:
     \item Evaluate on benchmark instances
 \end{itemize}
 
-Future work:
-\begin{itemize}
-    \item Replace $d_S$ completely by defining stronger context
-    \item Evaluate other feature initialization method, especially ones more suitable for very dense graphs
-    \item utilize GPU
-    \item Parallelization: GNNs are parallelizable, multiple local search procedures with different initial candidate solutions, gathering training data can be parallelized
-    \item gather real-world datasets and train to specifically distributed instances
-    \item adapt to other mcp relaxations 
-    \item split prediction between vertices inside / outside 
-    \item investigate other approaches to include gnns into search 
-\end{itemize}
+\section{Future Work}
+
+There are several promising directions in which the work of this thesis can be continued. Here, we outline possible ways of continuing this work and pose some interesting questions and challenges that remained unsolved during our work. 
+
+One great challenge for future work on this algorithm is to define a stronger context that is fully independent of the $d_S$-values of the current candidate solution. Instead, it shall rely solely on information obtained from the corresponding node embeddings of the vertices in the current candidate solution $S$. The difficulty here lies in defining a context of, if possible, constant size, that is expressive enough to provide information about candidate solutions of variable size. Furthermore, the context should ideally be computable in time $O(n)$ as it needs to be done in each iteration of the local search procedure. 
+
+
+Future work could also include experiments using a more fine-grained GNN architecture and training data generation that allows the GNN to predict \emph{two} scores for each vertex, one for vertices that should be added, and one for vertices that should be removed from the candidate solution. 
+Splitting these prediction tasks and finding ways to adapt the algorithm to incorporate these changes could improve the accuracy of the utilized GNN. 
+
+% As using attention-based GNNs in combinatorial optimization is still a very recent 
+
+All experiments in this thesis were executed on CPUs. However, GPUs are known to speed up computations involving GNNs and NNs in general by a significant factor. It would be interesting to perform larger-scale experiments using GPUs to investigate how strongly this speedup affects the execution of LSBM and LSBM-T. 
+
+For now, the biggest bottleneck during training is the execution of LSBM which is done to generate training data. Future improvements could focus on the parallelization of this task. For example, the local search procedure within LSBM can be started multiple times in parallel. 
+On another note, also other, more efficient methods to generate training data can be investigated that do not involve the execution of LSBM. 
+
+LSBM-T generates graph instances on the fly during training. In our experiments, all models were trained on uniform random graphs. It would also be interesting to see, how other random graph models can be utilized in LSBM-T and how well the trained GNNs generalize to graphs drawn from other distributions. 
+
+Finally, we note that, besides local search-based methods, also other approaches to utilize GNNs can be investigated in the context of (meta)heuristic solution approaches for MCP relaxations. 
+
+% \begin{itemize}
+%     \item Replace $d_S$ completely by defining stronger context
+%     \item Evaluate other feature initialization method, especially ones more suitable for very dense graphs
+%     \item utilize GPU
+%     \item Parallelization: GNNs are parallelizable, multiple local search procedures with different initial candidate solutions, gathering training data can be parallelized
+%     \item gather real-world datasets and train to specifically distributed instances
+%     \item adapt to other mcp relaxations 
+%     \item split prediction between vertices inside / outside 
+%     \item investigate other approaches to include gnns into search 
+% \end{itemize}
 
 \backmatter
 
