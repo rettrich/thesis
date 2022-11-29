@@ -139,7 +139,7 @@ In countless meetings, you lead my way when I did not know how to continue, and 
 
 Furthermore, I would like to thank the Algorithms and Complexity Group at TU Wien, who provided me with the necessary infrastructure and computation power to do the computational experiments in this thesis. 
 
-I would also like to thank Elinna Rönnberg, who contribute some interesting ideas to this thesis. 
+I would also like to thank Elinna Rönnberg, who contributed some interesting ideas to this thesis. 
 
 Finally, I want to thank my girlfriend Rabea. You gave me the strength and motivation to continue when I struggled. 
 
@@ -150,7 +150,22 @@ Finally, I want to thank my girlfriend Rabea. You gave me the strength and motiv
 \end{kurzfassung}
 
 \begin{abstract}
-\todo{Enter your text here.}
+This thesis investigates the utilization of Graph Neural Networks (GNNs) in a local search-based metaheuristic for edge-based relaxations of the Maximum Clique Problem (MCP), namely, the Maximum Quasi-Clique Problem (MQCP) and the Maximum Defective Clique Problem (MDCP). 
+The MCP is the problem of finding fully connected subsets of vertices of maximum size in a graph. It is a well-studied, fundamental NP-hard combinatorial optimization problem and has numerous applications in, e.g., bioinformatics and social network analysis. 
+Some real-world applications however require relaxations of the clique model. Thus, researchers have come up with the MQCP and MDCP as a theoretical model for such applications. 
+
+Due to the computational complexity of the considered problems, real-world instances are often infeasible to solve in practice using exact methods. 
+Therefore, we develop a heuristic solution approach that is centered around local search, like most state-of-the-art algorithms for the MQCP and MDCP. 
+We study and review the relevant literature and build upon the leading (meta)heuristic algorithms for the MQCP. 
+
+The first main contribution of this thesis is a local search-based metaheuristic named LSBM that can utilize a GNN as a scoring function that is used to restrict the neighborhoods during the local search procedure to the most promising vertices. 
+Secondly, we propose a training algorithm LSBM-T that can be used to generate training data that can be used to train the GNN to predict, which vertices in a neighborhood will most likely lead to an improved solution, by imitating a more expensive exhaustive search of a possibly larger neighborhood. 
+
+We evaluate our methodology by conducting several computational experiments regarding the parameters of LSBM and LSBM-T. We investigate different feature initialization methods, robustness towards variance of input data, and how well our method generalizes to larger, unseen instances. 
+Our results show that \todo{results }
+
+\todo{paragraph about results}
+
 \end{abstract}
 
 % Select the language of the thesis, e.g., english or naustrian.
@@ -1455,15 +1470,17 @@ Thus, we set $\beta=10, \varepsilon=10$ in all further experiments and use the h
 \subsection{Node Features}
 In Chapter \ref{chp:gnn} we proposed four different feature initialization methods: Degree (D), EgoNet of size 1 and 2, (E1, E2), Node2Vec (N2V), and Struc2Vec (S2V). What follows is an evaluation of these feature initialization methods and combinations thereof: D+N2V, D+S2V, E1+N2V, E1+S2V, N2V+S2V, and E1+E2. In total, we thus investigate ten different node features. 
 
-We note that N2V and S2V node features are learned using the recommended settings from the respective papers (\cite{GroverL16}, \cite{FigueiredoRS17}): we sample 20 random walks of length 80 for each vertex in the input graph, and node contexts are generated with a window size of five to produce node embeddings of size 64. Furthermore, for N2V we use a return parameter $p=2$ and an in/out-parameter $q=4$, as preliminary results have shown these parameter settings to be suitable to focus on locality-based feature extraction, and for S2V we use a layer transition probability of $0.3$, which is the default setting in the authors' S2V implementation. 
+We note that N2V and S2V node features are learned using the recommended settings from the respective papers (\cite{GroverL16}, \cite{FigueiredoRS17}): we sample 20 random walks of length 80 for each vertex in the input graph, and node contexts are generated with a window size of five to produce node embeddings of size 64. Furthermore, for N2V we use a return parameter $p=2$ and an in/out-parameter $q=4$, as preliminary experiments have shown these parameter settings to be suitable to focus on locality-based feature extraction, and for S2V we use a layer transition probability of $0.3$, which is the default setting in the authors' S2V implementation. 
 
 In each experimental run, we trained ten models for each node feature on uniform random graphs of different sizes and densities. 
 Furthermore, in each run, we use 20 unseen graphs drawn from the same distribution and evaluate the trained models by the average solution quality obtained on these test instances. The results are then grouped by the feature initialization method. Additionally, we compare the results obtained on random instances to selected benchmark instances that are similar in size and density to those seen during training. 
 Moreover, all models are trained with a look-ahead depth $d=1$, as we want to find out which node features are suited to imitate such a look-ahead search before trying higher and thus more computationally expensive values for look-ahead depth. 
 
-The first experiment is done to investigate the effect of the choice of feature initialization methods on relatively small graphs including a wider range of densities: $\mathcal{V} \sim \mathcal{N}(200, 5), \mathcal{D} \sim \mathcal{U}(0.45, 0.55)$. We set $\gamma=0.95$. The results are shown in \ref{fig:V200-node-features}, and while the differences seem marginal, we notice slightly higher mean and more stable results for D+N2V, E1, and N2V+S2V. 
+The first experiment is done to investigate the effect of the choice of feature initialization methods on relatively small graphs with a density of about 0.5: $\mathcal{V} \sim \mathcal{N}(200, 5), \mathcal{D} \sim \mathcal{U}(0.48, 0.52)$. We set the MQCP input parameter $\gamma=0.8$ during training and evaluation. 
+The results obtained on 20 random graphs and on benchmark instance brock\_200\_2, which has a similar size and density, are shown in Figure~\ref{fig:V200-node-features}.  
+%and while the differences seem marginal, we notice slightly higher mean and more stable results for D+N2V, E1, and N2V+S2V. 
 
-In order to investigate the performance of the models on high-density graphs, we conduct a second experiment with graphs of fixed size $|V|=450$ and a density $\mathcal{D} \sim \mathcal{0.82, 0.825}$, which corresponds to the size and densities of the benchmark instances frb30-15-$i, 1\leq i \leq 5$. 
+To investigate the performance of the models on high-density graphs, we conduct a second experiment with graphs of fixed size $|V|=450$ and a density $\mathcal{D} \sim \mathcal{0.82, 0.825}$, which corresponds to the size and densities of the benchmark instances frb30-15-$i, 1\leq i \leq 5$. 
 Note that we have eliminated the node feature E1+E2 in this test run, as the generated graphs are so dense that the EgoNet of size two is equivalent to the input graph itself and does not provide any useful information. 
 Again, we set $\gamma=0.95$ and show the average solution quality per model on 20 unseen graphs in Figure \ref{fig:V450-node-features}. 
 Interestingly, the performance of the best model for each feature initialization method is almost identical. 
@@ -1484,20 +1501,22 @@ However, when taking into account all trained models, E1, E1+N2V perform best, f
     \label{fig:V450-node-features}
 \end{figure}
 
+\subsection{Robustness towards variance in inputs}
+
+\subsection{Scale Invariance}
+
 \subsection{Look-ahead Search Parameters}
 See how well the gnn trained with lookahead depth 1, 2, 3 is able to perform on unseen training data. 
-
 Check on samples of different size how close lookahead search with restricted neighborhood gets to actual best neighbor 
-
-\subsection{Graph Densities}
-In general: Low density graphs are not that interesting consider, as exact methods can be applied for very sparse graphs. 
-
-Argue that Learning based features are not as useful when used on high density graphs
 
 \subsection{GNN Parameters}
 See how layer sizes, number of attention heads affect solution quality and runtime 
 
 \section{Evaluation of LSBM Parameters}\label{sec:lsbm}
+
+\subsection{Sparse evaluation}
+
+\subsection{Short Term Memory Type}
 
 \section{Results on Benchmark Instances}\label{sec:benchmark-results}
 Try selected benchmark instances that are not too large and not too dense and show best results. 
@@ -1666,7 +1685,7 @@ Contributions:
 
 There are several promising directions in which the work of this thesis can be continued. Here, we outline possible ways of continuing this work and pose some interesting questions and challenges that remained unsolved during our work. 
 
-One great challenge for future work on this algorithm is to define a stronger context that is fully independent of the $d_S$-values of the current candidate solution. Instead, it shall rely solely on information obtained from the corresponding node embeddings of the vertices in the current candidate solution $S$. The difficulty here lies in defining a context of, if possible, constant size, that is expressive enough to provide information about candidate solutions of variable size. Furthermore, the context should ideally be computable in time $O(n)$ as it needs to be done in each iteration of the local search procedure. 
+One great challenge for future work on this algorithm is to define a stronger context that is fully independent of the $d_S$-values of the current candidate solution. Instead, it shall rely solely on information obtained from the corresponding node embeddings of the vertices in the current candidate solution $S$. The difficulty here lies in defining a context of, if possible, constant size, that is expressive enough to provide information about candidate solutions of variable size. Furthermore, the context should ideally be computable in time $O(n)$ as it needs to be computed in each iteration of the local search procedure. 
 
 
 Future work could also include experiments using a more fine-grained GNN architecture and training data generation that allows the GNN to predict \emph{two} scores for each vertex, one for vertices that should be added, and one for vertices that should be removed from the candidate solution. 
