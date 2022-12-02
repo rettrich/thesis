@@ -1248,13 +1248,13 @@ where $z_i$ is a normalization factor and $a, W_1, W_2$ are learned layers.
 Within LSBM, the context is determined by the current candidate solution $S$. The context embedding is computed by aggregating the columns of the node embedding matrix that correspond to the vertices in $S$. 
 This is inspired by graph representation learning, where the node embeddings are aggregated into a graph embedding by the application of an order invariant aggregation function $\mathit{agg} \in \{\mathit{sum, mean, max}\}$. Most commonly, however, $\mathit{mean}$ is used to compute the graph embedding, e.g., in \cite{Kool2019}. 
 We follow a similar approach but only consider the columns of the node embedding matrix that correspond to the vertices in $S$, as we are only concerned about the representation of the candidate solution. 
-The main motivation behind this approach is to compress a context of linear size into a constant-size context embedding. 
-However, we note that this definition of a context is one of the current weaknesses of our approach -- by taking the mean of the node embeddings of the vertices in $S$ the information of the candidate solution is highly compressed. Future work will be dedicated to finding other methods to generate a stronger context embedding that preserves more relevant information about the candidate solution. 
+The main motivation behind this approach is to compress a context of linear size into a constant-size context embedding $c$. 
+However, we note that this definition of a context is one of the current weaknesses of our approach -- by taking the mean of the node embeddings of the vertices in $S$ the information of the candidate solution is highly compressed. Future work will be dedicated to developing methods that generate a stronger context embedding that preserves more relevant information about the candidate solution. 
 
-Furthermore, we derive features from the function $d_S$ that are appended to the context embeddings. To achieve better generalization and to avoid the vanishing gradient problem, we first normalize the $d_S$-values by a factor $\frac{1}{n}$. Then, from these normalized values, we compute the mean and standard deviation. For each vertex in the graph, we concatenate a vector containing its normalized $d_S$ value and the mean and standard deviation of all normalized $d_S$-values to the column in the context embedding matrix that corresponds to said vertex, creating feature vectors $e_i \; || \; c_i$ for $v_i, 1 \leq i \leq |V|$. These final embeddings are used as inputs for the decoder. 
+Furthermore, we derive features from the function $d_S$. To achieve better generalization and to avoid the vanishing gradient problem, we first normalize the $d_S$-values by a factor $\frac{1}{n}$. Then, from these normalized values, we compute the mean and standard deviation. For each vertex in the graph, we concatenate a vector containing its normalized $d_S$ value and the mean and standard deviation of all normalized $d_S$-values to the context embedding $c$, creating feature vectors $c_i$ for $v_i, 1 \leq i \leq |V|$. These vectors are then concatenated to the node embeddings, creating the final decoder inputs $e_i \; || \; c_i$ for $v_i, 1 \leq i \leq |V|$. 
 
 \subsection{Decoder}
-The decoder is a regression model that maps the inputs obtained from the node embeddings and the context embedding to scalar values representing scores for the vertices in $V$. We suggest using a simple MLP architecture with a sigmoid activation function on the final layer, mapping the results of the previous layers to scalar values between zero and one. The concrete number of layers and their dimensions are shown in Chapter~\ref{chp:evaluation}, which concerns the evaluation.  
+The decoder is a regression model that maps the inputs obtained from the node embeddings and the context embedding to scalar values representing scores for the vertices in $V$. We suggest using a simple MLP architecture. The input dimension of the decoder is determined by its inputs, which are computed as previously described by concatenating the context embeddings to the node embeddings. The first layer of the decoder then simply applies a learnable linear transformation, followed by a batch normalization. Furthermore, it consists of $l_d$ layers, with layers $2, \dots, l_d - 1$ being hidden feed-forward layers  of dimension $\mathit{dim}_d$ with a ReLU activation function, each followed by a batch normalization. The final layer $l_d$ of the decoder has is single-dimensional, mapping the results of the previous layer to scalar values between zero and one with a sigmoid activation function. The concrete number of layers and their dimensions are shown in Chapter~\ref{chp:evaluation}, were we evaluate suitable values for our approach. 
 
 \section{Performance}\label{sec:performance}
 
@@ -1303,7 +1303,7 @@ While this method produces restricted neighborhoods of variable size, these neig
 \subsection{Restricting the neighborhood using $g_S$}
 
 Using the scoring function $g_S$, we do not have a guarantee that the swap that maximizes the gain lies among the lowest-scoring vertices in $S$ and the highest-scoring vertices in $V \setminus S$. Moreover, we might not even want to consider such a swap, as the scoring function was trained to search greater neighborhoods than $\Omega_1$, and the swap that maximizes the gain does not lead to the best neighboring solution. We therefore propose to use restricted candidate sets $X, Y$ of a fixed size $k^\prime$, where $X$ consists of the $k$ lowest-scoring vertices in $S$, and $Y$ consists of the $k^\prime$ highest-scoring vertices in $V \setminus S$. This guarantees that searching the neighborhood takes a fixed amount of time. 
-Obtaining the $k^\prime$ highest or lowest scoring vertices can be done in time $O(k^\prime \cdot n)$, which is linear for fixed $k^\prime$, but is still more expensive than generating a restricted neighborhood for the scoring function $d_S$. As the restricted neighborhood is searched in every iteration of the local search procedure, its size can therefore also have a great impact on the runtime. It is therefore essential to determine a neighborhood size that strikes a good balance between efficiency and the quality of neighboring solutions found in the neighborhood.  
+Obtaining the $k^\prime$ highest or lowest scoring vertices can be done in time $O(k^\prime \cdot n)$, which is linear for fixed $k^\prime$, but is still more expensive than generating a restricted neighborhood for the scoring function $d_S$. As the restricted neighborhood is searched in every iteration of the local search procedure, its size can therefore also have a great impact on the runtime. It is therefore essential to determine a neighborhood size that strikes a good balance between efficiency and the quality of neighboring solutions found in the neighborhood. 
 
 
 \subsection{Updating the scoring function $d_S$}
@@ -1401,7 +1401,7 @@ Next, we show, how different LSBM-specific parameters affect runtime and solutio
 Finally, the performance of our approach is evaluated on well-established benchmark instances, and we compare the results to the state-of-the-art. 
 
 The computational experiments are focused on evaluating results obtained on graphs of high density, i.e. graphs with $\mathrm{dens}(G) \geq 0.5$. 
-These instances seem especially challenging, as exact algorithms are infeasible to use in practice on high-density graphs. We consider both random graphs and selected benchmark instances within the scope of our evaluation. Moreover, we primarily focus on results for MQCP instances, as there is a lack of heuristic solution approaches for the MDCP to compare the performance of our approach to. 
+These instances seem especially challenging, as exact algorithms are infeasible to use in practice on high-density graphs. We consider both random graphs and selected benchmark instances within the scope of our evaluation. Moreover, we primarily focus on results for MQCP instances, as there is a lack of heuristic solution approaches for the MDCP to compare the performance of our approach. 
 
 % We focus our evaluation on dense graphs, 
 
@@ -1456,7 +1456,6 @@ We generally sample $n, \mathrm{dens}(G)$ from distributions $\mathcal{V}, \math
 
 \subsubsection{Experiment Setup}
 We implemented LSBM and LSBM-T in Julia 1.8.3 using Flux \footnote{https://github.com/FluxML/Flux.jl} and GraphNeuralNetworks \footnote{https://github.com/CarloLucibello/GraphNeuralNetworks.jl}\cite{Lucibello2021GNN} for the implementation of the GNN, and Word2Vec \footnote{https://github.com/JuliaText/Word2Vec.jl} for the implementation of Node2Vec and Struc2Vec. All computational experiments in this chapter are executed on an Intel Xeon E5-2640 processor with 2.40\,GHz. For training the NNs, we use a memory limit of 32\,GB, whereas, for all other experiments a memory limit of 20\,GB is used. 
-
 
 % \section{Evaluation of Algorithm Parameters}\label{sec:alg-params}
 % \fxnote{Maybe first evaluate training parameters, and afterwars algorithm specific parameters? }
@@ -1550,44 +1549,55 @@ Thus, we set $\beta=10, \varepsilon=10$ in all further experiments and use the h
     \label{fig:bs-heuristics-random-2}
 \end{figure}
 
-\begin{figure}
-    
-    \label{fig:bs-heuristics-random-4}
-\end{figure}
-
-
 \section{Evaluation of Training Parameters}\label{sec:lsbm-t}
 
 The performance of LSBM when using a GNN-based scoring function depends mainly on how effectively the GNN is trained to make high-quality predictions. 
-Thus, we thoroughly evaluate the impact of different feature initialization methods, different look-ahead search parameters $d, k^*$, the number of layers and dimension sizes of the encoder and decoder, and the generalization on unseen, larger graph instances. 
+Thus, we evaluate the impact of different feature initialization methods, different values for the look-ahead search parameter $d$, and the generalization on unseen, larger graph instances. 
 
-For the execution of LSBM within LSBM-T, we use the following settings in this Section unless stated otherwise: The short-term memory is a tabu list with a tabu tenure of ten, the construction heuristic parameters $\alpha=0.2, c=0.3$, the lower bound heuristic parameters $\beta=\varepsilon=10$, a time limit $t_{\max}=300.0$, a maximum number of iterations without improvement $i_{\max}=2000$, and a maximum number of $r_{\max} = 3$ restarts before execution is terminated. 
-During the evaluation on random graphs and benchmark instances we set $r_{\max} = 10$, but keep the remaining parameters unchanged. 
+For the execution of LSBM within LSBM-T, we use the following settings in this Section unless stated otherwise: The short-term memory is a tabu list with a tabu tenure of ten, the construction heuristic parameters $\alpha=0.2, c=0.3$, the lower bound heuristic parameters $\beta=\varepsilon=10$, a time limit $\tau=300.0$, a maximum number of iterations without improvement $\eta=2000$, and a maximum number of $\xi = 3$ restarts before execution is terminated. 
+During the evaluation of random graphs and benchmark instances we set $\xi = 10$, but keep the remaining parameters unchanged. 
 
-LSBM-T specific parameters are set as follows: We use a GATv2-based encoder as described in Section~\ref{sec:gnn-architecture} with $l_e = 3$ attention layers of size $\mathit{dim}^{conv}_e = 64$ and $\mathit{dim}^{FF}_e = 128$, and an MLP-decoder with $l_d=2$ hidden layers of size $\mathit{dim}_d = 32$. The size of the restricted neighborhood is set to $k^\prime = 20$.
+The parameter settings regarding the GNN were obtained by manually fine-tuning our approach over many experiments. We use a GATv2-based encoder as described in Section~\ref{sec:gnn-architecture} with four attention heads per layer, $l_e = 3$ attention layers of size $\mathit{dim}^{conv}_e = 64$ and feed-forward layers of size $\mathit{dim}^{FF}_e = 128$, and an MLP-decoder with $l_d=2$ hidden layers of size $\mathit{dim}_d = 32$. We did not notice any significant increase in performance using an encoder or decoder with more or bigger layers, and in terms of efficiency, it is clearly beneficial to keep the NN as small as possible. By this reasoning, we justify our choice of the presented parameter settings. 
+
+The remaining LSBM-T specific parameters are set as follows: The size of the restricted neighborhood is set to $k^\prime = 20$.
 Furthermore, we run LSBM-T with a replay buffer size $\rho=1000$ for $z=300$ iterations and generate $n_s = 50$ training samples per iteration. The GNN is trained in 4 batches of size $8$ in each iteration. 
 
-% \begin{itemize}
-%     \item Node Features
-%     \item Look-ahead Depth, Look-ahead Breadth
-%     \item Generalization on bigger graphs
-%     \item Parameters and runtime
-%     \item Evaluation on (selected) instances from DIMACS, BHOSLIB 
-% \end{itemize}
+In the following experiments, we evaluate the results of the trained models on uniform random graphs and on selected benchmark instances. 
+The benchmark instances used in this Section are shown in Table~\ref{tab:benchmark-instances-for-experiments} for reference.
+
+\begin{table}
+    \centering
+    \begin{tabular}{llrrr}
+        Benchmark Set & Instance & $V$ & $E$ & $\mathrm{dens}(G)$  \\ \hline
+        DIMACS & brock200\_2 & $200$ & $9876$ & $0.496$\\
+        DIMACS & brock400\_1 & $400$ & $59723$ & $0.748$\\
+        DIMACS & brock400\_2 & $400$ & $59786$ & $0.749$\\
+        DIMACS & brock400\_3 & $400$ & $59681$ & $0.748$\\
+        DIMACS & C250 & $250$ & $27984$ & $0.899$\\
+        % DIMACS & C500 & $500$ & $112332$ & $0.900$\\
+        BHOSLIB & frb30-15-1 & $450$ & $83198$ & $0.824$\\
+        BHOSLIB & frb30-15-2 & $450$ & $83151$ & $0.823$\\
+        BHOSLIB & frb30-15-3 & $450$ & $83216$ & $0.824$\\
+        BHOSLIB & frb30-15-4 & $450$ & $83194$ & $0.823$\\
+        BHOSLIB & frb30-15-5 & $450$ & $83231$ & $0.824$\\
+    \end{tabular}
+    \caption{Benchmark instances used for experiments}
+    \label{tab:benchmark-instances-for-experiments}
+\end{table}
 
 \subsection{Node Features}\label{subsec:node-features}
 In Chapter \ref{chp:gnn} we proposed four different feature initialization methods: Degree (D), EgoNet of size 1 and 2, (E1, E2), Node2Vec (N2V), and Struc2Vec (S2V). What follows is an evaluation of these feature initialization methods and combinations thereof: D+N2V, D+S2V, E1+N2V, E1+S2V, N2V+S2V, and E1+E2. In total, we thus investigate ten different node features. 
 
 We note that N2V and S2V node features are learned using the recommended settings from the respective papers (\cite{GroverL16}, \cite{FigueiredoRS17}): we sample 20 random walks of length 80 for each vertex in the input graph, and node contexts are generated with a window size of five to produce node embeddings of size 64. Furthermore, for N2V we use a return parameter $p=2$ and an in/out-parameter $q=4$, as preliminary experiments have shown these parameter settings to be suitable to focus on locality-based feature extraction, and for S2V we use a layer transition probability of $0.3$, which is the default setting in the authors' S2V implementation. 
 
-In each experimental run, we trained ten models for each node feature on uniform random graphs of different sizes and densities. 
+In each experimental run, we trained ten models for each node feature on uniform random graphs defined by a specific size and density. 
 Furthermore, in each run, we use 20 unseen graphs drawn from the same distribution and evaluate the trained models by the average solution quality obtained on these test instances. The results are then grouped by the feature initialization method. Additionally, we compare the results obtained on random instances to selected benchmark instances that are similar in size and density to those seen during training. 
 Moreover, all models are trained with a look-ahead depth $d=1$, as we want to investigate, which node features are suited to imitate a simple look-ahead search before trying higher and thus more computationally expensive values for $d$. 
 
 The first experiment is done to investigate the effect of the choice of feature initialization methods on relatively small graphs with a density of about 0.5: $\mathcal{V} \sim \mathcal{N}(200, 5), \mathcal{D} \sim \mathcal{U}(0.48, 0.52)$. We set the MQCP input parameter $\gamma=0.8$ during training and evaluation. 
 The results obtained on 20 random graphs and on benchmark instance \emph{brock\_200\_2}, which has a similar size and density, are shown in Figure~\ref{fig:V200-node-features}. 
 The results on random graphs show that node features E1+E2, E1+S2V performed best, followed by E1, N2V, N2V+S2V. 
-All of the trained models were able to obtain a solution of size 24 on the benchmark instance, which is the best known solution for this MQCP instance as reported in \cite{peng_solving_2021}. 
+All trained models were able to obtain a solution of size 24 on the benchmark instance, which is the best known solution for this MQCP instance as reported in \cite{peng_solving_2021}. 
 
 \begin{figure}
     \centering
@@ -1599,7 +1609,7 @@ All of the trained models were able to obtain a solution of size 24 on the bench
 To investigate the performance of the trained models on graphs of even higher density, we target benchmark instance groups \emph{brock400\_}$i, i \in \{1,2,3\}$ with $|V| = 400, \mathrm{dens}(G) \approx 0.75$, and \emph{frb30-15-}$i, i \in \{1, \dots, 5\}$ with $|V| = 450, \mathrm{dens}(G) \approx 0.823$. 
 Again, we generate 20 random instances of similar size and density for both instance groups and evaluate the trained models by the average results obtained on the random graphs and the benchmark instances. The results are shown in Figure \ref{fig:node-features-comparison}. 
 Note that we removed the node feature E1+E2, as the 2-hop EgoNet for graphs of this density is already $G$ itself in most cases, and thus no additional information is provided. 
-The results show that the learning-based features N2V, S2V, perform well on random instances and on the brock400 instance group. Interestingly, E1 is among the lowest-performing feature initialization methods for the \emph{brock} instance group and corresponding random graphs, but among the highest-performing for random graphs generated corresponding to the \emph{frb30-15} instance group. Furthermore, we notice that the solution sizes obtained on the \emph{frb30-15} benchmark instances are considerably smaller than those obtained on random instances, as these instances are generated differently than the uniform random graphs used to train the models. This indicates that using uniform random graphs during training does not generalize well towards structurally different graph instances. 
+The results show that the learning-based features N2V, S2V, perform well on random instances and on the \emph{brock400} instance group. Interestingly, E1 is among the lowest-performing feature initialization methods for the \emph{brock400} instance group and corresponding random graphs, but among the highest-performing for random graphs generated corresponding to the \emph{frb30-15} instance group. Furthermore, we notice that the solution sizes obtained on the \emph{frb30-15} benchmark instances are considerably smaller than those obtained on random instances, as these instances are generated differently than the uniform random graphs used to train the models. This indicates that using uniform random graphs during training does not generalize well to structurally different graph instances. 
 
 \begin{figure}
     \centering
@@ -1628,11 +1638,13 @@ The results show that the learning-based features N2V, S2V, perform well on rand
     \label{fig:node-features-comparison}
 \end{figure}
 
-\subsection{Scale Invariance}
+\subsection{Generalization to Larger Instances}
 Training the GNN-based scoring function is time-consuming, especially when larger graphs are used during training. To keep our approach scalable, we investigate, whether the trained models generalize to larger instances with similar densities to the instances seen during training. 
-Figure \ref{fig:generalization} shows the results of our experiments. We select the two best-performing node features for two instance groups from Subsection \ref{subsec:node-features}, namely $|V|=400, \mathrm{dens}(G) \approx 0.75$ and $|V|=450, \mathrm{dens}(G) \approx 0.823$ and compare, how models that were trained on smaller graphs perform on random instances with these properties. The left Subfigure shows the results for models that were trained on graphs of size $|V| = 200$ in comparison with models trained on graphs of size $|V|=400$. While N2V did not generalize to bigger instances, S2V even outperformed the best results of models trained on the size of instances seen during evaluation. 
+Figure \ref{fig:generalization} shows the results of our experiments. We select the two best-performing node features for two instance groups from Subsection \ref{subsec:node-features}, namely $|V|=400, \mathrm{dens}(G) \approx 0.75$ and $|V|=450, \mathrm{dens}(G) \approx 0.823$ with $\gamma=0.999$ and compare, how models that were trained on smaller graphs perform on random instances with these properties. The left Subfigure shows the results for models that were trained on graphs of size $|V| = 200$ in comparison with models trained on graphs of size $|V|=400$. While N2V did not generalize to bigger instances, S2V even outperformed the best results of models trained on the size of instances seen during evaluation. 
 In the right Subfigure we see that the models with feature initialization methods E1, E1+N2V did not generalize well to larger graphs. The GNNs trained on graphs of size $|V|=150$ show the worst performance, whereas the best models that were trained on graphs of size $|V|=300$ were able to match the performance of the models trained on graphs of size $|V|=450$.
-We conclude that our approach has the potential for generalization to bigger graphs, but at its current state, it does not generalize reliably to graphs that are bigger than those seen during training by a factor of two or more. 
+
+We conclude that, at its current state, our approach does not generalize reliably to instances that are larger than those seen during training by a factor of two or more. 
+Finally, we note that future work should include experiments using curriculum learning strategies as discussed in \cite{Lisicki2020}, where the NNs are trained by starting on smaller instances and gradually increasing the instance size. The authors show that these strategies are successful in making the trained models achieve better generalization.   
 
 \begin{figure}
     \centering
@@ -1644,28 +1656,66 @@ We conclude that our approach has the potential for generalization to bigger gra
         \centering
         \includegraphics[width=\textwidth]{graphics/generalization-2.pdf}
     \end{subfigure}
-    \caption{Results of training on smaller instances. The left Subfigure shows the effect of training on graphs of size $|V| \in \{200, 400\}$, evaluation on graphs of size $400$. The right Subfigure shows training for $|V| \in \{150, 300, 450\}$, evaluation on graphs of size $450$.}
+    \caption{Results of training on smaller instances. The left Subfigure shows the effect of training on graphs of size $|V| \in \{200, 400\}$, evaluation on graphs of size $400$. The right Subfigure shows training for $|V| \in \{150, 300, 450\}$, evaluation on graphs of size $450$. On all instances, we set $\gamma=0.999$.}
     \label{fig:generalization}
 \end{figure}
 
 \subsection{Look-ahead Search Parameters}
-See how well the gnn trained with lookahead depth 1, 2, 3 is able to perform on unseen training data. 
-Check on samples of different size how close lookahead search with restricted neighborhood gets to actual best neighbor 
+To evaluate the impact of the look-ahead depth, we compare models trained with a look-ahead depth $d=1$, which corresponds to imitating a search of the $\Omega_1$ neighborhood structure, to models trained with a look-ahead depth $d=2$ and a restricted neighborhood size of $k^\prime = 50$. Due to computational budget limitations, we set the number of generated training samples per iteration $n_s = 25$ to balance the increase in runtime. 
+
+We train ten models each for the two best-performing node features for the \emph{brock400} instances, and for instance \emph{C250} with lookahead-depth $d \in \{1,2\}$. 
+The results are shown in Figure~\ref{fig:lookahead-depth}. 
+The difference in average solution quality of the trained models is only marginal on the \emph{brock400} instances seen in the left Subfigure, but the right Subfigure shows that the models trained using a depth $d=2$ achieve a better average solution quality on instance \emph{C250}. 
+
+The results depicted in the figure are representative of other similar experiments we conducted. We conclude that using a higher look-ahead depth increases in most cases the average solution quality of the trained models, as expected, which justifies the increased computational effort during training. 
+
+To compare the impact on the runtime when using a look-ahead depth $d=2$ compared to $d=1$, we observe the average runtime in an iteration of the training loop that is used to generate training samples in both parameter settings. Whereas 50 samples with look-ahead depth $d=1$ are generated in less than a second per iteration, the average runtime per iteration to compute 25 training samples using a look-ahead depth $d=2$ is 24.3 seconds, introducing a noticeable computational overhead throughout $z=300$ iterations of the training loop. 
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/lookahead-depth-1.pdf}
+        \caption{Results for \emph{brock400} instances.}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/lookahead-depth-2.pdf}
+        \caption{Results for instance \emph{C250}.}
+    \end{subfigure}
+    \caption{Impact of look-ahead depth $d$ on the average solution quality of the trained models ($\gamma=0.999$).}
+    \label{fig:lookahead-depth}
+\end{figure}
 
 % \subsection{GNN Parameters}
 % See how layer sizes, number of attention heads affect solution quality and runtime 
 
 \subsection{Impact of the Context Embedding}
+As previously noted, we identified the context embedding to be a weakness of our approach, as it compresses the information given by the candidate solution $S$ too much by simply taking the mean of the node embeddings of the vertices in $S$. 
+Therefore, we conduct additional experiments to investigate, whether the context embedding as defined in Section~\ref{sec:gnn-architecture} has a positive effect on the performance, or if the same solution quality can be achieved by removing these context embeddings and only appending the features obtained from the $d_S$-values to the node embeddings as inputs for the decoder. 
+
 
 \section{Evaluation of LSBM Parameters}\label{sec:lsbm}
 
 \subsection{Neighborhood Size}
+We evaluate the effect on runtime and solution quality by comparing the performance of the values $k^\prime \in \{10,20,30\}$. 
 
 \subsection{Sparse evaluation}
+As discussed in Section~\ref{sec:performance} the use of a GNN-based scoring function introduces a significant computational overhead. During our experiments, we notice that the runtime increases by an average factor between five and ten, depending on the input graph size and density and choice of node features, when using $g_S$ during the execution of LSBM instead of $d_S$. This is primarily due to the decoder that evaluates the vertices in the graph every time the candidate solution changes. 
+To reduce this overhead, we propose to only apply the decoder if the last vertex swap did not yield a solution with increased objective value. 
+Figure~%\ref{fig:sparse-evaluation} 
+shows the results of this approach. \todo{show results}
 
-\subsection{Short Term Memory Type}
+% \subsection{Short-Term Memory Type}
+% We evaluate and compare two different short-term memory types within LSBM that are used in state-of-the-art heuristic algorithms for the MQCP: Tabu Lists (\cite{djeddi_extension_2019}, \cite{zhou_opposition-based_2020}) and Configuration Checking (\cite{chen_nuqclq_2021}). 
+% The tabu list is defined by a single parameter, called tabu tenure, which indicates the number of iterations a vertex is blocked after a swap. The authors of \cite{zhou_opposition-based_2020} recommend a setting of 
 
 \section{Results on Benchmark Instances}\label{sec:benchmark-results}
+For the final experiments on the benchmark instances, we choose one centrality-based node feature (E1), one learning-based node feature (N2V+S2V), and one node feature that combines both approaches (E1+S2V), as these features have shown to be promising during our evaluation. 
+The remaining parameter settings during training are exactly as described in Section \ref{sec:lsbm-t}. 
+We train ten randomly initialized GNNs for each evaluated benchmark instance or instance group with a final adoption of the GNN that yields the best results on 20 unseen uniform random graphs of similar size and density as those seen during training. 
+
+
 
 Table containing benchmark instances for reference
 \begin{table}
@@ -1801,15 +1851,6 @@ Table containing benchmark instances for reference
     \caption{Florida benchmark instance set}
     \label{tab:Florida}
 \end{table}
-
-\section{Benchmark Results}
-
-\subsection{MQCP Results}
-\subsection{MDCP Results}
-
-
-
-
 
 \chapter{Conclusions \& Future Work}\label{chp:conclusions}
 
