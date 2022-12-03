@@ -15,7 +15,7 @@ export GNNModel, SimpleGNN, Encoder_Decoder_GNNModel, compute_node_features, dev
     PageRankNodeFeature, Node2VecNodeFeature, Struct2VecNodeFeature, 
     get_feature_list, get_decoder_features,
     GNNChainFactory, ResGatedGraphConv_GNNChainFactory, GATv2Conv_GNNChainFactory,
-    batch_support, evaluate,
+    batch_support, evaluate, use_context, 
     loss_func_unbatched
 
 # no trailing commas in export!
@@ -32,6 +32,7 @@ Flux.params(gnn::GNNModel) = Flux.params(gnn.model)
 (gnn::GNNModel)(gnn_graph::GNNGraph, inputs::AbstractMatrix) = gnn.model(gnn_graph, inputs) # TODO: only relevant for SimpleGNN
 
 batch_support(gnn::GNNModel)::Bool = gnn.batch_support
+use_context(gnn::GNNModel)::Bool = gnn.use_context
 
 get_feature_list(gnn::GNNModel) = gnn.node_features
 get_decoder_features(gnn::GNNModel) = nothing
@@ -208,6 +209,7 @@ struct Encoder_Decoder_GNNModel <: GNNModel
     decoder_features::Union{Nothing, Vector{<:NodeFeature}} # decoder features
     gnn_type::String
     batch_support::Bool
+    use_context::Bool
     loss
     opt
 
@@ -218,7 +220,8 @@ struct Encoder_Decoder_GNNModel <: GNNModel
                       decoder_features::Union{Nothing, Vector{<:NodeFeature}} = nothing,
                       loss = Flux.binarycrossentropy,
                       opt = Adam(0.001, (0.9, 0.999)),
-                      batch_support = false
+                      batch_support = false,
+                      use_context = true,
                       )
 
         # input dimension is sum of dimensions of node features
@@ -229,7 +232,7 @@ struct Encoder_Decoder_GNNModel <: GNNModel
 
         # compute decoder input dimensions
         decoder_feature_len = !isnothing(decoder_features) ? sum(map(x -> length(x), decoder_features)) : 0
-        decoder_in = decoder_feature_len + encoder_dims[end]*2
+        decoder_in = decoder_feature_len + encoder_dims[end] + (use_context ? encoder_dims[end] : 0)
 
         # decoder from node embeddings + context embedding, used to classify node
         decoder = decoder_factory(decoder_in, decoder_dims) |> device
@@ -238,17 +241,22 @@ struct Encoder_Decoder_GNNModel <: GNNModel
 
         # loss_func = batch_support ? loss_func_batched : loss_func_unbatched
 
-        new(d_in, encoder_dims, decoder_dims, encoder, decoder, node_features, decoder_features, gnn_type, batch_support, loss, opt)
+        new(d_in, encoder_dims, decoder_dims, encoder, decoder, node_features, decoder_features, gnn_type, batch_support, use_context, loss, opt)
     end
 end
 
 function loss_func_unbatched(gnn::Encoder_Decoder_GNNModel, g::GNNGraph, S::Vector{Int})
     node_embeddings = gnn.encoder(g, g.ndata.x)
-    context = repeat(mean(NNlib.gather(node_embeddings, S), dims=2), 1, nv(g))
+    
+    if use_context(gnn)
+        context = repeat(mean(NNlib.gather(node_embeddings, S), dims=2), 1, nv(g))
+        node_embeddings = vcat(node_embeddings, context)
+    end
+
     if isnothing(gnn.decoder_features)
-        decoder_input = vcat(node_embeddings, context)
+        decoder_input = node_embeddings
     else
-        decoder_input = vcat(node_embeddings, context, g.ndata.decoder_features)
+        decoder_input = vcat(node_embeddings, g.ndata.decoder_features)
     end
     output = gnn.decoder(decoder_input) 
     gnn.loss(vec(output), g.ndata.y)

@@ -65,6 +65,7 @@ function train_MQCP()
                                    encoder_factory=GATv2Conv_GNNChainFactory(128, 8), 
                                    node_features=feature_set, 
                                    decoder_features=[d_S_NodeFeature()],
+                                   settings[:use_context],
                                    )
     scoring_function = Encoder_Decoder_ScoringFunction(gnn, settings[:neighborhood_size])
 

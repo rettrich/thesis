@@ -105,8 +105,8 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
                 scores = get_scores(scoring_function)
                 X_scores = [(1 - scores[i]) for i in X]
                 Y_scores = [scores[i] for i in Y]
-                u = sample(X, Weights(X_scores))
-                v = sample(Y, Weights(Y_scores))
+                u = sample(X, Weights(softmax(X_scores)))
+                v = sample(Y, Weights(softmax(Y_scores)))
             end
             # else just use the move with best Δ
         # there is no unblocked move

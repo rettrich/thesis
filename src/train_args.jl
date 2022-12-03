@@ -80,6 +80,14 @@ settings_cfg = ArgParseSettings()
         help = "Lookahead search returns up to this many solutions"
         arg_type = Int
         default = typemax(Int)
+    "--score_based_sampling"
+        help = "Use score based sampling when using GNN if no improving move was found"
+        arg_type = Bool
+        default = false
+    "--use_context"
+        help = "Use context during evaluation of GNN"
+        arg_type = Bool
+        default = true
 end
 
 function ArgParse.parse_item(::Type{Tuple}, x::AbstractString)

@@ -341,7 +341,7 @@ function learn_embeddings_word2vec(ws::WalkSimulator, graph::AbstractGraph; embe
     vecs_file = tempname(settings[:tmpdir]; cleanup=false)
     writedlm(walks_file, str_walks)
     # suppress word2vec logs
-    redirect_stdout(()->word2vec(walks_file, vecs_file; verbose=false, debug=0, size=embedding_size, window=ws.window_size), open("/dev/null", "w"))
+    redirect_stdout(()->word2vec(walks_file, vecs_file; verbose=false, debug=0, size=embedding_size, window=ws.window_size, threads=1), open("/dev/null", "w"))
     model = wordvectors(vecs_file)
     rm(walks_file)
     rm(vecs_file)

@@ -1,5 +1,5 @@
 
-using thesis.GNNs: GNNModel, SimpleGNN, Encoder_Decoder_GNNModel, compute_node_features, device, get_feature_list, get_decoder_features
+using thesis.GNNs: GNNModel, SimpleGNN, Encoder_Decoder_GNNModel, compute_node_features, device, get_feature_list, get_decoder_features, use_context
 using Flux: gpu, cpu, NNlib.gather
 using GraphNeuralNetworks
 using DataStructures: PriorityQueue, enqueue!, dequeue!
@@ -171,13 +171,16 @@ function update!(sf::Encoder_Decoder_ScoringFunction, graph::SimpleGraph, S::Set
         sf.embeddings = sf.gnn.encoder(sf.gnn_graph, sf.gnn_graph.ndata.x)
     end
     
-    # compute context from node embeddings: context is the index wise mean of all node embeddings of nodes in S
-    embeddings_with_context = vcat(sf.embeddings, compute_context(sf.embeddings, sf.S, nv(graph)))
+    if use_context(sf.gnn)
+        embeddings = vcat(sf.embeddings, compute_context(sf.embeddings, sf.S, nv(sf.graph)))
+    else
+        embeddings = sf.embeddings
+    end
 
-    embeddings_with_context = add_decoder_features(embeddings_with_context, sf.graph, sf.gnn, sf.S, sf.d_S)
+    embeddings = add_decoder_features(embeddings, sf.graph, sf.gnn, sf.S, sf.d_S)
 
     # compute scores by applying decoder on embeddings + context
-    sf.scores = vec(sf.gnn.decoder(embeddings_with_context) |> cpu)
+    sf.scores = vec(sf.gnn.decoder(embeddings) |> cpu)
 
     return sf.scores
 end
@@ -212,12 +215,16 @@ function update!(sf::Encoder_Decoder_ScoringFunction, u::Int, v::Int; evaluate::
         return sf.scores 
     end
 
-    embeddings_with_context = vcat(sf.embeddings, compute_context(sf.embeddings, sf.S, nv(sf.graph)))
+    if use_context(sf.gnn)
+        embeddings = vcat(sf.embeddings, compute_context(sf.embeddings, sf.S, nv(sf.graph)))
+    else
+        embeddings = sf.embeddings
+    end
 
-    embeddings_with_context = add_decoder_features(embeddings_with_context, sf.graph, sf.gnn, sf.S, sf.d_S)
+    embeddings = add_decoder_features(embeddings, sf.graph, sf.gnn, sf.S, sf.d_S)
 
     # compute scores by applying decoder on embeddings + context
-    sf.scores = vec(sf.gnn.decoder(embeddings_with_context) |> cpu)
+    sf.scores = vec(sf.gnn.decoder(embeddings) |> cpu)
     
     return sf.scores
 end
