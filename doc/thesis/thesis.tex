@@ -677,6 +677,7 @@ Here, $\overline{E}$ denotes the set $\{\{i,j\} \mid \{i,j\} \notin E\}$, i.e. t
 
 In \cite{Trukhanov2013}, the authors analyze several MCP relaxations from the perspective of hereditary properties in graphs. They show that the property of being a defective clique is a non-trivial, interesting property that is hereditary on induced subgraphs, and that the NP-hardness of the problem follows from this observation. Furthermore, the authors propose an exact algorithm based on Russian Doll Search (RDS) that can be used to solve MCP relaxations that are hereditary. In \cite{GSCHWIND2018131}, the RDS algorithm is revisited and improved by new pre-processing procedures. 
 More recently, exact solution approaches are proposed in~\cite{chen2021computing} and~\cite{gao2022exact} specifically to exploit massive sparse graphs. 
+% When reviewing the results reported by these authors, we notice that -- due to the exploitation of the heredity of the problem -- exact algorithms for the MDCP can solve much larger graphs in practice in an exact manner. 
 
 When studying the literature related to the MDCP, we notice that there is a lack of heuristic approaches. Due to the close relation of the MQCP and the MDCP we focus our approach to build upon existing heuristic algorithms for the MQCP and show that it can be adapted to the MDCP easily. 
 
@@ -822,18 +823,18 @@ These heuristic guidance functions differ greatly in terms of time complexity pe
 \section{Construction Heuristic}\label{sec:construction-heuristic}
 
 The construction heuristic in Line \ref{alg:structure-construction} in Algorithm \ref{alg:structure} aims to return a set of nodes $S$ of fixed size $|S| = k$ that is promising to lead to new local optima when used as a starting point for the local search procedure. The candidate solution returned by this construction heuristic is not necessarily feasible. 
-The construction heuristic includes a parameter $r \in [0,1]$ which controls the balance between choosing nodes that have not been explored yet and nodes that increase the number of edges among vertices in the current candidate solution. This approach of balancing exploration and objective value is inspired by \cite{chen_nuqclq_2021}, where the authors use a similar strategy during construction. We combine the authors' idea with a GRASP-like construction step. The procedure is shown in Algorithm \ref{alg:exploration-construction}. 
-At first, a starting node is selected by choosing a node with the lowest $\mathit{Freq}$-value, breaking ties randomly. In each iteration of the main while loop in line \ref{alg:exploration-construction-while-start}-\ref{alg:exploration-construction-while-end}, with probability $c$ a node with the lowest $\mathit{Freq}$-value in $N_G(S)$ is added to the current candidate solution $S$. If $N_G(S)$ is empty, an arbitrary node with the lowest $\mathit{Freq}$ value from $V\setminus S$ is selected instead. 
+The construction heuristic includes a parameter $b \in [0,1]$ which controls the balance between choosing nodes that have not been explored yet and nodes that increase the number of edges among vertices in the current candidate solution. This approach of balancing exploration and objective value is inspired by \cite{chen_nuqclq_2021}, where the authors use a similar strategy during construction. We combine the authors' idea with a GRASP-like construction step. The procedure is shown in Algorithm \ref{alg:exploration-construction}. 
+At first, a starting node is selected by choosing a node with the lowest $\mathit{Freq}$-value, breaking ties randomly. In each iteration of the main while loop in line \ref{alg:exploration-construction-while-start}-\ref{alg:exploration-construction-while-end}, with probability $b$ a node with the lowest $\mathit{Freq}$-value in $N_G(S)$ is added to the current candidate solution $S$. If $N_G(S)$ is empty, an arbitrary node with the lowest $\mathit{Freq}$ value from $V\setminus S$ is selected instead. 
 With probability $1-c$ we perform an iteration of a GRASP-like construction step: A restricted candidate list $\mathit{RCL}$ is built by adding all nodes from $V \setminus S$ that fulfill the condition $d_S(u) \geq d_{\max} - \alpha(d_{\max} - d_{\min})$, where $d_S(u)$ denotes the number of neighbors in $S$ for a node $u \in V \setminus S$, and $d_{\max}, d_{\min}$ are the maximum and minimum values $d_S(u)$, respectively, over all nodes $u\in V \setminus S$. Here, the parameter $\alpha$ controls the balance between greediness and randomness in a GRASP-like manner: $\alpha=0$ corresponds to a greedy strategy, whereas $\alpha=1$ corresponds to a purely random strategy.  
 
 \begin{algorithm}
     \DontPrintSemicolon
-    \KwIn{Graph $G$, $n$-element array $Freq$, Target size $k$, GRASP parameter $\alpha$, Exploration parameter $c$}
+    \KwIn{Graph $G$, $n$-element array $Freq$, Target size $k$, GRASP parameter $\alpha$, Exploration parameter $b$}
     \KwOut{Candidate set $S$}
     $u \gets $ node in $G$ with lowest $Freq$-value, break ties randomly \;
     $S \gets \{u\}$ \;
     \While{$|S| < k$}{\label{alg:exploration-construction-while-start}
-        \uIf{$rand() < c$}{
+        \uIf{$rand() < b$}{
             \uIf{$N_G(S)$ not empty}{
                 $u \gets$ Pick random neighbor in $N_G(S)$ with lowest $Freq$-value\;
             }
@@ -981,7 +982,7 @@ The use of a GNN in the context of LSBM in this approach is two-fold:
 \end{itemize}
 
 We plan to achieve the desired behavior of $g_S$ by training the GNN using principles from imitation learning: 
-$g_S$ is trained to imitate an expert strategy that searches a user-defined neighborhood structure (e.g., $\Omega_1 \cup \Omega_2$) with respect to a candidate solution $S$ and computes the neighboring candidate solutions that maximize the gain of edges. From these neighboring solutions, binary target labels are computed for all vertices in the input graph, where vertices outside $S$ are given a target value of one if they lead to one of the best neighboring solutions, and zero otherwise, whereas vertices in $S$ are given a target value of one if they appear in every neighboring solution, and zero otherwise. 
+$g_S$ is trained offline on representative problem instances to imitate an expert strategy that searches a user-defined neighborhood structure (e.g., $\Omega_1 \cup \Omega_2$) with respect to a candidate solution $S$ and computes the neighboring candidate solutions that maximize the gain of edges. From these neighboring solutions, binary target labels are computed for all vertices in the input graph, where vertices outside $S$ are given a target value of one if they lead to one of the best neighboring solutions, and zero otherwise, whereas vertices in $S$ are given a target value of one if they appear in every neighboring solution, and zero otherwise. 
 The GNN, which has a final layer with a single sigmoid output per vertex, is then trained to predict the target values computed using this expert strategy, which can be seen as a vertex-level binary classification task. The concrete details regarding our training algorithm are presented in Sections~\ref{sec:gnn-training} and \ref{sec:lookahead-search}.
 
 The concrete architecture of the GNN is inspired by the work presented in \cite{Kool2019}, where the authors use an Encoder-Decoder-based architecture with a more complex attention-based encoder that generates node embeddings only once per graph, and a light-weight decoder that uses the node embeddings as inputs and is called multiple times to construct a solution in an end-to-end ML approach for the TSP. 
@@ -1214,7 +1215,7 @@ More precisely, the following methods are considered:
 \begin{itemize}
     \item \emph{Degree}. Each vertex is simply initialized by its degree, normalized by $\frac{1}{n}$. 
     \item \emph{EgoNet}. For a vertex $v$ we derive a feature vector of size three from its EgoNet. It contains the number of vertices in the EgoNet of $v$, the number of edges in the subgraph induced by the EgoNet of $v$, and the number of edges that have exactly one endpoint in the EgoNet of $v$. 
-    Note that to fight the vanishing gradient problem, the first value of the feature vector generated for each vertex is normalized by $\frac{1}{n}$, whereas the second and third values are normalized by $\frac{1}{\binom{n}{2}}$. 
+    Note that to avoid the vanishing gradient problem, the first value of the feature vector generated for each vertex is normalized by $\frac{1}{n}$, whereas the second and third values are normalized by $\frac{1}{\binom{n}{2}}$. 
     Furthermore, we consider the 1-hop-EgoNet and the 2-hop-EgoNet as separate node features. 
     \item \emph{Node2Vec}. Input features for the vertices of the input graph are learned using the learning-based method Node2Vec \cite{GroverL16}. We consider this method, as the authors show that the produced embeddings can capture the similarities of vertices that have similar neighborhoods. 
     \item \emph{Struc2Vec}. Struc2Vec~\cite{FigueiredoRS17} is used to learn the node features. This method was proposed by the authors to capture structural similarities between vertices regardless of the length of the shortest path between the vertices.  
@@ -1251,7 +1252,7 @@ We follow a similar approach but only consider the columns of the node embedding
 The main motivation behind this approach is to compress a context of linear size into a constant-size context embedding $c$. 
 However, we note that this definition of a context is one of the current weaknesses of our approach -- by taking the mean of the node embeddings of the vertices in $S$ the information of the candidate solution is highly compressed. Future work will be dedicated to developing methods that generate a stronger context embedding that preserves more relevant information about the candidate solution. 
 
-Furthermore, we derive features from the function $d_S$. To achieve better generalization and to avoid the vanishing gradient problem, we first normalize the $d_S$-values by a factor $\frac{1}{n}$. Then, from these normalized values, we compute the mean and standard deviation. For each vertex in the graph, we concatenate a vector containing its normalized $d_S$ value and the mean and standard deviation of all normalized $d_S$-values to the context embedding $c$, creating feature vectors $c_i$ for $v_i, 1 \leq i \leq |V|$. These vectors are then concatenated to the node embeddings, creating the final decoder inputs $e_i \; || \; c_i$ for $v_i, 1 \leq i \leq |V|$. 
+Furthermore, we derive features from the function $d_S$. From the $d_S$-values for the vertices in the input graph, we compute the mean and standard deviation. Then, for each vertex in the graph, we concatenate a vector containing its $d_S$-value and the mean and standard deviation of all$d_S$-values to the context embedding $c$, creating feature vectors $c_i$ for $v_i, 1 \leq i \leq |V|$. These vectors are then concatenated to the node embeddings, creating the final decoder inputs $e_i \; || \; c_i$ for $v_i, 1 \leq i \leq |V|$. 
 
 \subsection{Decoder}
 The decoder is a regression model that maps the inputs obtained from the node embeddings and the context embedding to scalar values representing scores for the vertices in $V$. We suggest using a simple MLP architecture. The input dimension of the decoder is determined by its inputs, which are computed as previously described by concatenating the context embeddings to the node embeddings. The first layer of the decoder then simply applies a learnable linear transformation, followed by a batch normalization. Furthermore, it consists of $l_d$ layers, with layers $2, \dots, l_d - 1$ being hidden feed-forward layers  of dimension $\mathit{dim}_d$ with a ReLU activation function, each followed by a batch normalization. The final layer $l_d$ of the decoder has is single-dimensional, mapping the results of the previous layer to scalar values between zero and one with a sigmoid activation function. The concrete number of layers and their dimensions are shown in Chapter~\ref{chp:evaluation}, were we evaluate suitable values for our approach. 
@@ -1400,7 +1401,7 @@ Next, we use Section \ref{sec:lsbm-t} to analyze in detail how the different par
 Next, we show, how different LSBM-specific parameters affect runtime and solution quality in Section \ref{sec:lsbm}. 
 Finally, the performance of our approach is evaluated on well-established benchmark instances, and we compare the results to the state-of-the-art. 
 
-The computational experiments are focused on evaluating results obtained on graphs of high density, i.e. graphs with $\mathrm{dens}(G) \geq 0.5$. 
+The computational experiments are focused on evaluating results obtained on graphs of high density, i.e., the number of neighbors of each vertex is in $O(n)$. 
 These instances seem especially challenging, as exact algorithms are infeasible to use in practice on high-density graphs. We consider both random graphs and selected benchmark instances within the scope of our evaluation. Moreover, we primarily focus on results for MQCP instances, as there is a lack of heuristic solution approaches for the MDCP to compare the performance of our approach. 
 
 % We focus our evaluation on dense graphs, 
@@ -1419,7 +1420,7 @@ We generally sample $n, \mathrm{dens}(G)$ from distributions $\mathcal{V}, \math
         Parameter & Description \\ \hline
         $\mathcal{M}$ & Short Term Memory type (TabuList, ConfigurationChecking) \\
         $\alpha$ & GRASP control variable of construction heuristic, controls randomness \\
-        $c$ & Parameter $c$ for construction heuristic \\
+        $b$ & Parameter $b$ for construction heuristic \\
         $\beta$ & Beam width of beam search used as lower bound heuristic \\
         $\varepsilon$ & Maximum number of successor nodes for a node in lower bound heuristic \\
         $\tau$ & Cutoff time for execution of algorithm \\
@@ -1456,6 +1457,10 @@ We generally sample $n, \mathrm{dens}(G)$ from distributions $\mathcal{V}, \math
 
 \subsubsection{Experiment Setup}
 We implemented LSBM and LSBM-T in Julia 1.8.3 using Flux \footnote{https://github.com/FluxML/Flux.jl} and GraphNeuralNetworks \footnote{https://github.com/CarloLucibello/GraphNeuralNetworks.jl}\cite{Lucibello2021GNN} for the implementation of the GNN, and Word2Vec \footnote{https://github.com/JuliaText/Word2Vec.jl} for the implementation of Node2Vec and Struc2Vec. All computational experiments in this chapter are executed on an Intel Xeon E5-2640 processor with 2.40\,GHz. For training the NNs, we use a memory limit of 32\,GB, whereas, for all other experiments a memory limit of 20\,GB is used. 
+
+\subsubsection{Benchmark Instances}
+The DIMACS benchmark set is a heterogenous collection of artificially created graphs of different sizes and densities. It is a standard benchmark set for the MCP and related problems and it is used to evaluate the performance of state-of-the-art MQCP (e.g., \cite{peng_solving_2021}, \cite{chen_nuqclq_2021}) and MDCP (e.g. \cite{chen2021computing}) algorithms. Similarly, the BHOSLIB benchmark set is a collection of large graphs of high density which was specifically created for graph problems. 
+We evaluate the performance of our algorithm on a subset of these benchmark instances. 
 
 % \section{Evaluation of Algorithm Parameters}\label{sec:alg-params}
 % \fxnote{Maybe first evaluate training parameters, and afterwars algorithm specific parameters? }
@@ -1560,7 +1565,7 @@ During the evaluation of random graphs and benchmark instances we set $\xi = 10$
 The parameter settings regarding the GNN were obtained by manually fine-tuning our approach over many experiments. We use a GATv2-based encoder as described in Section~\ref{sec:gnn-architecture} with four attention heads per layer, $l_e = 3$ attention layers of size $\mathit{dim}^{conv}_e = 64$ and feed-forward layers of size $\mathit{dim}^{FF}_e = 128$, and an MLP-decoder with $l_d=2$ hidden layers of size $\mathit{dim}_d = 32$. We did not notice any significant increase in performance using an encoder or decoder with more or bigger layers, and in terms of efficiency, it is clearly beneficial to keep the NN as small as possible. By this reasoning, we justify our choice of the presented parameter settings. 
 
 The remaining LSBM-T specific parameters are set as follows: The size of the restricted neighborhood is set to $k^\prime = 20$.
-Furthermore, we run LSBM-T with a replay buffer size $\rho=1000$ for $z=300$ iterations and generate $n_s = 50$ training samples per iteration. The GNN is trained in 4 batches of size $8$ in each iteration. 
+Furthermore, we run LSBM-T with a replay buffer size $\rho=1000$ for $z=300$ iterations and generate $n_s = 50$ training samples per iteration. The GNN is trained in 4 batches of size $8$ in each iteration. We use the ADAM optimizer with a learning rate of $0.001$ and a momentum of $(0.9, 0.999)$ and train the models using FLux.jl's logitbinarycrossentropy loss function. 
 
 In the following experiments, we evaluate the results of the trained models on uniform random graphs and on selected benchmark instances. 
 The benchmark instances used in this Section are shown in Table~\ref{tab:benchmark-instances-for-experiments} for reference.
@@ -1638,13 +1643,16 @@ The results show that the learning-based features N2V, S2V, perform well on rand
     \label{fig:node-features-comparison}
 \end{figure}
 
+We draw two conclusions from the results of the computational experiments presented in this Section. First, all the presented feature initialization methods can effectively be used within the context of our algorithm, as most of the trained models improve significantly throughout the training, and no method clearly outperforms all other methods. 
+Second, the differences between the evaluated feature initialization methods regarding the obtained solution quality seem to be only marginal. We explain this observation by arguing that feature initialization is only the first stage when evaluating the graph, and the main part of the computation is done by the application of the attention-based GNN. 
+
 \subsection{Generalization to Larger Instances}
 Training the GNN-based scoring function is time-consuming, especially when larger graphs are used during training. To keep our approach scalable, we investigate, whether the trained models generalize to larger instances with similar densities to the instances seen during training. 
 Figure \ref{fig:generalization} shows the results of our experiments. We select the two best-performing node features for two instance groups from Subsection \ref{subsec:node-features}, namely $|V|=400, \mathrm{dens}(G) \approx 0.75$ and $|V|=450, \mathrm{dens}(G) \approx 0.823$ with $\gamma=0.999$ and compare, how models that were trained on smaller graphs perform on random instances with these properties. The left Subfigure shows the results for models that were trained on graphs of size $|V| = 200$ in comparison with models trained on graphs of size $|V|=400$. While N2V did not generalize to bigger instances, S2V even outperformed the best results of models trained on the size of instances seen during evaluation. 
 In the right Subfigure we see that the models with feature initialization methods E1, E1+N2V did not generalize well to larger graphs. The GNNs trained on graphs of size $|V|=150$ show the worst performance, whereas the best models that were trained on graphs of size $|V|=300$ were able to match the performance of the models trained on graphs of size $|V|=450$.
 
 We conclude that, at its current state, our approach does not generalize reliably to instances that are larger than those seen during training by a factor of two or more. 
-Finally, we note that future work should include experiments using curriculum learning strategies as discussed in \cite{Lisicki2020}, where the NNs are trained by starting on smaller instances and gradually increasing the instance size. The authors show that these strategies are successful in making the trained models achieve better generalization.   
+Finally, we note that future work shall evaluate curriculum learning strategies as discussed in \cite{Lisicki2020}, where the NNs are trained by starting on smaller instances and gradually increasing the instance size. The authors show that these strategies are successful in making the trained models achieve better generalization. 
 
 \begin{figure}
     \centering
@@ -1669,7 +1677,7 @@ The difference in average solution quality of the trained models is only margina
 
 The results depicted in the figure are representative of other similar experiments we conducted. We conclude that using a higher look-ahead depth increases in most cases the average solution quality of the trained models, as expected, which justifies the increased computational effort during training. 
 
-To compare the impact on the runtime when using a look-ahead depth $d=2$ compared to $d=1$, we observe the average runtime in an iteration of the training loop that is used to generate training samples in both parameter settings. Whereas 50 samples with look-ahead depth $d=1$ are generated in less than a second per iteration, the average runtime per iteration to compute 25 training samples using a look-ahead depth $d=2$ is 24.3 seconds, introducing a noticeable computational overhead throughout $z=300$ iterations of the training loop. 
+To compare the impact on the runtime when using a look-ahead depth $d=2$ compared to $d=1$, we observe the average runtime in an iteration of the training loop that is used to generate training samples in both parameter settings for the trained models in this Subsection. Whereas 50 samples with look-ahead depth $d=1$ are generated in less than one second per iteration, the average runtime per iteration to compute 25 training samples using a look-ahead depth $d=2$ is 24.32 seconds, introducing a noticeable computational overhead throughout $z=300$ iterations of the training loop. 
 
 \begin{figure}
     \centering
@@ -1702,7 +1710,7 @@ We evaluate the effect on runtime and solution quality by comparing the performa
 
 \subsection{Sparse evaluation}
 As discussed in Section~\ref{sec:performance} the use of a GNN-based scoring function introduces a significant computational overhead. During our experiments, we notice that the runtime increases by an average factor between five and ten, depending on the input graph size and density and choice of node features, when using $g_S$ during the execution of LSBM instead of $d_S$. This is primarily due to the decoder that evaluates the vertices in the graph every time the candidate solution changes. 
-To reduce this overhead, we propose to only apply the decoder if the last vertex swap did not yield a solution with increased objective value. 
+To reduce this overhead, we propose to only apply the decoder if the last vertex swap did not yield a solution with an increased objective value. 
 Figure~%\ref{fig:sparse-evaluation} 
 shows the results of this approach. \todo{show results}
 
@@ -1713,9 +1721,40 @@ shows the results of this approach. \todo{show results}
 \section{Results on Benchmark Instances}\label{sec:benchmark-results}
 For the final experiments on the benchmark instances, we choose one centrality-based node feature (E1), one learning-based node feature (N2V+S2V), and one node feature that combines both approaches (E1+S2V), as these features have shown to be promising during our evaluation. 
 The remaining parameter settings during training are exactly as described in Section \ref{sec:lsbm-t}. 
-We train ten randomly initialized GNNs for each evaluated benchmark instance or instance group with a final adoption of the GNN that yields the best results on 20 unseen uniform random graphs of similar size and density as those seen during training. 
+We train ten randomly initialized GNNs on representative instances for each evaluated benchmark instance or instance group. Training instances are generated with the same size and density as the corresponding instances or instance groups. After the training is completed, we adopt the GNN that yields the best results on 20 unseen uniform random graphs of similar size and density as those seen during training. 
 
+The results are shown in Table %\ref{}
 
+\begin{sidewaystable}
+    \centering
+    \scalebox{0.8}{
+    \begin{tabular}{llrrrr | rrr rrr rrr r}
+        \toprule
+        \multicolumn{6}{c}{ } & \multicolumn{3}{c}{LSBM (E1)} & \multicolumn{3}{c}{LSBM (N2V+S2V)} & \multicolumn{3}{c}{LSBM (E1+S2V)} &  \\ \cmidrule{7-9} \cmidrule{10-12} \cmidrule{13-15}
+        Benchmark & Instance & $|V|$ & $|E|$ & $\mathrm{dens}(G)$ & $\gamma$ & Best & Avg & T(s) & Best & Avg & T(s) & Best & Avg & T(s) & Best LB\\ \hline
+        DIMACS & brock200\_1 & $200$ & $14834$ & $0.745$ & 0.800 & 114 & 114.0 & 49.46 & 114 & 114.0 & 41.21 & 114 & 114.0 & 42.42 & 114\\
+        DIMACS & brock200\_2 & $200$ & $9876$ & $0.496$ & 0.800 & 24 & 24.0 & 57.46 & 24 & 24.0 & 52.99 & 24 & 24.0 & 55.82 & 24\\
+        DIMACS & brock200\_3 & $200$ & $12048$ & $0.605$ & 0.800 & 41 & 41.0 & 26.14 & 41 & 41.0 & 51.50 & 41 & 41.0 & 32.39\\
+        % DIMACS & brock400\_1 & $400$ & $59723$ & $0.748$\\
+        % DIMACS & brock400\_2 & $400$ & $59786$ & $0.749$\\
+        % DIMACS & brock400\_3 & $400$ & $59681$ & $0.748$\\
+        DIMACS & C125 & $125$ & $6963$ & $0.898$ & 0.999 & 34 & 34.0 & 7.308 & 34 & 34.0 & 7.32 & 34 & 34.0 & 7.05 & 34\\
+        DIMACS & C250 & $250$ & $27984$ & $0.899$ & 0.999 & 44 & 44.0 & 24.28 & 44 & 44.0 & 32.26 & 44.0 & 43.4 & 24.43 & 44\\
+        % DIMACS & C500 & $500$ & $112332$ & $0.900$
+        % DIMACS & DSJC500 & $500$ & $62624$ & $0.502$\\
+        DIMACS & hamming6-2 & $64$ & $1824$ & $0.905$ & 0.950 & 37 & 37.0 & 9.10 & 37 & 37.0 & 8.26  & 37 & 37.0 & 8.11 & 37 \\
+        DIMACS & hamming6-4 & $64$ & $704$ & $0.349$ & 0.500 & 32 & 32.0 & 7.01 & 32 & 32.0 & 8.87  & 32 & 32.0 & 7.02 & 32 \\
+        DIMACS & johnson8-4-4 & $70$ & $1855$ & $0.768$ & 0.800 & 43 & 43.0 & 5.58 & 43 & 43.0 & 6.88  & 43 & 43.0 & 9.65 & 43 \\
+        DIMACS & johnson16-2-4 & $120$ & $5460$ & $0.765$ & 0.800 & 34 & 34.0 & 8.56 & 34 & 34.0 & 13.02  & 34 & 34.0 & 10.99 & 34 \\
+        DIMACS & MANN\_a9 & $45$ & $918$ & $0.927$ & 0.999 & 16 & 16.0 & 5.73 & 16 & 16.0 & 5.82  & 16 & 16.0 & 5.83 & 16 \\
+        % BHOSLIB & frb30-15-1 & $450$ & $83198$ & $0.824$\\
+        % BHOSLIB &frb30-15-2 & $450$ & $83151$ & $0.823$\\
+        % BHOSLIB &frb30-15-4 & $450$ & $83194$ & $0.823$\\
+        % BHOSLIB &frb30-15-5 & $450$ & $83231$ & $0.824$\\
+    \end{tabular}
+    }
+    \caption{MQCP results for selected benchmark instances.}
+\end{sidewaystable}
 
 Table containing benchmark instances for reference
 \begin{table}
@@ -1854,35 +1893,57 @@ Table containing benchmark instances for reference
 
 \chapter{Conclusions \& Future Work}\label{chp:conclusions}
 
-Contributions:
-\begin{itemize}
-    \item Present an algorithmic training framework for mcp relaxations
-    \item Fast lower bound heuristic
-    \item Enhance scoring function $d_S$ by NN 
-    \item Evaluate on instances of different sizes and densities
-    \item Evaluate on benchmark instances
-\end{itemize}
+In this thesis, we presented a local search-based metaheuristic algorithm LSBM for edge-based relaxations of the MCP, namely, the MQCP and the MDCP, that utilizes a GNN-based scoring function to guide the local search. 
+We developed a BS-based heuristic that is used to quickly obtain a feasible solution, which is used as an initial lower bound within LSBM. 
+The structure of LSBM is built upon state-of-the-art heuristic algorithms (\cite{djeddi_extension_2019}, \cite{zhou_opposition-based_2020}, and \cite{chen_nuqclq_2021}) and is adapted to incorporate a GNN to extract and use structural information obtained from the input graph during its execution. 
+Initially, a (possibly infeasible) candidate solution $S$ of fixed size $k$ is generated by a construction heuristic, which is then improved by a local search procedure centered around swapping pairs of vertices in and outside $S$ to increase the objective value of the current candidate solution. If the candidate solution becomes a feasible solution, $k$ is increased and the process is repeated until a stopping criterion is met. 
+In the context of this algorithm, the GNN is used to restrict the neighborhood of a candidate solution to only the most promising vertices in and outside of the current candidate solution. 
+
+Furthermore, as the main contribution of this work, we proposed an algorithm LSBM-T that can be used to generate training data and train the GNN. Training is done in an offline setting on representative problem instances using principles from imitation learning to imitate the exhaustive search of a user-defined neighborhood structure with respect to a candidate solution $S$. The results of our evaluation show that LSBM-T successfully trains the models to imitate the exhaustive search of a neighborhood. 
+
+As the input graphs for the considered problems are non-attributed, we investigated node feature initialization methods within the context of our algorithm, namely, degree-based initialization, EgoNet initialization, and the learning-based methods Node2Vec and Struc2Vec. 
+We thoroughly evaluated, which feature initialization methods and combinations thereof can be used. Our computation experiments show that, at the current state of our work, the differences in node feature initialization methods are only marginal. 
+
+We employed an Encoder-Decoder-based GNN architecture inspired by the work shown in \cite{Kool2019} to make the application of a NN feasible within our approach. The computationally expensive attention-based encoder, which utilizes GATv2 attention layers \cite{Brody2021}, is only applied once per instance to produce node embeddings, whereas the lightweight decoder is applied after each change in the candidate solution. 
+We are aware of the computational overhead introduced by the use of a NN, as the analysis of the additional computational effort is part of this work. 
+
+Finally, we evaluate selected benchmark instances and compare our approach to the state-of-the-art. The results show that 
+in terms of solution quality, the performance of the models trained using LSBM-T gets close to the leading methods but is not yet competitive. 
+Moreover, in terms of runtime, our method is outperformed by the leading methods, as the computational overhead introduced by the GNN is simply too large. 
+
+
+% We investigate different 
+% \begin{itemize}
+%     \item Present an algorithmic training framework for mcp relaxations
+%     \item Fast lower bound heuristic
+%     \item Enhance scoring function $d_S$ by NN 
+%     \item Evaluate on instances of different sizes and densities
+%     \item Evaluate on benchmark instances
+% \end{itemize}
 
 \subsubsection{Future Work}
 
-There are several promising directions in which the work of this thesis can be continued. Here, we outline possible ways of continuing this work and pose some interesting questions and challenges that remained unsolved during our work. 
+There are several promising directions in which the work of this thesis can be continued. We conclude this thesis by outlining possible ways of continuing this work and discussing questions and challenges that remained unsolved during our work. 
 
 One great challenge for future work on this algorithm is to define a stronger context that is fully independent of the $d_S$-values of the current candidate solution. Instead, it shall rely solely on information obtained from the corresponding node embeddings of the vertices in the current candidate solution $S$. The difficulty here lies in defining a context of, if possible, constant size, that is expressive enough to provide information about candidate solutions of variable size. Furthermore, the context should ideally be computable in time $O(n)$ as it needs to be computed in each iteration of the local search procedure. 
+Defining a stronger context could also lead to a stronger generalization of our approach. 
 
+Future work shall also include the evaluation of a more fine-grained GNN architecture and training data generation that allows the GNN to predict \emph{two} scores for each vertex, one for vertices that should be added, and one for vertices that should be removed from the candidate solution. 
+Splitting these prediction tasks and finding ways to adapt the algorithm to incorporate these changes could potentially improve the performance of the utilized GNN within LSBM. 
 
-Future work could also include experiments using a more fine-grained GNN architecture and training data generation that allows the GNN to predict \emph{two} scores for each vertex, one for vertices that should be added, and one for vertices that should be removed from the candidate solution. 
-Splitting these prediction tasks and finding ways to adapt the algorithm to incorporate these changes could improve the accuracy of the utilized GNN. 
+During our evaluation, we notice there is potential for the improvement of generalization to larger instances. In this context, future work shall evaluate curriculum learning strategies as evaluated in \cite{Lisicki2020}, which might lead to better generalization. 
 
-% As using attention-based GNNs in combinatorial optimization is still a very recent 
+All experiments in this thesis were executed on CPUs. However, GPUs are known to speed up computations involving GNNs and NNs in general by a significant factor. Therefore, it would be of interest to perform larger-scale experiments using GPUs to investigate how strongly this speedup affects the execution of LSBM and LSBM-T. 
 
-All experiments in this thesis were executed on CPUs. However, GPUs are known to speed up computations involving GNNs and NNs in general by a significant factor. It would be interesting to perform larger-scale experiments using GPUs to investigate how strongly this speedup affects the execution of LSBM and LSBM-T. 
+At the current state of our work, training on large, dense graphs ($|V| > 500$) is very time-consuming. 
+Another continuation of this work is therefore the optimization of the training algorithm to make training on larger instances computationally feasible in practice. 
+As already discussed, one approach is to improve the generalization to larger instances and train on small instances, where training is less time-consuming. 
+Besides that, other, methods to reduce the computational effort can be investigated, e.g., the preprocessing and reduction of instances. 
 
-For now, the biggest bottleneck during training is the execution of LSBM which is done to generate training data. Future improvements could focus on the parallelization of this task. For example, the local search procedure within LSBM can be started multiple times in parallel. 
-On another note, also other, more efficient methods to generate training data can be investigated that do not involve the execution of LSBM. 
+LSBM-T generates graph instances on the fly during training. In our experiments, all models were trained on uniform random graphs. 
+Naturally, the question arises, of how other random graph models can be utilized in LSBM-T and how well the trained GNNs generalize to graphs drawn from other distributions. Furthermore, real-world datasets should be analyzed and evaluated to determine, whether structural patterns in these datasets can be exploited within the context of our algorithm. 
 
-LSBM-T generates graph instances on the fly during training. In our experiments, all models were trained on uniform random graphs. It would also be interesting to see, how other random graph models can be utilized in LSBM-T and how well the trained GNNs generalize to graphs drawn from other distributions. 
-
-Finally, we note that, besides local search-based methods, also other approaches to utilize GNNs can be investigated in the context of (meta)heuristic solution approaches for MCP relaxations. 
+Finally, we note that LSBM and LSBM-T can be adapted in a relatively straightforward manner to other MCP-relaxations by defining relevant neighborhood structures and the objective value of a candidate solution in the context of LSBM. 
 
 % \begin{itemize}
 %     \item Replace $d_S$ completely by defining stronger context
