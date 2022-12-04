@@ -65,6 +65,7 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
           timelimit::Float64, max_iter::Int, next_improvement::Bool,
           swap_history::Union{Nothing, SwapHistory}, neighborhood_search::NeighborhoodSearch,
           sparse_evaluation::Bool, score_based_sampling::Bool,
+          is_mdcp::Bool=false,
           )::@NamedTuple{S::Vector{Int}, freq::Vector{Int}, swap_history::Union{Nothing, SwapHistory}}
 
     γ = local_search_procedure.γ
@@ -77,7 +78,11 @@ function (local_search_procedure::MQCP_LocalSearchProcedure)(
     S′ = copy(S)
     V_S = Set(filter(v -> v ∉ S, vertices(graph)))
     current_obj = best_obj
-    min_edges_needed = γ * k * (k-1) / 2
+    if is_mdcp
+        min_edges_needed = k * (k-1) / 2 - γ
+    else
+        min_edges_needed = γ * k * (k-1) / 2
+    end
 
     reset!(short_term_memory, graph)
     update!(scoring_function, graph, S) 

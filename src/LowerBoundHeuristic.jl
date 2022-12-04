@@ -69,6 +69,25 @@ function (noeh::FeasibleNeighborsHeuristic)(g::SimpleGraph, node::Node, γ::Real
     return result
 end
 
+struct MDCP_FeasibleNeighborsHeuristic <: GuidanceFunction 
+    variant_a::Bool
+end
+
+function (noeh::MDCP_FeasibleNeighborsHeuristic)(g::SimpleGraph, node::Node, γ::Real)::Real
+    k = length(node.S)
+    min_edges_needed = (k*(k+1)/2) - γ - node.num_edges # edges needed for feasibility in clique of size k+1
+    d_S = [node.d_S[v] for v in vertices(g) if v ∉ node.S] # d_S values for vertices outside S
+    result = 0
+    for val in d_S
+        if val >= min_edges_needed
+            result += 1
+            add = noeh.variant_a ? ((val - min_edges_needed)/(k*(k+1)/2)) : (val - min_edges_needed)
+            result += add
+        end
+    end 
+    return result
+end
+
 """
     GreedyCompletionHeuristic
 
@@ -232,6 +251,7 @@ struct BeamSearch_LowerBoundHeuristic <: LowerBoundHeuristic
     β::Int
     γ::Real
     expansion_limit::Int
+    is_mdcp::Bool
 
     """
     
@@ -243,8 +263,8 @@ struct BeamSearch_LowerBoundHeuristic <: LowerBoundHeuristic
     - `expansion_limit`: Limit expansion of nodes into up to `expansion_limit` child nodes for performance
 
     """
-    function BeamSearch_LowerBoundHeuristic(guidance_func::GuidanceFunction; β::Int=5, γ::Real, expansion_limit::Int=50)
-        new(guidance_func, β, γ, expansion_limit)
+    function BeamSearch_LowerBoundHeuristic(guidance_func::GuidanceFunction; β::Int=5, γ::Real, expansion_limit::Int=50, is_mdcp::Bool=false)
+        new(guidance_func, β, γ, expansion_limit, is_mdcp)
     end
 end
 
@@ -279,16 +299,16 @@ function (bs_lbh::BeamSearch_LowerBoundHeuristic)(graph::SimpleGraph)
         # ignore expansion limit only for first node
         for node in beam
             if level == 1
-                children = vcat(children, expand(graph, node, γ, visited_solutions))
+                children = vcat(children, expand(graph, node, γ, visited_solutions; bs_lbh.is_mdcp))
             else
-                children = vcat(children, expand(graph, node, γ, visited_solutions; expansion_limit))
+                children = vcat(children, expand(graph, node, γ, visited_solutions; expansion_limit, bs_lbh.is_mdcp))
             end
         end
         if !isempty(children)
             max_node = sample(children)
         end
 
-        filter!(node -> !is_terminal(graph, γ, node), children)
+        filter!(node -> !is_terminal(graph, γ, node; bs_lbh.is_mdcp), children)
 
         for node in children
             node.h_val = guidance_function(graph, node, γ)
@@ -301,10 +321,14 @@ function (bs_lbh::BeamSearch_LowerBoundHeuristic)(graph::SimpleGraph)
 end
 
 # expand node into feasible successors
-function expand(graph::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set{Int}}; expansion_limit=Inf)::Vector{Node}
+function expand(graph::SimpleGraph, node::Node, γ::Real, visited_solutions::Set{Set{Int}}; expansion_limit=Inf, is_mdcp=false)::Vector{Node}
     d_S = node.d_S
     k = length(node.S)
-    min_edges_needed = Int(ceil(γ * (k*(k+1)/2))) - node.num_edges
+    if is_mdcp
+        min_edges_needed = Int((k*(k+1)/2)-γ) - node.num_edges
+    else
+        min_edges_needed = Int(ceil(γ * (k*(k+1)/2))) - node.num_edges
+    end
     d_S_sorted_perm = filter(v -> v ∉ node.S, sortperm(d_S; rev=true))
 
     children = Vector{Node}()
@@ -347,11 +371,15 @@ false otherwise.
 - `node`: Node in the beam search tree
 
 """
-function is_terminal(graph::SimpleGraph, γ::Real, node::Node)
+function is_terminal(graph::SimpleGraph, γ::Real, node::Node; is_mdcp::Bool=false)
     V_S = setdiff(vertices(graph), node.S)
     d_S_filtered = [node.d_S[i] for i in V_S]
     k = length(node.S)
-    edges_needed = γ*(k*(k+1)/2) # minimum number of edges needed in solution of size |S|+1 
+    if is_mdcp
+        edges_needed = k*(k+1)/2 - γ
+    else
+        edges_needed = γ*(k*(k+1)/2) # minimum number of edges needed in solution of size |S|+1 
+    end
 
     # if clique cannot be extended by a single node, it is terminal -> return true
     if maximum(d_S_filtered) + node.num_edges < edges_needed

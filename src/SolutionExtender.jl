@@ -52,3 +52,34 @@ function extend(solution_extender::MQCP_GreedySolutionExtender, graph::SimpleGra
     end
     return S
 end
+
+struct MDCP_GreedySolutionExtender <: SolutionExtender
+    s::Int
+end
+
+function extend(solution_extender::MDCP_GreedySolutionExtender, graph::SimpleGraph, S::Vector{Int})
+    s = solution_extender.s
+    S = copy(S)
+    V_S = Set(setdiff(vertices(graph), S))
+    d_S = calculate_d_S(graph, S)
+    num_edges = calculate_num_edges(graph, S)
+    k = length(S)
+
+    while true
+        min_edges_needed = ceil(Int, k * (k+1) / 2 - s)
+        for v in V_S
+            if num_edges + d_S[v] >= min_edges_needed
+                delete!(V_S, v)
+                push!(S, v)
+                num_edges = num_edges + d_S[v]
+                for u in neighbors(graph, v)
+                    d_S[u] += 1
+                end
+                k += 1
+                break
+            end
+        end
+        break
+    end
+    return S
+end

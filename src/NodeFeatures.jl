@@ -45,6 +45,22 @@ end
 
 Base.length(d_S_nf::d_S_NodeFeature) = 1 + Int(d_S_nf.add_mean) + Int(d_S_nf.add_std)
 
+struct InS_NodeFeature <: NodeFeature end
+
+function (::InS_NodeFeature)(graph::AbstractGraph, S = nothing, d_S = nothing)
+    if isnothing(S)
+        error("Candidate solution is not defined")
+    end
+    if typeof(S) <: Set
+        S = collect(S)
+    end
+    features = [0 for _ in 1:nv(graph)]
+    features[S] .= 1
+    Float32.(features')
+end
+
+Base.length(::InS_NodeFeature) = 1
+
 abstract type RepresentationLearningNodeFeature <: NodeFeature end
 
 struct DeepWalkNodeFeature <: RepresentationLearningNodeFeature
