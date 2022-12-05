@@ -52,7 +52,7 @@
 
 \makeindex      % Use an optional index.
 \makeglossaries % Use an optional glossary.
-%\glstocfalse   % Remove the glossaries from the table of contents.
+% \glstocfalse   % Remove the glossaries from the table of contents.
 
 \newglossaryentry{gamma}{%
   name={\ensuremath{gamma}},
@@ -285,12 +285,12 @@ Therefore, we develop a heuristic solution approach that is centered around loca
 We study and review the relevant literature and build upon the leading (meta)heuristic algorithms for the MQCP. 
 
 The first main contribution of this thesis is a local search-based metaheuristic named LSBM that can utilize a GNN as a scoring function that is used to restrict the neighborhoods during the local search procedure to the most promising vertices. 
-Secondly, we propose a training algorithm LSBM-T that can be used to generate training data that can be used to train the GNN to predict, which vertices in a neighborhood will most likely lead to an improved solution, by imitating a more expensive exhaustive search of a possibly larger neighborhood. 
+Secondly, we propose a training algorithm LSBM-T that trains the GNN-based scoring function offline on randomly generated representative instances in an imitation learning setting. The expert strategy being imitated is an exhaustive search of a user-defined neighborhood structure. The GNN is thus trained to predict, which vertices in a neighborhood will most likely lead to an improved solution. 
+We investigate different centrality-based and learning-based feature initialization methods, as the input graphs of the considered problems are non-attributed.
+Furthermore, we present an attention-based Encoder-Decoder GNN architecture built upon similar applications of GNNs in combinatorial optimization and evaluate this architecture within our approach. 
 
-We evaluate our methodology by conducting several computational experiments regarding the parameters of LSBM and LSBM-T. We investigate different feature initialization methods, robustness towards variance of input data, and how well our method generalizes to larger, unseen instances. 
-Our results show that 
-
-\todo{paragraph about results}
+We evaluate our methodology by conducting several computational experiments regarding the parameters of LSBM and LSBM-T. 
+The final results on benchmark instances indicate that our approach can match the solution quality of the state-of-the-art methods for most instances with $|V| \leq 300$, but is not competitive yet for larger instances. 
 
 \end{abstract}
 
@@ -676,10 +676,10 @@ Note that, similar to the MQCP, there is a straight-forward MILP-formulation as 
 Here, $\overline{E}$ denotes the set $\{\{i,j\} \mid \{i,j\} \notin E\}$, i.e. the set of edges that are not in $E$. 
 
 In \cite{Trukhanov2013}, the authors analyze several MCP relaxations from the perspective of hereditary properties in graphs. They show that the property of being a defective clique is a non-trivial, interesting property that is hereditary on induced subgraphs, and that the NP-hardness of the problem follows from this observation. Furthermore, the authors propose an exact algorithm based on Russian Doll Search (RDS) that can be used to solve MCP relaxations that are hereditary. In \cite{GSCHWIND2018131}, the RDS algorithm is revisited and improved by new pre-processing procedures. 
-More recently, exact solution approaches are proposed in~\cite{chen2021computing} and~\cite{gao2022exact} specifically to exploit massive sparse graphs. 
+More recently, exact solution approaches are proposed in~\cite{chen2021computing} and~\cite{gao2022exact} specifically to exploit massive sparse graphs, and a heuristic first-order optimization method is presented in \cite{bomze2022fast}. 
 % When reviewing the results reported by these authors, we notice that -- due to the exploitation of the heredity of the problem -- exact algorithms for the MDCP can solve much larger graphs in practice in an exact manner. 
 
-When studying the literature related to the MDCP, we notice that there is a lack of heuristic approaches. Due to the close relation of the MQCP and the MDCP we focus our approach to build upon existing heuristic algorithms for the MQCP and show that it can be adapted to the MDCP easily. 
+When studying the literature related to the MDCP, we notice that there are only a few heuristic approaches. Due to the close relation of the MQCP and the MDCP we focus our approach to build upon existing heuristic algorithms for the MQCP and show that it can be adapted to the MDCP easily. 
 
 \chapter{A Local Search Based Metaheuristic for Edge-Based Relaxations of the Maximum Clique Problem}\label{chp:local-search-algorithm}
 
@@ -825,7 +825,7 @@ These heuristic guidance functions differ greatly in terms of time complexity pe
 The construction heuristic in Line \ref{alg:structure-construction} in Algorithm \ref{alg:structure} aims to return a set of nodes $S$ of fixed size $|S| = k$ that is promising to lead to new local optima when used as a starting point for the local search procedure. The candidate solution returned by this construction heuristic is not necessarily feasible. 
 The construction heuristic includes a parameter $b \in [0,1]$ which controls the balance between choosing nodes that have not been explored yet and nodes that increase the number of edges among vertices in the current candidate solution. This approach of balancing exploration and objective value is inspired by \cite{chen_nuqclq_2021}, where the authors use a similar strategy during construction. We combine the authors' idea with a GRASP-like construction step. The procedure is shown in Algorithm \ref{alg:exploration-construction}. 
 At first, a starting node is selected by choosing a node with the lowest $\mathit{Freq}$-value, breaking ties randomly. In each iteration of the main while loop in line \ref{alg:exploration-construction-while-start}-\ref{alg:exploration-construction-while-end}, with probability $b$ a node with the lowest $\mathit{Freq}$-value in $N_G(S)$ is added to the current candidate solution $S$. If $N_G(S)$ is empty, an arbitrary node with the lowest $\mathit{Freq}$ value from $V\setminus S$ is selected instead. 
-With probability $1-c$ we perform an iteration of a GRASP-like construction step: A restricted candidate list $\mathit{RCL}$ is built by adding all nodes from $V \setminus S$ that fulfill the condition $d_S(u) \geq d_{\max} - \alpha(d_{\max} - d_{\min})$, where $d_S(u)$ denotes the number of neighbors in $S$ for a node $u \in V \setminus S$, and $d_{\max}, d_{\min}$ are the maximum and minimum values $d_S(u)$, respectively, over all nodes $u\in V \setminus S$. Here, the parameter $\alpha$ controls the balance between greediness and randomness in a GRASP-like manner: $\alpha=0$ corresponds to a greedy strategy, whereas $\alpha=1$ corresponds to a purely random strategy.  
+With probability $1-b$ we perform an iteration of a GRASP-like construction step: A restricted candidate list $\mathit{RCL}$ is built by adding all nodes from $V \setminus S$ that fulfill the condition $d_S(u) \geq d_{\max} - \alpha(d_{\max} - d_{\min})$, where $d_S(u)$ denotes the number of neighbors in $S$ for a node $u \in V \setminus S$, and $d_{\max}, d_{\min}$ are the maximum and minimum values $d_S(u)$, respectively, over all nodes $u\in V \setminus S$. Here, the parameter $\alpha$ controls the balance between greediness and randomness in a GRASP-like manner: $\alpha=0$ corresponds to a greedy strategy, whereas $\alpha=1$ corresponds to a purely random strategy.  
 
 \begin{algorithm}
     \DontPrintSemicolon
@@ -950,7 +950,7 @@ Summarizing the previous sections, we present a flowchart visualization of LSBM 
 \section{Adaption to the Maximum Defective Clique Problem}\label{sec:adaption-to-mdcp}
 The MQCP and the MDCP can be approached similarly in the context of a local search-based algorithm, as during the local search procedure in both cases we try to find neighboring solutions that maximize the number of edges in the subgraph induced by the current candidate solution. The objective value of a candidate solution as defined in Section~\ref{sec:neighborhood-structure} is equivalent in both problems. Thus, we only have to change the feasibility checks for feasible MQCs in Line~\ref{alg:feasibility-check-1} of Algorithm~\ref{alg:structure}, Line~\ref{alg:feasibility-check-2} of Algorithm~\ref{alg:extend}, and Line~\ref{alg:feasibility-check-3} in Algorithm~\ref{alg:local-search-procedure}, as well as the expansion into feasible successors in the lower bound heuristic in Line~\ref{alg:lower-bound-heuristic-expansion} of Algorithm~\ref{alg:lower-bound-heuristic} to feasibility checks for MDCs. The proposed construction heuristic can be used for the MDCP without any change.  
 
-\chapter{Using Graph Neural Networks in a Local Search Based Metaheuristic for Edge-Based Relaxations of the Maximum Clique Problem}\label{chp:gnn}
+\chapter{The GNN-based scoring function}\label{chp:gnn}
 
 In this Chapter, we extend our algorithm LSBM presented in Chapter \ref{chp:local-search-algorithm} by utilizing a GNN as a learnable scoring function to enhance the algorithm. 
 Section~\ref{sec:gnn-local-search} discusses the motivation for using a GNN within LSBM and points out weaknesses of current approaches that we attempt to overcome. Moreover, we show the general structure of our training algorithm LSBM-T and an overview of our approach. 
@@ -1255,7 +1255,7 @@ However, we note that this definition of a context is one of the current weaknes
 Furthermore, we derive features from the function $d_S$. From the $d_S$-values for the vertices in the input graph, we compute the mean and standard deviation. Then, for each vertex in the graph, we concatenate a vector containing its $d_S$-value and the mean and standard deviation of all$d_S$-values to the context embedding $c$, creating feature vectors $c_i$ for $v_i, 1 \leq i \leq |V|$. These vectors are then concatenated to the node embeddings, creating the final decoder inputs $e_i \; || \; c_i$ for $v_i, 1 \leq i \leq |V|$. 
 
 \subsection{Decoder}
-The decoder is a regression model that maps the inputs obtained from the node embeddings and the context embedding to scalar values representing scores for the vertices in $V$. We suggest using a simple MLP architecture. The input dimension of the decoder is determined by its inputs, which are computed as previously described by concatenating the context embeddings to the node embeddings. The first layer of the decoder then simply applies a learnable linear transformation, followed by a batch normalization. Furthermore, it consists of $l_d$ layers, with layers $2, \dots, l_d - 1$ being hidden feed-forward layers  of dimension $\mathit{dim}_d$ with a ReLU activation function, each followed by a batch normalization. The final layer $l_d$ of the decoder has is single-dimensional, mapping the results of the previous layer to scalar values between zero and one with a sigmoid activation function. The concrete number of layers and their dimensions are shown in Chapter~\ref{chp:evaluation}, were we evaluate suitable values for our approach. 
+The decoder is a classification model that maps the inputs obtained from the node embeddings and the context embedding to scalar values representing scores for the vertices in $V$. We suggest using a simple MLP architecture. The input dimension of the decoder is determined by its inputs, which are computed as previously described by concatenating the context embeddings to the node embeddings. The first layer of the decoder then simply applies a learnable linear transformation, followed by a batch normalization. Furthermore, it consists of $l_d$ layers, with layers $2, \dots, l_d - 1$ being hidden feed-forward layers  of dimension $\mathit{dim}_d$ with a ReLU activation function, each followed by a batch normalization. The final layer $l_d$ of the decoder has is single-dimensional, mapping the results of the previous layer to scalar values between zero and one with a sigmoid activation function. The concrete number of layers and their dimensions are shown in Chapter~\ref{chp:evaluation}, were we evaluate suitable values for our approach. 
 
 \section{Performance}\label{sec:performance}
 
@@ -1397,12 +1397,12 @@ When analyzing the performance aspect of the proposed scoring functions, it seem
 
 We conduct several computational experiments to evaluate the components and parameter settings of LSBM and LSBM-T. An overview of parameters for LSBM and LSBM-T is given in Tables \ref{tab:parameters-lsbm} and \ref{tab:parameters-lsbm-t}. 
 The evaluation of the BS-based lower bound heuristic is shown in Section \ref{sec:lbh}, where we compare the runtimes and quality of obtained solutions of the proposed guidance functions with several parameter configurations. 
-Next, we use Section \ref{sec:lsbm-t} to analyze in detail how the different parameter settings of LSBM-T affect the performance of the trained GNNs on graphs of different sizes and densities. We evaluate different feature initialization methods and combinations thereof, values for the look-ahead search parameters $d, k^*$, and layer sizes for the encoder and decoder. Furthermore, we investigate how our approach generalizes to bigger, unseen instances. 
-Next, we show, how different LSBM-specific parameters affect runtime and solution quality in Section \ref{sec:lsbm}. 
-Finally, the performance of our approach is evaluated on well-established benchmark instances, and we compare the results to the state-of-the-art. 
+Next, we use Section \ref{sec:lsbm-t} to analyze in detail how the different parameter settings of LSBM-T affect the performance of the trained GNNs on graphs of different sizes and densities. Most importantly, we show in Subsection~\ref{sec:training-eval} that LSBM-T is able to successfully train the GNNs to imitate the look-ahead search and that the trained models effectively guide the local search during LSBM. Then, we investigate different parameter settings of LSBM-T. Our focus lies on evaluating the different feature initialization methods and combinations thereof, and depth values for the look-ahead search parameter $d$. Furthermore, we investigate how our approach generalizes to bigger, unseen instances. 
+Next, in Section \ref{sec:lsbm} we discuss the settings used for the execution of LSBM, and how different LSBM-specific parameters affect runtime and solution quality. 
+Finally, the performance of our approach is evaluated on well-established benchmark instances, and we compare the results to the state-of-the-art in Section~\ref{sec:benchmark-results}. 
 
-The computational experiments are focused on evaluating results obtained on graphs of high density, i.e., the number of neighbors of each vertex is in $O(n)$. 
-These instances seem especially challenging, as exact algorithms are infeasible to use in practice on high-density graphs. We consider both random graphs and selected benchmark instances within the scope of our evaluation. Moreover, we primarily focus on results for MQCP instances, as there is a lack of heuristic solution approaches for the MDCP to compare the performance of our approach. 
+The computational experiments are focused on evaluating results obtained on dense graphs, i.e., the number of neighbors of each vertex is in $O(n)$. 
+These instances seem especially challenging, as exact algorithms are often infeasible to use in practice on dense graphs. We consider both random graphs and selected benchmark instances within the scope of our evaluation. Moreover, we primarily focus on the evaluation of MQCP instances, as we expect our findings to apply to the MDCP as well. 
 
 % We focus our evaluation on dense graphs, 
 
@@ -1411,7 +1411,7 @@ All random graphs are generated using the Erd\H{o}s-Rényi random graph model \c
 We use this random graph model to generate graph instances in all our experiments due to its generality and ease of implementation. 
 However, we note that there are other methods to generate random graphs (e.g., \cite{Aiello2001}), and any method can be used within our approach. Especially if some structural properties of the graphs encountered at test time are known, it can lead to improved performance if these structural properties are also present in the generated random instances during training. 
 
-We generally sample $n, \mathrm{dens}(G)$ from distributions $\mathcal{V}, \mathcal{D}$ to make the training more robust towards small variations in size and density of the input graphs. The instances generated are thus defined by a tuple, e.g., $(\mathcal{V} \sim \mathcal{N}(200, 10), \mathcal{D} \sim \mathcal{U}(0.45, 0.55))$ denotes that instances are generated by sampling the number of vertices $n$ from a normal distribution with $\mu=200, \sigma^2 = 10$ and the density of the graph is sampled from a uniform distribution with $a=0.45, b=0.55$. 
+We generally sample $n, \mathrm{dens}(G)$ from distributions $\mathcal{V}, \mathcal{D}$ to make the trained GNNs more robust towards small variations in size and density of the input graphs. The instances generated are thus defined by a tuple, e.g., $(\mathcal{V} \sim \mathcal{N}(200, 10), \mathcal{D} \sim \mathcal{U}(0.45, 0.55))$ denotes that instances are generated by sampling the number of vertices $n$ from a normal distribution with $\mu=200, \sigma^2 = 10$ and the density of the graph is sampled from a uniform distribution with $a=0.45, b=0.55$. 
 
 \begin{table}
     \centering
@@ -1420,7 +1420,7 @@ We generally sample $n, \mathrm{dens}(G)$ from distributions $\mathcal{V}, \math
         Parameter & Description \\ \hline
         $\mathcal{M}$ & Short Term Memory type (TabuList, ConfigurationChecking) \\
         $\alpha$ & GRASP control variable of construction heuristic, controls randomness \\
-        $b$ & Parameter $b$ for construction heuristic \\
+        $b$ & Exploration parameter $b$ for construction heuristic \\
         $\beta$ & Beam width of beam search used as lower bound heuristic \\
         $\varepsilon$ & Maximum number of successor nodes for a node in lower bound heuristic \\
         $\tau$ & Cutoff time for execution of algorithm \\
@@ -1440,7 +1440,7 @@ We generally sample $n, \mathrm{dens}(G)$ from distributions $\mathcal{V}, \math
         $d$ & Depth of look-ahead search \\
         $k^*$ & Maximum size of sets $X,Y$ in restricted neighborhood in look-ahead search \\
         $\mathit{dim}^{\mathit{conv}}_e$ & Dimension of Convolutional layers of encoder \\
-        $\mathit{dim}^{\mathit{ff}}_e$ & Dimensions of Feed Forward layers of encoder \\
+        $\mathit{dim}^{\mathit{FF}}_e$ & Dimensions of Feed Forward layers of encoder \\
         $l_e$ & Number of layers in encoder \\
         $\mathit{dim}_d$ & Dimensions of Feed Forward layers of decoder \\
         $l_d$ & Number of layers in decoder \\
@@ -1459,12 +1459,13 @@ We generally sample $n, \mathrm{dens}(G)$ from distributions $\mathcal{V}, \math
 We implemented LSBM and LSBM-T in Julia 1.8.3 using Flux \footnote{https://github.com/FluxML/Flux.jl} and GraphNeuralNetworks \footnote{https://github.com/CarloLucibello/GraphNeuralNetworks.jl}\cite{Lucibello2021GNN} for the implementation of the GNN, and Word2Vec \footnote{https://github.com/JuliaText/Word2Vec.jl} for the implementation of Node2Vec and Struc2Vec. All computational experiments in this chapter are executed on an Intel Xeon E5-2640 processor with 2.40\,GHz. For training the NNs, we use a memory limit of 32\,GB, whereas, for all other experiments a memory limit of 20\,GB is used. 
 
 \subsubsection{Benchmark Instances}
-The DIMACS benchmark set is a heterogenous collection of artificially created graphs of different sizes and densities. It is a standard benchmark set for the MCP and related problems and it is used to evaluate the performance of state-of-the-art MQCP (e.g., \cite{peng_solving_2021}, \cite{chen_nuqclq_2021}) and MDCP (e.g. \cite{chen2021computing}) algorithms. Similarly, the BHOSLIB benchmark set is a collection of large graphs of high density which was specifically created for graph problems. 
+The DIMACS benchmark set is a heterogenous collection of artificially created graphs of different sizes and densities. It is a standard benchmark set for the MCP and related problems and it is used to evaluate the performance of state-of-the-art MQCP (e.g., \cite{peng_solving_2021}, \cite{chen_nuqclq_2021}) and MDCP (e.g. \cite{chen2021computing}) algorithms. Similarly, the BHOSLIB benchmark set is a collection of large graphs of high density which was specifically created for performing benchmark tests for graph problems. 
 We evaluate the performance of our algorithm on a subset of these benchmark instances. 
 
 % \section{Evaluation of Algorithm Parameters}\label{sec:alg-params}
 % \fxnote{Maybe first evaluate training parameters, and afterwars algorithm specific parameters? }
 % In this Section we focus on evaluating the components or ideas that distinguish LSBM from similar existing algorithms, namely the lower bound heuristic, and the use of a restricted neighborhood of fixed size. Furthermore, we want to evaluate the effectivity of using different short term memory types (Tabu List \cite{djeddi_extension_2019}\cite{zhou_opposition-based_2020}, Configuration Checking \cite{chen_nuqclq_2021}) that can be found in similar algorithms. The remaining components of LSBM build on the work of other authors, namely the idea of using a frequency-based construction heuristic as in \cite{chen_nuqclq_2021} and the general algorithm structure of \cite{djeddi_extension_2019}, which is why we use the reported best found parameters for these components. 
+
 
 \section{Lower Bound Heuristic}\label{sec:lbh}
 The BS-based lower bound heuristic proposed in Section \ref{sec:lower-bound-heuristic} is a heuristic method that produces a feasible solution on its own. We presented three different heuristic guidance functions: \emph{Greedy Completion}, which has a complexity of $O(|S^*|n)$ per node of the beam search tree, where $|S^*|$ is the size of the best found solution, \emph{Feasible Neighbors}, which has a complexity of $O(n)$ per node, and \emph{Number of Edges}, which returns in $O(1)$ the density of the candidate solution represented by a node in the search tree and thus corresponds to a simple generalized greedy construction in the context of Beam Search. 
@@ -1559,16 +1560,16 @@ Thus, we set $\beta=10, \varepsilon=10$ in all further experiments and use the h
 The performance of LSBM when using a GNN-based scoring function depends mainly on how effectively the GNN is trained to make high-quality predictions. 
 Thus, we evaluate the impact of different feature initialization methods, different values for the look-ahead search parameter $d$, and the generalization on unseen, larger graph instances. 
 
-For the execution of LSBM within LSBM-T, we use the following settings in this Section unless stated otherwise: The short-term memory is a tabu list with a tabu tenure of ten, the construction heuristic parameters $\alpha=0.2, c=0.3$, the lower bound heuristic parameters $\beta=\varepsilon=10$, a time limit $\tau=300.0$, a maximum number of iterations without improvement $\eta=2000$, and a maximum number of $\xi = 3$ restarts before execution is terminated. 
+For the execution of LSBM within LSBM-T, we use the following settings in this Section unless stated otherwise: The short-term memory mechanism used in all experiments is a tabu list with a tabu tenure of ten, the construction heuristic parameters $\alpha=0.2, c=0.3$, the lower bound heuristic parameters $\beta=\varepsilon=10$, a time limit $\tau=300.0$, a maximum number of iterations without improvement $\eta=2000$, and a maximum number of $\xi = 3$ restarts before execution is terminated. 
 During the evaluation of random graphs and benchmark instances we set $\xi = 10$, but keep the remaining parameters unchanged. 
 
-The parameter settings regarding the GNN were obtained by manually fine-tuning our approach over many experiments. We use a GATv2-based encoder as described in Section~\ref{sec:gnn-architecture} with four attention heads per layer, $l_e = 3$ attention layers of size $\mathit{dim}^{conv}_e = 64$ and feed-forward layers of size $\mathit{dim}^{FF}_e = 128$, and an MLP-decoder with $l_d=2$ hidden layers of size $\mathit{dim}_d = 32$. We did not notice any significant increase in performance using an encoder or decoder with more or bigger layers, and in terms of efficiency, it is clearly beneficial to keep the NN as small as possible. By this reasoning, we justify our choice of the presented parameter settings. 
+The parameter settings regarding the GNN were obtained by manually fine-tuning our approach over many experiments. We use a GATv2-based encoder as described in Section~\ref{sec:gnn-architecture} with four attention heads per layer, $l_e = 3$ attention layers of size $\mathit{dim}^{conv}_e = 64$ and feed-forward layers of size $\mathit{dim}^{FF}_e = 128$, and an MLP-decoder with $l_d=2$ hidden layers of size $\mathit{dim}_d = 32$. We did not notice any significant increase in performance using an encoder or decoder with more or higher-dimensional layers, and in terms of efficiency, it is clearly beneficial to keep the NN as small as possible. By this reasoning, we justify our choice of the presented GNN parameter settings. 
 
 The remaining LSBM-T specific parameters are set as follows: The size of the restricted neighborhood is set to $k^\prime = 20$.
 Furthermore, we run LSBM-T with a replay buffer size $\rho=1000$ for $z=300$ iterations and generate $n_s = 50$ training samples per iteration. The GNN is trained in 4 batches of size $8$ in each iteration. We use the ADAM optimizer with a learning rate of $0.001$ and a momentum of $(0.9, 0.999)$ and train the models using FLux.jl's logitbinarycrossentropy loss function. 
 
 In the following experiments, we evaluate the results of the trained models on uniform random graphs and on selected benchmark instances. 
-The benchmark instances used in this Section are shown in Table~\ref{tab:benchmark-instances-for-experiments} for reference.
+The benchmark instances used in this Section are shown in Table~\ref{tab:benchmark-instances-for-experiments} for reference. In all experiments shown in this Section, we train ten GNNs for each investigated parameter configuration unless stated otherwise. 
 
 \begin{table}
     \centering
@@ -1589,6 +1590,39 @@ The benchmark instances used in this Section are shown in Table~\ref{tab:benchma
     \caption{Benchmark instances used for experiments}
     \label{tab:benchmark-instances-for-experiments}
 \end{table}
+
+\subsection{Effectivity of Training}\label{sec:training-eval}
+The most important questions that arise in the context of this work are whether the presented training algorithm LSBM-T successfully trains the GNN to imitate the look-ahead search and how the results obtained using the GNN-based scoring function compare to those obtained using $d_S$. 
+To answer these questions, we show the results of two test runs of training ten GNNs each using LSBM-T. During each iteration of the training loop, LSBM is executed twice on the random instance generated in this iteration, once with the GNN-based scoring function $g_S$, and once with $d_S$, while all other parameters regarding the execution of LSBM are equal in both runs. 
+In the first experiment, we trained ten GNNs on MQCP instances with $|V|=200, \mathrm{dens}(G)=0.65, \gamma=0.999$ using a combination of Node2Vec and Struc2Vec as a feature initialization method, and in the second experiment ten models are trained on MQCP instances with $|V|=400, \mathrm{dens}(G)=0.75, \gamma=0.999$ and the feature initialization Struc2Vec is used. 
+
+The line plots in Figure~\ref{fig:training-line-plot} show the gap between the solution size of the best found solutions $S^*_{g_S}, S^*_{d_S}$ obtained by LSBM using $g_S$ and $d_S$, respectively. The gap is computed as $ \frac{|S^*_{g_S}| - |S^*_{d_S}|}{|S^*_{d_S}|}$. Therefore, a positive gap between solution sizes indicates that LSBM was able to find a larger solution using $g_S$ as a scoring function compared to using $d_S$. 
+
+We observe that during the first 50 iterations the gap is negative, which is to be expected as the GNN is initialized randomly. 
+Note that the training starts after the replay buffer was filled to half its capacity, which is after the completion of ten iterations of the training loop. 
+As the training progresses and the loss decreases, the solution quality of LSBM using $g_S$ increases. This strongly indicates that the GNN is successfully learning to imitate the look-ahead search. 
+
+We notice that after the first 200 iterations of the training loop, the gap never reaches a value below zero, which shows that LSBM consistently performs at least as well using $g_S$ as compared to $d_S$. 
+The second experiment is done to evaluate the effect on larger MQCP instances with $|V|=400, \mathrm{dens}(G)=0.75, \gamma=0.999$. We observe a higher variance in the gap, but smoothing the lines shows that the average gap is above zero, which again indicates that the scoring function $g_S$ outperforms $d_S$. 
+
+In conclusion, the reported observations show strong evidence that LSBM-T successfully trains the GNNs to imitate the look-ahead search and the trained GNN-based scoring functions outperform the scoring function $d_S$ on average. 
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.99\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/training-plot-2.pdf}
+        \caption{Ten runs with $|V|=200, \mathrm{dens}(G)=0.65, \gamma=0.999$}
+    \end{subfigure}
+    \begin{subfigure}{0.99\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/training-plot-1.pdf}
+        \caption{Ten runs with $|V|=400, \mathrm{dens}(G)=0.75, \gamma=0.999$}
+    \end{subfigure}
+    \caption{Each line in the plots represents an independent run of the training algorithm LSBM-T. In each iteration, a random instance is generated and LSBM is performed using the scoring functions $g_S$ and $d_S$, producing the best found solutions $S^*_{g_S}, S^*_{d_S}$, respectively. The gaps between these solutions are computed as $\frac{|S^*_{g_S}| - |S^*_{d_S}|}{|S^*_{d_S}|}$.}
+    \label{fig:training-line-plot}
+\end{figure}
+
 
 \subsection{Node Features}\label{subsec:node-features}
 In Chapter \ref{chp:gnn} we proposed four different feature initialization methods: Degree (D), EgoNet of size 1 and 2, (E1, E2), Node2Vec (N2V), and Struc2Vec (S2V). What follows is an evaluation of these feature initialization methods and combinations thereof: D+N2V, D+S2V, E1+N2V, E1+S2V, N2V+S2V, and E1+E2. In total, we thus investigate ten different node features. 
@@ -1702,28 +1736,106 @@ To compare the impact on the runtime when using a look-ahead depth $d=2$ compare
 As previously noted, we identified the context embedding to be a weakness of our approach, as it compresses the information given by the candidate solution $S$ too much by simply taking the mean of the node embeddings of the vertices in $S$. 
 Therefore, we conduct additional experiments to investigate, whether the context embedding as defined in Section~\ref{sec:gnn-architecture} has a positive effect on the performance, or if the same solution quality can be achieved by removing these context embeddings and only appending the features obtained from the $d_S$-values to the node embeddings as inputs for the decoder. 
 
+We perform two test runs by training ten GNNs with and without the context embedding for three different feature initialization methods on randomly generated MQCP instances with $|V|=250, \mathrm{dens}=0.9, \gamma=0.999$ and $|V|=400, \mathrm{dens}=0.75, \gamma=0.999$. The results, evaluated on independent random instances of similar size and density, are shown in Figure \ref{fig:context-embedding}. For feature initialization method E1 we notice a clear improvement in solution quality in both test runs if the context embedding is used during the training and the execution of the algorithm. The GNNs using E1+S2V and the context embedding show slightly better performance in terms of solution quality when compared to those that do not use the context embedding. The results for the models trained with N2V+S2V are inconclusive, as those that use the context embedding perform better on the instances with $|V|=250$, whereas those trained without the context embedding perform better on the instances with $|V|=400$. We conclude that using the context embedding produces better results in most cases. Nonetheless, using a stronger context can certainly lead further to improvements in our approach. 
 
-\section{Evaluation of LSBM Parameters}\label{sec:lsbm}
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/context-1.pdf}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/context-2.pdf}
+    \end{subfigure}
+    \caption{Impact of using the context embedding for MQCP instances with $|V|=250, \mathrm{dens}=0.9, \gamma=0.999$ (left) and $|V|=400, \mathrm{dens}=0.75, \gamma=0.999$ (right). }
+    \label{fig:context-embedding}
+\end{figure}
+
+
+\section{Evaluation of Search Parameters}\label{sec:lsbm}
+In this Section, we discuss the used parameter settings of LSBM. 
+First, we implemented both considered short-term memory mechanisms, Tabu List and Configuration Checking, and used the recommended settings presented in \cite{zhou_opposition-based_2020} for the tabu tenure, and in \cite{chen_nuqclq_2021} for the Configuration Checking specific parameter $\mathit{ub}\_threshold$. 
+As we did not notice any significant differences in terms of solution quality between the two short-term memory mechanisms within our algorithm, we decided to use a Tabu List approach, as the tabu values for the vertices can be updated in time $O(1)$ after a swap, whereas the update in Configuration Checking takes $O(n)$ time, as all neighbors of the swapped vertices need to be updated as well. 
+
+Regarding the LSBM parameters $\tau, \eta, \xi$, we decide to use a time limit $\tau=300.0$, a number of iterations without improvement until the local search procedure is restarted $\eta=2000$, and a maximum number of restarts $\xi=10$, as increasing the values beyond this point did only increase the runtime of LSBM, but not the solution quality. 
+The parameter $b=0.3$ for the construction heuristic is set to the recommended value of the similar construction heuristic presented in \cite{chen_nuqclq_2021}, and we use the parameter $\alpha=0.25$ for the GRASP-like construction step. 
+Furthermore, we use the parameter settings $\beta=10, \varepsilon=10$ for the lower bound heuristic, as discussed in Section~\ref{sec:lbh}. 
 
 \subsection{Neighborhood Size}
-We evaluate the effect on runtime and solution quality by comparing the performance of the values $k^\prime \in \{10,20,30\}$. 
+We evaluate the effect on runtime and solution quality of differently sized neighborhoods during the execution of LSBM. We consider the values $k^\prime \in \{10,20,30\}$. 
+The GNNs are trained using the exact LSBM-T parameters as stated in Section \ref{sec:lsbm-t} and use a neighborhood size $k^\prime=20$ during training. 
+Figure \ref{fig:neighborhood-size} shows the obtained solution qualities and runtimes for randomly generated instances with $|V|=378, \mathrm{dens}(G)=0.92, \gamma=0.999$. We observe that the solution quality increase when using a larger neighborhood, which is to be expected. Furthermore, the runs with $k^\prime = 10$ have in general a longer runtime than those with $k^\prime=20$, which is an unintuitive result. This is most likely because fewer swaps are performed on average with $k^\prime=20$ compared to $k^\prime=10$, until a feasible solution is found. 
+We conclude that a neighborhood size smaller than $k^\prime=20$ shall not be used in the context of LSBM. 
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/neighborhood-size.pdf}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/neighborhood-runtime.pdf}
+    \end{subfigure}
+    \caption{Impact of neighborhood size $k^\prime$ on the average solution quality and runtime using trained models for $|V|=378, \mathrm{dens}(G)=0.92, \gamma=0.999$.}
+    \label{fig:neighborhood-size}
+\end{figure}
 
 \subsection{Sparse evaluation}
 As discussed in Section~\ref{sec:performance} the use of a GNN-based scoring function introduces a significant computational overhead. During our experiments, we notice that the runtime increases by an average factor between five and ten, depending on the input graph size and density and choice of node features, when using $g_S$ during the execution of LSBM instead of $d_S$. This is primarily due to the decoder that evaluates the vertices in the graph every time the candidate solution changes. 
-To reduce this overhead, we propose to only apply the decoder if the last vertex swap did not yield a solution with an increased objective value. 
-Figure~%\ref{fig:sparse-evaluation} 
-shows the results of this approach. \todo{show results}
+To reduce this overhead, we investigate, how runtime and solution quality are affected if the decoder is only re-applied if the previous vertex swap did not yield a solution with an increased objective value. We call this variation \emph{sparse evaluation}. 
+
+We conduct two experiments on MQCP instances of different sizes and densities. We trained ten GNNs for three different feature initialization methods with a look-ahead depth $d=2$. The remaining parameter settings are as discussed in Section \ref*{sec:lsbm-t}. 
+Figure~\ref{fig:sparse-evaluation-1} shows the results of the experiment for 20 randomly generated MQCP instances with size $|V|=250, \mathrm{dens}(G)=0.9, \gamma=0.999$. There is only a noticeable difference in solution quality in the test runs of the models using the feature initialization method N2V+S2V. However, the results seem unintuitive as the runtimes are slightly higher with sparse evaluation. We explain this observation by the fact that LSBM needs more iterations of the local search procedure, i.e., more swaps occur, when sparse evaluation is used, which balances out the gain in efficiency.  
+In Figure~\ref{fig:sparse-evaluation-2} the results for 20 randomly generated MQCP instances with size $|V|=300, \mathrm{dens}(G)=0.425, \gamma=0.8$ are shown. Here, we notice a positive effect on the runtime when using sparse evaluation, while the obtained solution quality is similar for all trained models. We note that due to the lower density, the instances are generally easier to solve. 
+
+In conclusion, the presented method can reduce the computational effort on less dense instances, but we do not observe a significant improvement in terms of runtime on high-density instances. 
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/sparse-eval-1-size.pdf}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/sparse-eval-1-runtime.pdf}
+    \end{subfigure}
+    \caption{Impact of sparse evaluation on solution quality and runtime for MQCP instances with $|V| = 250, \mathrm{dens}(G)=0.9, \gamma=0.999$}
+    \label{fig:sparse-evaluation-1}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/sparse-eval-2-size.pdf}
+    \end{subfigure}
+    \begin{subfigure}{0.49\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/sparse-eval-2-runtime.pdf}
+    \end{subfigure}
+    \caption{Impact of sparse evaluation on solution quality and runtime for MQCP instances with $|V| = 300, \mathrm{dens}(G)=0.425, \gamma=0.8$}
+    \label{fig:sparse-evaluation-2}
+\end{figure}
 
 % \subsection{Short-Term Memory Type}
 % We evaluate and compare two different short-term memory types within LSBM that are used in state-of-the-art heuristic algorithms for the MQCP: Tabu Lists (\cite{djeddi_extension_2019}, \cite{zhou_opposition-based_2020}) and Configuration Checking (\cite{chen_nuqclq_2021}). 
 % The tabu list is defined by a single parameter, called tabu tenure, which indicates the number of iterations a vertex is blocked after a swap. The authors of \cite{zhou_opposition-based_2020} recommend a setting of 
 
 \section{Results on Benchmark Instances}\label{sec:benchmark-results}
-For the final experiments on the benchmark instances, we choose one centrality-based node feature (E1), one learning-based node feature (N2V+S2V), and one node feature that combines both approaches (E1+S2V), as these features have shown to be promising during our evaluation. 
-The remaining parameter settings during training are exactly as described in Section \ref{sec:lsbm-t}. 
-We train ten randomly initialized GNNs on representative instances for each evaluated benchmark instance or instance group. Training instances are generated with the same size and density as the corresponding instances or instance groups. After the training is completed, we adopt the GNN that yields the best results on 20 unseen uniform random graphs of similar size and density as those seen during training. 
+For the final experiments on the benchmark instances, we choose one centrality-based node feature (E1), one learning-based node feature (N2V+S2V), and one node feature that combines both approaches (E1+S2V), as these features have shown to be promising during our evaluation. We use a neighborhood size $k^\prime=30$ and look-ahead search parameters $d=2, k^* = 50$. The remaining parameter settings during training are exactly as described in Section \ref{sec:lsbm-t}. 
+For each evaluated benchmark graph $G$, we train ten randomly initialized GNNs on independent random instances defined by $\mathcal{V} \sim \mathcal{N}(n, \frac{n}{100}), \mathcal{D} \sim \mathcal{U}(\mathrm{dens}(G) - \frac{\mathrm{dens}(G)}{100}, \mathrm{dens}(G) + \frac{\mathrm{dens}(G)}{100})$ and the problem-specific parameter $\gamma$ (MQCP) or $s$ (MDCP). 
+After the training is completed, we adopt the GNN that yields the best results on 20 unseen uniform random graphs of similar size and density as those seen during training. 
 
-The results are shown in Table %\ref{}
+The results regarding the MQCP instances are shown in Table \ref{tab:mqcp-benchmark}. We perform ten runs for each of the evaluated models and show the size of the best found solution, the average solution quality and the average runtime. The rightmost column contains the size of the best known solutions as reported by the most recent publications on the MQCP, \cite{chen_nuqclq_2021} and \cite{peng_solving_2021}. 
+The three considered variants of our algorithm, LSBM (E1), LSBM (N2V+S2V), and LSBM (E1+S2V) can match 17, 17 and 18 of the best known results out of the 26 evaluated instances, respectively. Again, this indicates that the impact of the chosen feature initialization method is only marginal. However, we notice that, especially on larger instances with high density (e.g., the \emph{brock400} instances, or \emph{MANN\_a27}), our approach is not yet competitive with the state-of-the-art in terms of solution quality. 
+Furthermore, we do not observe any significant differences in runtime for the three variants of LSBM. 
+
+Table \ref{tab:mdcp-benchmark} shows the results on MDCP instances. The rightmost column shows the reported optimal values from the comparison of exact algorithms for the MDCP presented in \cite{chen2021computing}. We compare the size of the solutions obtained by our algorithm to the reported optimal values. 
+LSBM finds optimal solutions on most of the evaluated instances, except for the instances \emph{keller4} and \emph{san200\_0.7\_2}. However, we note that the evaluated instances are fairly small. We expect that LSBM will perform worse on larger instances, similar to the results obtained on the MQCP.  
+
 
 \begin{sidewaystable}
     \centering
@@ -1731,165 +1843,218 @@ The results are shown in Table %\ref{}
     \begin{tabular}{llrrrr | rrr rrr rrr r}
         \toprule
         \multicolumn{6}{c}{ } & \multicolumn{3}{c}{LSBM (E1)} & \multicolumn{3}{c}{LSBM (N2V+S2V)} & \multicolumn{3}{c}{LSBM (E1+S2V)} &  \\ \cmidrule{7-9} \cmidrule{10-12} \cmidrule{13-15}
-        Benchmark & Instance & $|V|$ & $|E|$ & $\mathrm{dens}(G)$ & $\gamma$ & Best & Avg & T(s) & Best & Avg & T(s) & Best & Avg & T(s) & Best LB\\ \hline
-        DIMACS & brock200\_1 & $200$ & $14834$ & $0.745$ & 0.800 & 114 & 114.0 & 49.46 & 114 & 114.0 & 41.21 & 114 & 114.0 & 42.42 & 114\\
-        DIMACS & brock200\_2 & $200$ & $9876$ & $0.496$ & 0.800 & 24 & 24.0 & 57.46 & 24 & 24.0 & 52.99 & 24 & 24.0 & 55.82 & 24\\
-        DIMACS & brock200\_3 & $200$ & $12048$ & $0.605$ & 0.800 & 41 & 41.0 & 26.14 & 41 & 41.0 & 51.50 & 41 & 41.0 & 32.39\\
-        % DIMACS & brock400\_1 & $400$ & $59723$ & $0.748$\\
-        % DIMACS & brock400\_2 & $400$ & $59786$ & $0.749$\\
-        % DIMACS & brock400\_3 & $400$ & $59681$ & $0.748$\\
-        DIMACS & C125 & $125$ & $6963$ & $0.898$ & 0.999 & 34 & 34.0 & 7.308 & 34 & 34.0 & 7.32 & 34 & 34.0 & 7.05 & 34\\
-        DIMACS & C250 & $250$ & $27984$ & $0.899$ & 0.999 & 44 & 44.0 & 24.28 & 44 & 44.0 & 32.26 & 44.0 & 43.4 & 24.43 & 44\\
-        % DIMACS & C500 & $500$ & $112332$ & $0.900$
-        % DIMACS & DSJC500 & $500$ & $62624$ & $0.502$\\
-        DIMACS & hamming6-2 & $64$ & $1824$ & $0.905$ & 0.950 & 37 & 37.0 & 9.10 & 37 & 37.0 & 8.26  & 37 & 37.0 & 8.11 & 37 \\
-        DIMACS & hamming6-4 & $64$ & $704$ & $0.349$ & 0.500 & 32 & 32.0 & 7.01 & 32 & 32.0 & 8.87  & 32 & 32.0 & 7.02 & 32 \\
-        DIMACS & johnson8-4-4 & $70$ & $1855$ & $0.768$ & 0.800 & 43 & 43.0 & 5.58 & 43 & 43.0 & 6.88  & 43 & 43.0 & 9.65 & 43 \\
-        DIMACS & johnson16-2-4 & $120$ & $5460$ & $0.765$ & 0.800 & 34 & 34.0 & 8.56 & 34 & 34.0 & 13.02  & 34 & 34.0 & 10.99 & 34 \\
-        DIMACS & MANN\_a9 & $45$ & $918$ & $0.927$ & 0.999 & 16 & 16.0 & 5.73 & 16 & 16.0 & 5.82  & 16 & 16.0 & 5.83 & 16 \\
-        % BHOSLIB & frb30-15-1 & $450$ & $83198$ & $0.824$\\
-        % BHOSLIB &frb30-15-2 & $450$ & $83151$ & $0.823$\\
-        % BHOSLIB &frb30-15-4 & $450$ & $83194$ & $0.823$\\
-        % BHOSLIB &frb30-15-5 & $450$ & $83231$ & $0.824$\\
+        Benchmark & Instance & $|V|$ & $|E|$ & $\mathrm{dens}(G)$ & $\gamma$ & Best & Avg & T(s) & Best & Avg & T(s) & Best & Avg & T(s) & Best Known\\ \hline
+        DIMACS & brock200\_1 & $200$ & $14834$ & $0.745$ & 0.800 & \textbf{114} & 114.0 & 49.46 & \textbf{114} & 114.0 & 41.21 & \textbf{114} & 114.0 & 42.42 & \textbf{114}\\
+        DIMACS & brock200\_2 & $200$ & $9876$ & $0.496$ & 0.800 & \textbf{24} & 24.0 & 57.46 & \textbf{24} & 24.0 & 52.99 & \textbf{24} & 24.0 & 55.82 & \textbf{24}\\
+        DIMACS & brock200\_3 & $200$ & $12048$ & $0.605$ & 0.800 & \textbf{41} & 41.0 & 26.14 & \textbf{41} & 41.0 & 51.50 & \textbf{41} & 41.0 & 32.39 & \textbf{41}\\
+        DIMACS & brock400\_1 & $400$ & $59723$ & $0.748$ & 0.999 & 25 & 24.9 & 23.23 & 25 & 25.0 & 23.61 & 25 & 25.0 & 24.10 & \textbf{27} \\
+        DIMACS & brock400\_2 & $400$ & $59786$ & $0.749$ & 0.999 & 25 & 25.0 & 26.11 & 25 & 25.0 & 26.19 & 26 & 25.2 & 26.82 & \textbf{29} \\
+        DIMACS & brock400\_3 & $400$ & $59681$ & $0.748$ & 0.999 & 27 & 25.4 & 26.23 & 25 & 24.9 & 26.12 & 27 & 26.2 & 27.99 & \textbf{31} \\
+        DIMACS & C125 & $125$ & $6963$ & $0.898$ & 0.999 & \textbf{34} & 34.0 & 7.308 & \textbf{34} & 34.0 & 7.32 & \textbf{34} & 34.0 & 7.05 & \textbf{34} \\
+        DIMACS & C250 & $250$ & $27984$ & $0.899$ & 0.999 & \textbf{44} & 44.0 & 24.28 & \textbf{44} & 44.0 & 32.26 & \textbf{44} & 43.4 & 24.43 & \textbf{44} \\
+        DIMACS & C500 & $500$ & $112332$ & $0.900$ & 0.999 & \textbf{58} & 57.2 & 25.13 & 55 & 45.4 & 24.73 & 43 & 43.0 & 22.49 & \textbf{58} \\
+        DIMACS & c-fat200-5 & $200$ & $8473$ & $0.426$ & 0.5 & \textbf{148} & 148.0 & 18.70 & \textbf{148} & 148.0 & 13.76 & \textbf{148} & 148.0 & 24.04 & \textbf{148}\\
+        DIMACS & DSJC500 & $500$ & $62624$ & $0.502$ & 0.800 & \textbf{34} & 34.0 & 29.44 & \textbf{34} & 34.0 & 31.68 & \textbf{34} & 34.0 & 28.03 & \textbf{34}\\
+        DIMACS & hamming6-2 & $64$ & $1824$ & $0.905$ & 0.950 & \textbf{37} & 37.0 & 9.10 & \textbf{37} & 37.0 & 8.26  & \textbf{37} & 37.0 & 8.11 & \textbf{37} \\
+        DIMACS & hamming6-4 & $64$ & $704$ & $0.349$ & 0.500 & \textbf{32} & 32.0 & 7.01 & \textbf{32} & 32.0 & 8.87  & \textbf{32} & 32.0 & 7.02 & \textbf{32} \\
+        DIMACS & johnson8-4-4 & $70$ & $1855$ & $0.768$ & 0.800 & \textbf{43} & 43.0 & 5.58 & \textbf{43} & 43.0 & 6.88  & \textbf{43} & 43.0 & 9.65 & \textbf{43} \\
+        DIMACS & johnson16-2-4 & $120$ & $5460$ & $0.765$ & 0.800 & \textbf{34} & 34.0 & 8.56 & \textbf{34} & 34.0 & 13.02  & \textbf{34} & 34.0 & 10.99 & \textbf{34} \\
+        DIMACS & MANN\_a9 & $45$ & $918$ & $0.927$ & 0.999 & \textbf{16} & 16.0 & 5.73 & \textbf{16} & 16.0 & 5.82  & \textbf{16} & 16.0 & 5.83 & \textbf{16} \\
+        DIMACS & MANN\_a27 & $378$ & $70551$ & $0.990$ & 0.999 & 130 & 130.0 & 43.02 & 130 & 130.0 & 36.9 & 130 & 130.0 & 44.12 & \textbf{135}\\
+        DIMACS & p\_hat300-1 & $300$ & $10933$ & $0.244$ & 0.5 & 62 & 62.0 & 15.58 & 62 & 62.0 & 15.98 & 62 & 62.0 & 15.08 & \textbf{64}\\
+        DIMACS & p\_hat300-2 & $300$ & $21928$ & $0.489$ & 0.8 & \textbf{114} & 114.0 & 19.33 & \textbf{114} & 114.0 & 25.26 & \textbf{114} & 114.0 & 34.33 & \textbf{114} \\
+        DIMACS & san200\_0.7\_1 & $200$ & $13930$ & $0.700$ & 0.95 & 55 & 55.0 & 20.94 & 55 & 55.0 & 10.65 & 55 & 55.0 & 21.08 & \textbf{57}\\
+        DIMACS & san200\_0.7\_2 & $200$ & $13930$ & $0.700$ & 0.95 & 31 & 31.0 & 18.24 & 31 & 31.0 & 18.55 & 31 & 31.0 & 18.75 & \textbf{34}\\
+        DIMACS & san200\_0.9\_3 & $200$ & $17910$ & $0.900$ & 0.999 & \textbf{44} & 44.0 & 31.37 & \textbf{44} & 44.0 & 20.19 & \textbf{44} & 44.0 & 24.31 & \textbf{44}\\
+        BHOSLIB & frb30-15-1 & $450$ & $83198$ & $0.824$ & 0.95 & 56 & 55.4 & 76.23 & \textbf{60} & 60.0 & 42.23 & \textbf{60} & 60.0 & 51.41 & \textbf{60}\\
+        BHOSLIB & frb30-15-2 & $450$ & $83151$ & $0.823$ & 0.95 & 57 & 56.3 & 82.10 & 54 & 54.0 & 43.72 & \textbf{58} & 58.0 & 56.15 & \textbf{58} \\
+        BHOSLIB & frb30-15-4 & $450$ & $83194$ & $0.823$ & 0.95 & \textbf{61} & 60.6 & 90.67 & \textbf{61} & 60.3 & 84.17 & \textbf{61} & 61.0 & 80.89 & \textbf{61} \\
+        BHOSLIB & frb30-15-5 & $450$ & $83231$ & $0.824$ & 0.95 & \textbf{60} & 60.0 & 89.20 & \textbf{60} & 60.0 & 65.17 & \textbf{60} & 53.6 & 50.76 & \textbf{60} \\
     \end{tabular}
     }
     \caption{MQCP results for selected benchmark instances.}
+    \label{tab:mqcp-benchmark}
 \end{sidewaystable}
 
-Table containing benchmark instances for reference
-\begin{table}
+\begin{sidewaystable}
     \centering
-    \resizebox{0.38\columnwidth}{!}{
-    \begin{tabular}{|r|l|r|r|r|}
-        \hline
-        \textbf{Nr.} & \textbf{ID} & \textbf{V} & \textbf{E} & \textbf{Density} \\ \hline
-        01 & brock200\_1 & $200$ & $14834$ & $0.745$\\
-        02 & brock200\_2 & $200$ & $9876$ & $0.496$\\
-        03 & brock200\_3 & $200$ & $12048$ & $0.605$\\
-        04 & brock400\_1 & $400$ & $59723$ & $0.748$\\
-        05 & brock400\_2 & $400$ & $59786$ & $0.749$\\
-        06 & brock400\_3 & $400$ & $59681$ & $0.748$\\
-        07 & brock800\_1 & $800$ & $207505$ & $0.649$\\
-        08 & brock800\_2 & $800$ & $208166$ & $0.651$\\
-        09 & brock800\_3 & $800$ & $207333$ & $0.649$\\
-        10 & c-fat200-1 & $200$ & $1534$ & $0.077$\\
-        11 & c-fat200-2 & $200$ & $3235$ & $0.163$\\
-        12 & c-fat200-5 & $200$ & $8473$ & $0.426$\\
-        13 & c-fat500-1 & $500$ & $4459$ & $0.036$\\
-        14 & c-fat500-10 & $500$ & $46627$ & $0.374$\\
-        15 & c-fat500-2 & $500$ & $9139$ & $0.073$\\
-        16 & c-fat500-5 & $500$ & $23191$ & $0.186$\\
-        17 & C1000 & $1000$ & $450079$ & $0.901$\\
-        18 & C125 & $125$ & $6963$ & $0.898$\\
-        19 & C2000 & $2000$ & $1799532$ & $0.900$\\
-        20 & C250 & $250$ & $27984$ & $0.899$\\
-        21 & C4000 & $4000$ & $4000268$ & $0.500$\\
-        22 & C500 & $500$ & $112332$ & $0.900$\\
-        23 & DSJC1000 & $1000$ & $249826$ & $0.500$\\
-        24 & DSJC500 & $500$ & $62624$ & $0.502$\\
-        25 & gen200\_p0 & $200$ & $17910$ & $0.900$\\
-        26 & gen400\_p0 & $400$ & $71820$ & $0.900$\\
-        27 & hamming10-2 & $1024$ & $518656$ & $0.990$\\
-        28 & hamming10-4 & $1024$ & $434176$ & $0.829$\\
-        29 & hamming6-2 & $64$ & $1824$ & $0.905$\\
-        30 & hamming6-4 & $64$ & $704$ & $0.349$\\
-        31 & hamming8-2 & $256$ & $31616$ & $0.969$\\
-        32 & hamming8-4 & $256$ & $20864$ & $0.639$\\
-        33 & johnson16-2-4 & $120$ & $5460$ & $0.765$\\
-        34 & johnson32-2-4 & $496$ & $107880$ & $0.879$\\
-        35 & johnson8-2-4 & $28$ & $210$ & $0.556$\\
-        36 & johnson8-4-4 & $70$ & $1855$ & $0.768$\\
-        37 & keller4 & $171$ & $9435$ & $0.649$\\
-        38 & keller5 & $776$ & $225990$ & $0.752$\\
-        39 & keller6 & $3361$ & $4619898$ & $0.818$\\
-        40 & MANN\_a27 & $378$ & $70551$ & $0.990$\\
-        41 & MANN\_a45 & $1035$ & $533115$ & $0.996$\\
-        42 & MANN\_a9 & $45$ & $918$ & $0.927$\\
-        43 & p\_hat1000-1 & $1000$ & $122253$ & $0.245$\\
-        44 & p\_hat1000-2 & $1000$ & $244799$ & $0.49$\\
-        45 & p\_hat1000-3 & $1000$ & $371746$ & $0.744$\\
-        46 & p\_hat1500-2 & $1500$ & $568960$ & $0.506$\\
-        47 & p\_hat300-1 & $300$ & $10933$ & $0.244$\\
-        48 & p\_hat300-2 & $300$ & $21928$ & $0.489$\\
-        49 & p\_hat500-1 & $500$ & $31569$ & $0.253$\\
-        50 & p\_hat500-2 & $500$ & $62946$ & $0.505$\\
-        51 & p\_hat700-1 & $700$ & $60999$ & $0.249$\\
-        52 & p\_hat700-2 & $700$ & $121728$ & $0.498$\\
-        53 & san1000 & $1000$ & $250500$ & $0.502$\\
-        54 & san200\_0 & $200$ & $17910$ & $0.900$\\
-        55 & san400\_0 & $400$ & $55860$ & $0.700$\\
-        56 & sanr200\_0 & $200$ & $17863$ & $0.898$\\
-        57 & sanr400\_0 & $400$ & $55869$ & $0.700$\\ \hline
+    \scalebox{0.8}{
+    \begin{tabular}{llrrrr | rrr rrr rrr r}
+        \toprule
+        \multicolumn{6}{c}{ } & \multicolumn{3}{c}{LSBM (E1)} & \multicolumn{3}{c}{LSBM (N2V+S2V)} & \multicolumn{3}{c}{LSBM (E1+S2V)} &  \\ \cmidrule{7-9} \cmidrule{10-12} \cmidrule{13-15}
+        Benchmark & Instance & $|V|$ & $|E|$ & $\mathrm{dens}(G)$ & $s$ & Best & Avg & T(s) & Best & Avg & T(s) & Best & Avg & T(s) & Opt\\ \hline
+        DIMACS & brock200\_1 & $200$ & $14834$ & $0.745$ & 1 & 21 & 21.0 & 9.49  & 21 & 21.0 & 10.12 & 21 & 21.0 & 9.68 & 21\\
+               &          &      &       &               & 2 & 22 & 22.0 & 12.03 & 22 & 22.0 & 11.32 & 22 & 22.0 & 10.41 & 22\\
+        DIMACS & brock200\_2 & $200$ & $14834$ & $0.745$ & 1 & 12 & 12.0 & 14.30  & 12 & 11.6 & 13.42 & 12 & 12.0 & 9.92 & 12\\
+               &          &      &       &               & 2 & 12 & 12.0 & 9.09 & 12 & 12.0 & 11.41 & 12 & 12.0 & 10.56 & 12\\
+               &          &      &       &               & 3 & 13 & 12.8 & 7.83 & 13 & 13.0 & 16.52 & 13 & 13.0 & 13.15 & 13\\
+               &          &      &       &               & 4 & 13 & 13.0 & 9.51 & 13 & 13.0 &  9.16 & 13 & 13.0 & 12.44 & 13\\
+        DIMACS & brock200\_3 & $200$ & $12048$ & $0.605$ & 1 & 15 & 15.0 & 10.01  & 15 & 15.0 & 10.69 & 15 & 15.0 & 12.22 & 15\\
+               &          &      &       &               & 2 & 16 & 16.0 & 11.96 & 16 & 16.0 & 20.03 & 15 & 16.0 & 15.16 & 16\\
+               &          &      &       &               & 3 & 16 & 16.0 & 10.19 & 16 & 16.0 & 11.51 & 16 & 16.0 & 13.22 & 16\\
+               &          &      &       &               & 4 & 17 & 17.0 & 18.31 & 17 & 17.0 & 13.54 & 17 & 17.0 & 16.14 & 17\\
+        DIMACS & C125 & $125$ & $6963$ & $0.898$   & 1 & 35 & 35.0 & 5.91 & 35 & 35.0 & 7.64 & 35 & 35.0 & 7.04 & 35\\
+               &          &      &       &         & 2 & 36 & 36.0 & 6.72 & 36 & 36.0 & 5.92 & 36 & 36.0 & 7.36 & 36\\
+               &          &      &       &         & 3 & 37 & 37.0 & 9.13 & 37 & 37.0 & 6.76 & 37 & 37.0 & 7.41 & 37\\
+               &          &      &       &         & 4 & 38 & 38.0 & 9.22 & 38 & 38.0 & 6.78 & 38 & 38.0 & 7.09 & 38\\
+        DIMACS & c-fat200-5 & $200$ & $8473$ & $0.426$ & 1 & 58 & 58.0 & 6.57 & 58 & 58.0 & 10.10 & 58 & 58.0 & 8.89 & 58\\
+        &          &      &       &                    & 2 & 58 & 58.0 & 9.31 & 58 & 58.0 & 9.27 & 58 & 58.0 & 5.31 & 58\\
+        &          &      &       &                    & 3 & 58 & 58.0 & 9.63 & 58 & 58.0 & 6.95 & 58 & 58.0 & 8.19 & 58\\
+        &          &      &       &                    & 4 & 58 & 58.0 & 8.51 & 58 & 58.0 & 7.88 & 58 & 58.0 & 7.95 & 58\\
+        DIMACS & keller4 & $171$ & $9435$ & $0.649$    & 1 & 10 & 58.0 & 6.86 & 10 & 10.0 & 7.62 & 12 & 10.8 & 9.76 & 12\\
+        &          &      &       &                    & 2 & 11 & 9.8 & 7.27 & 10 & 10.0 & 7.42 & 11.4 & 13.0 & 9.05 & 13\\
+        &          &      &       &                    & 3 & 14 & 11.8 & 7.96 & 14 & 14.0 & 9.52 & 14 & 14.0 & 10.90 & 14\\
+        &          &      &       &                    & 4 & 15 & 14.2 & 7.82 & 15 & 15.0 & 17.27 & 15 & 15.0 & 17.45 & 15\\
+        DIMACS & MANN\_a9 & $45$ & $918$ & $0.927$ & 1 & 17 & 17.0 & 3.23 & 17 & 17.0 & 3.10 & 17 & 17.0 & 2.76 & 17\\
+               &          &      &       &         & 2 & 18 & 18.0 & 3.03 & 18 & 18.0 & 3.02 & 18 & 18.0 & 3.03 & 18\\
+               &          &      &       &         & 3 & 19 & 19.0 & 3.03 & 19 & 19.0 & 3.06 & 19 & 19.0 & 3.34 & 19\\
+               &          &      &       &         & 4 & 20 & 20.0 & 3.39 & 20 & 20.0 & 4.15 & 20 & 20.0 & 2.67 & 20\\
+        DIMACS & san200\_0.7\_2 & $200$ & $13930$ & $0.700$   & 1 & 16 & 15.9 & 8.34 & 17 & 16.3 & 9.24 & 15 & 14.6 & 9.72 & 19\\
+               &          &      &       &                    & 2 & 17 & 17.0 & 14.42 & 18 & 17.8 & 15.21 & 17 & 15.8 & 9.84 & 19\\
+               &          &      &       &                    & 3 & 18 & 17.4 & 12.01 & 18 & 18.0 & 14.16 & 17 & 16.8 & 12.28 & 20\\
+               &          &      &       &                    & 4 & 19 & 18.4 & 16.80 & 19 & 19.0 & 13.12 & 17.8 & 18.0 & 8.93 & 20\\
+        
+        
     \end{tabular}
-    }     
-    \caption{DIMACS benchmark instance set}   
-    \label{tab:DIMACS}
-\end{table}
+    }
+    \caption{MDCP results for selected benchmark instances.}
+    \label{tab:mdcp-benchmark}
+\end{sidewaystable}
 
-\begin{table}
-    \centering
-    \begin{tabular}{|r|l|r|r|r|}
-        \hline
-        \textbf{Nr.} & \textbf{ID} & \textbf{V} & \textbf{E} & \textbf{Density} \\ \hline
-        01 & frb100-40 & $4000$ & $7425226$ & $0.928$\\
-        02 & frb30-15-1 & $450$ & $83198$ & $0.824$\\
-        03 &frb30-15-2 & $450$ & $83151$ & $0.823$\\
-        04 &frb30-15-4 & $450$ & $83194$ & $0.823$\\
-        05 &frb30-15-5 & $450$ & $83231$ & $0.824$\\
-        06 &frb35-17-1 & $595$ & $148859$ & $0.842$\\
-        07 &frb35-17-2 & $595$ & $148868$ & $0.842$\\
-        08 &frb35-17-4 & $595$ & $148873$ & $0.842$\\
-        09 &frb35-17-5 & $595$ & $148572$ & $0.841$\\
-        10 &frb40-19-1 & $760$ & $247106$ & $0.857$\\
-        11 &frb40-19-2 & $760$ & $247157$ & $0.857$\\
-        12 &frb40-19-4 & $760$ & $246815$ & $0.856$\\
-        13 &frb40-19-5 & $760$ & $246801$ & $0.856$\\
-        14 &frb45-21-1 & $945$ & $386854$ & $0.867$\\
-        15 &frb45-21-2 & $945$ & $387416$ & $0.869$\\
-        16 &frb45-21-4 & $945$ & $387491$ & $0.869$\\
-        17 &frb45-21-5 & $945$ & $387461$ & $0.869$\\
-        18 &frb50-23-1 & $1150$ & $580603$ & $0.879$\\
-        19 &frb50-23-2 & $1150$ & $579824$ & $0.878$\\
-        20 &frb50-23-4 & $1150$ & $580417$ & $0.879$\\
-        21 &frb50-23-5 & $1150$ & $580640$ & $0.879$\\
-        22 &frb53-24-1 & $1272$ & $714129$ & $0.883$\\
-        23 &frb53-24-2 & $1272$ & $714067$ & $0.883$\\
-        24 &frb53-24-4 & $1272$ & $714048$ & $0.883$\\
-        25 &frb53-24-5 & $1272$ & $714130$ & $0.883$\\
-        26 &frb56-25-1 & $1400$ & $869624$ & $0.888$\\
-        27 &frb56-25-2 & $1400$ & $869899$ & $0.888$\\
-        28 &frb56-25-4 & $1400$ & $869262$ & $0.888$\\
-        29 &frb56-25-5 & $1400$ & $869699$ & $0.888$\\
-        30 &frb59-26-1 & $1534$ & $1049256$ & $0.892$\\
-        31 &frb59-26-2 & $1534$ & $1049648$ & $0.893$\\
-        32 &frb59-26-4 & $1534$ & $1048800$ & $0.892$\\
-        33 &frb59-26-5 & $1534$ & $1049829$ & $0.893$\\ \hline
-    \end{tabular}
-    \caption{BHOSLIB benchmark instance set}
-    \label{tab:BHOSLIB}    
-\end{table}
+% Table containing benchmark instances for reference
+% \begin{table}
+%     \centering
+%     \resizebox{0.38\columnwidth}{!}{
+%     \begin{tabular}{|r|l|r|r|r|}
+%         \hline
+%         \textbf{Nr.} & \textbf{ID} & \textbf{V} & \textbf{E} & \textbf{Density} \\ \hline
+%         01 & brock200\_1 & $200$ & $14834$ & $0.745$\\
+%         02 & brock200\_2 & $200$ & $9876$ & $0.496$\\
+%         03 & brock200\_3 & $200$ & $12048$ & $0.605$\\
+%         04 & brock400\_1 & $400$ & $59723$ & $0.748$\\
+%         05 & brock400\_2 & $400$ & $59786$ & $0.749$\\
+%         06 & brock400\_3 & $400$ & $59681$ & $0.748$\\
+%         07 & brock800\_1 & $800$ & $207505$ & $0.649$\\
+%         08 & brock800\_2 & $800$ & $208166$ & $0.651$\\
+%         09 & brock800\_3 & $800$ & $207333$ & $0.649$\\
+%         10 & c-fat200-1 & $200$ & $1534$ & $0.077$\\
+%         11 & c-fat200-2 & $200$ & $3235$ & $0.163$\\
+%         12 & c-fat200-5 & $200$ & $8473$ & $0.426$\\
+%         13 & c-fat500-1 & $500$ & $4459$ & $0.036$\\
+%         14 & c-fat500-10 & $500$ & $46627$ & $0.374$\\
+%         15 & c-fat500-2 & $500$ & $9139$ & $0.073$\\
+%         16 & c-fat500-5 & $500$ & $23191$ & $0.186$\\
+%         17 & C1000 & $1000$ & $450079$ & $0.901$\\
+%         18 & C125 & $125$ & $6963$ & $0.898$\\
+%         19 & C2000 & $2000$ & $1799532$ & $0.900$\\
+%         20 & C250 & $250$ & $27984$ & $0.899$\\
+%         21 & C4000 & $4000$ & $4000268$ & $0.500$\\
+%         22 & C500 & $500$ & $112332$ & $0.900$\\
+%         23 & DSJC1000 & $1000$ & $249826$ & $0.500$\\
+%         24 & DSJC500 & $500$ & $62624$ & $0.502$\\
+%         25 & gen200\_p0 & $200$ & $17910$ & $0.900$\\
+%         26 & gen400\_p0 & $400$ & $71820$ & $0.900$\\
+%         27 & hamming10-2 & $1024$ & $518656$ & $0.990$\\
+%         28 & hamming10-4 & $1024$ & $434176$ & $0.829$\\
+%         29 & hamming6-2 & $64$ & $1824$ & $0.905$\\
+%         30 & hamming6-4 & $64$ & $704$ & $0.349$\\
+%         31 & hamming8-2 & $256$ & $31616$ & $0.969$\\
+%         32 & hamming8-4 & $256$ & $20864$ & $0.639$\\
+%         33 & johnson16-2-4 & $120$ & $5460$ & $0.765$\\
+%         34 & johnson32-2-4 & $496$ & $107880$ & $0.879$\\
+%         35 & johnson8-2-4 & $28$ & $210$ & $0.556$\\
+%         36 & johnson8-4-4 & $70$ & $1855$ & $0.768$\\
+%         37 & keller4 & $171$ & $9435$ & $0.649$\\
+%         38 & keller5 & $776$ & $225990$ & $0.752$\\
+%         39 & keller6 & $3361$ & $4619898$ & $0.818$\\
+%         40 & MANN\_a27 & $378$ & $70551$ & $0.990$\\
+%         41 & MANN\_a45 & $1035$ & $533115$ & $0.996$\\
+%         42 & MANN\_a9 & $45$ & $918$ & $0.927$\\
+%         43 & p\_hat1000-1 & $1000$ & $122253$ & $0.245$\\
+%         44 & p\_hat1000-2 & $1000$ & $244799$ & $0.49$\\
+%         45 & p\_hat1000-3 & $1000$ & $371746$ & $0.744$\\
+%         46 & p\_hat1500-2 & $1500$ & $568960$ & $0.506$\\
+%         47 & p\_hat300-1 & $300$ & $10933$ & $0.244$\\
+%         48 & p\_hat300-2 & $300$ & $21928$ & $0.489$\\
+%         49 & p\_hat500-1 & $500$ & $31569$ & $0.253$\\
+%         50 & p\_hat500-2 & $500$ & $62946$ & $0.505$\\
+%         51 & p\_hat700-1 & $700$ & $60999$ & $0.249$\\
+%         52 & p\_hat700-2 & $700$ & $121728$ & $0.498$\\
+%         53 & san1000 & $1000$ & $250500$ & $0.502$\\
+%         54 & san200\_0 & $200$ & $17910$ & $0.900$\\
+%         55 & san400\_0 & $400$ & $55860$ & $0.700$\\
+%         56 & sanr200\_0 & $200$ & $17863$ & $0.898$\\
+%         57 & sanr400\_0 & $400$ & $55869$ & $0.700$\\ \hline
+%     \end{tabular}
+%     }     
+%     \caption{DIMACS benchmark instance set}   
+%     \label{tab:DIMACS}
+% \end{table}
 
-\begin{table}
-    \centering
-    \begin{tabular}{|r|l|r|r|r|}
-        \hline
-        \textbf{Nr.} & \textbf{ID} & \textbf{V} & \textbf{E} & \textbf{Density} \\ \hline
-        01 & CA-GrQc-50 & $5242$ & $14496$ & $0.001$\\
-        02 & CA-GrQc-90 & $5242$ & $14496$ & $0.001$\\
-        03 & email-50 & $1133$ & $5451$ & $0.009$\\
-        04 & email-90 & $1133$ & $5451$ & $0.009$\\
-        05 & Erdos971-50 & $472$ & $1314$ & $0.012$\\
-        06 & Erdos971-90 & $472$ & $1314$ & $0.012$\\
-        07 & Harvard500-50 & $500$ & $2043$ & $0.016$\\
-        08 & Harvard500-90 & $500$ & $2043$ & $0.016$\\
-        09 & SmallW-50 & $396$ & $994$ & $0.013$\\
-        10 & SmallW-90 & $396$ & $994$ & $0.013$\\
-        11 & USAir97-50 & $332$ & $2126$ & $0.039$\\
-        12 & USAir97-90 & $332$ & $2126$ & $0.039$\\ \hline
-    \end{tabular}
-    \caption{Florida benchmark instance set}
-    \label{tab:Florida}
-\end{table}
+% \begin{table}
+%     \centering
+%     \begin{tabular}{|r|l|r|r|r|}
+%         \hline
+%         \textbf{Nr.} & \textbf{ID} & \textbf{V} & \textbf{E} & \textbf{Density} \\ \hline
+%         01 & frb100-40 & $4000$ & $7425226$ & $0.928$\\
+%         02 & frb30-15-1 & $450$ & $83198$ & $0.824$\\
+%         03 &frb30-15-2 & $450$ & $83151$ & $0.823$\\
+%         04 &frb30-15-4 & $450$ & $83194$ & $0.823$\\
+%         05 &frb30-15-5 & $450$ & $83231$ & $0.824$\\
+%         06 &frb35-17-1 & $595$ & $148859$ & $0.842$\\
+%         07 &frb35-17-2 & $595$ & $148868$ & $0.842$\\
+%         08 &frb35-17-4 & $595$ & $148873$ & $0.842$\\
+%         09 &frb35-17-5 & $595$ & $148572$ & $0.841$\\
+%         10 &frb40-19-1 & $760$ & $247106$ & $0.857$\\
+%         11 &frb40-19-2 & $760$ & $247157$ & $0.857$\\
+%         12 &frb40-19-4 & $760$ & $246815$ & $0.856$\\
+%         13 &frb40-19-5 & $760$ & $246801$ & $0.856$\\
+%         14 &frb45-21-1 & $945$ & $386854$ & $0.867$\\
+%         15 &frb45-21-2 & $945$ & $387416$ & $0.869$\\
+%         16 &frb45-21-4 & $945$ & $387491$ & $0.869$\\
+%         17 &frb45-21-5 & $945$ & $387461$ & $0.869$\\
+%         18 &frb50-23-1 & $1150$ & $580603$ & $0.879$\\
+%         19 &frb50-23-2 & $1150$ & $579824$ & $0.878$\\
+%         20 &frb50-23-4 & $1150$ & $580417$ & $0.879$\\
+%         21 &frb50-23-5 & $1150$ & $580640$ & $0.879$\\
+%         22 &frb53-24-1 & $1272$ & $714129$ & $0.883$\\
+%         23 &frb53-24-2 & $1272$ & $714067$ & $0.883$\\
+%         24 &frb53-24-4 & $1272$ & $714048$ & $0.883$\\
+%         25 &frb53-24-5 & $1272$ & $714130$ & $0.883$\\
+%         26 &frb56-25-1 & $1400$ & $869624$ & $0.888$\\
+%         27 &frb56-25-2 & $1400$ & $869899$ & $0.888$\\
+%         28 &frb56-25-4 & $1400$ & $869262$ & $0.888$\\
+%         29 &frb56-25-5 & $1400$ & $869699$ & $0.888$\\
+%         30 &frb59-26-1 & $1534$ & $1049256$ & $0.892$\\
+%         31 &frb59-26-2 & $1534$ & $1049648$ & $0.893$\\
+%         32 &frb59-26-4 & $1534$ & $1048800$ & $0.892$\\
+%         33 &frb59-26-5 & $1534$ & $1049829$ & $0.893$\\ \hline
+%     \end{tabular}
+%     \caption{BHOSLIB benchmark instance set}
+%     \label{tab:BHOSLIB}    
+% \end{table}
+
+% \begin{table}
+%     \centering
+%     \begin{tabular}{|r|l|r|r|r|}
+%         \hline
+%         \textbf{Nr.} & \textbf{ID} & \textbf{V} & \textbf{E} & \textbf{Density} \\ \hline
+%         01 & CA-GrQc-50 & $5242$ & $14496$ & $0.001$\\
+%         02 & CA-GrQc-90 & $5242$ & $14496$ & $0.001$\\
+%         03 & email-50 & $1133$ & $5451$ & $0.009$\\
+%         04 & email-90 & $1133$ & $5451$ & $0.009$\\
+%         05 & Erdos971-50 & $472$ & $1314$ & $0.012$\\
+%         06 & Erdos971-90 & $472$ & $1314$ & $0.012$\\
+%         07 & Harvard500-50 & $500$ & $2043$ & $0.016$\\
+%         08 & Harvard500-90 & $500$ & $2043$ & $0.016$\\
+%         09 & SmallW-50 & $396$ & $994$ & $0.013$\\
+%         10 & SmallW-90 & $396$ & $994$ & $0.013$\\
+%         11 & USAir97-50 & $332$ & $2126$ & $0.039$\\
+%         12 & USAir97-90 & $332$ & $2126$ & $0.039$\\ \hline
+%     \end{tabular}
+%     \caption{Florida benchmark instance set}
+%     \label{tab:Florida}
+% \end{table}
 
 \chapter{Conclusions \& Future Work}\label{chp:conclusions}
 
@@ -1897,7 +2062,7 @@ In this thesis, we presented a local search-based metaheuristic algorithm LSBM f
 We developed a BS-based heuristic that is used to quickly obtain a feasible solution, which is used as an initial lower bound within LSBM. 
 The structure of LSBM is built upon state-of-the-art heuristic algorithms (\cite{djeddi_extension_2019}, \cite{zhou_opposition-based_2020}, and \cite{chen_nuqclq_2021}) and is adapted to incorporate a GNN to extract and use structural information obtained from the input graph during its execution. 
 Initially, a (possibly infeasible) candidate solution $S$ of fixed size $k$ is generated by a construction heuristic, which is then improved by a local search procedure centered around swapping pairs of vertices in and outside $S$ to increase the objective value of the current candidate solution. If the candidate solution becomes a feasible solution, $k$ is increased and the process is repeated until a stopping criterion is met. 
-In the context of this algorithm, the GNN is used to restrict the neighborhood of a candidate solution to only the most promising vertices in and outside of the current candidate solution. 
+In the context of this algorithm, the GNN is used to restrict the neighborhood of a candidate solution to only the most promising vertices in and outside the current candidate solution. 
 
 Furthermore, as the main contribution of this work, we proposed an algorithm LSBM-T that can be used to generate training data and train the GNN. Training is done in an offline setting on representative problem instances using principles from imitation learning to imitate the exhaustive search of a user-defined neighborhood structure with respect to a candidate solution $S$. The results of our evaluation show that LSBM-T successfully trains the models to imitate the exhaustive search of a neighborhood. 
 
@@ -1907,9 +2072,10 @@ We thoroughly evaluated, which feature initialization methods and combinations t
 We employed an Encoder-Decoder-based GNN architecture inspired by the work shown in \cite{Kool2019} to make the application of a NN feasible within our approach. The computationally expensive attention-based encoder, which utilizes GATv2 attention layers \cite{Brody2021}, is only applied once per instance to produce node embeddings, whereas the lightweight decoder is applied after each change in the candidate solution. 
 We are aware of the computational overhead introduced by the use of a NN, as the analysis of the additional computational effort is part of this work. 
 
-Finally, we evaluate selected benchmark instances and compare our approach to the state-of-the-art. The results show that 
-in terms of solution quality, the performance of the models trained using LSBM-T gets close to the leading methods but is not yet competitive. 
-Moreover, in terms of runtime, our method is outperformed by the leading methods, as the computational overhead introduced by the GNN is simply too large. 
+Finally, we evaluate selected benchmark instances for the MQCP and MDCP and compare our approach to the state-of-the-art. The results for the MQCP show that 
+in terms of solution quality, the performance of the models trained using LSBM-T gets close to the leading methods and can match most best known results on instances with $|V| < 300$. On larger instances, however, our approach is not yet competitive. 
+The evaluation of MDCP-instances shows that our approach is successfully adapted to the MDCP and produces similar results on the related problem. 
+We note that in terms of runtime, LSBM is outperformed by the leading methods, as the computational overhead introduced by the GNN is too large. 
 
 
 % We investigate different 
@@ -1931,7 +2097,7 @@ Defining a stronger context could also lead to a stronger generalization of our 
 Future work shall also include the evaluation of a more fine-grained GNN architecture and training data generation that allows the GNN to predict \emph{two} scores for each vertex, one for vertices that should be added, and one for vertices that should be removed from the candidate solution. 
 Splitting these prediction tasks and finding ways to adapt the algorithm to incorporate these changes could potentially improve the performance of the utilized GNN within LSBM. 
 
-During our evaluation, we notice there is potential for the improvement of generalization to larger instances. In this context, future work shall evaluate curriculum learning strategies as evaluated in \cite{Lisicki2020}, which might lead to better generalization. 
+During our evaluation, we noticed the potential for the improvement of generalization to larger instances. In this context, future work shall evaluate curriculum learning strategies as evaluated in \cite{Lisicki2020}, which might lead to better generalization. 
 
 All experiments in this thesis were executed on CPUs. However, GPUs are known to speed up computations involving GNNs and NNs in general by a significant factor. Therefore, it would be of interest to perform larger-scale experiments using GPUs to investigate how strongly this speedup affects the execution of LSBM and LSBM-T. 
 
