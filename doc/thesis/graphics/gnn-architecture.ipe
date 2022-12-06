@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE ipe SYSTEM "ipe.dtd">
 <ipe version="70218" creator="Ipe 7.2.24">
-<info created="D:20220922151308" modified="D:20221104141302"/>
+<info created="D:20220922151308" modified="D:20221206082717"/>
 <ipestyle name="basic">
 <symbol name="arrow/arc(spx)">
 <path stroke="sym-stroke" fill="sym-stroke" pen="sym-pen">
@@ -595,7 +595,7 @@ h
 232 332 l
 h
 </path>
-<text matrix="1 0 0 1 21.4066 64.9557" transformations="translations" pos="408 404" stroke="black" type="label" width="46.835" height="7.473" depth="2.49" valign="baseline" style="math">\mathit{dim_{e}} \times |V|</text>
+<text matrix="1 0 0 1 21.4066 64.9557" transformations="translations" pos="408 404" stroke="black" type="label" width="60.051" height="7.473" depth="2.49" valign="baseline" style="math">\mathit{dim_{e}^{conv}} \times |V|</text>
 <text matrix="1 0 0 1 11.902 22.8156" transformations="translations" pos="392 384" stroke="black" type="label" width="87.588" height="6.926" depth="1.93" valign="baseline">Context Embedding</text>
 <text matrix="1 0 0 1 11.902 22.8156" transformations="translations" pos="416 372" stroke="black" type="label" width="45.668" height="5.98" depth="1.99" valign="baseline" size="footnote" style="math">S = \{v_2, v_5\}</text>
 <text matrix="1 0 0 1 191.001 3.08135" transformations="translations" pos="240 432" stroke="black" type="label" width="8.079" height="3.439" depth="1.1" valign="baseline" size="footnote" style="math">e_1</text>

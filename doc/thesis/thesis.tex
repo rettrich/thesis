@@ -272,7 +272,14 @@ Finally, I want to thank my girlfriend Rabea. You gave me the strength and motiv
 \end{acknowledgements*}
 
 \begin{kurzfassung}
-\todo{Ihr Text hier.}
+Diese Arbeit untersucht den Einsatz von \emph{Graph Neural Networks} (GNNs) in einer Metaheuristik für kantenbasierte Relaxationen des Maximum Clique Problems (MCP), dem Maximum Quasi-Clique Problem (MQCP) und dem Maximum Defective Clique Problem (MDCP). 
+Das Ziel des MCPs ist es, eine Knotenmenge maximaler Kardinalität zu finden, sodass alle Knoten miteinander durch eine Kante verbunden sind. Das Problem ist ein fundamentales NP-schweres kombinatorisches Optimierungsproblem mit zahlreichen Anwendungen, z.B. in der Bioinformatik oder der Analyse von sozialen Netzwerken. 
+In manchen Anwendungen ist es notwendig, dass nicht nach vollständigen, sondern sehr dichten Subgraphen gesucht wird, weswegen das MQCP und das MDCP eingeführt wurden. 
+
+Im Rahmen dieser Arbeit orientieren wir uns an den führenden heuristischen Methoden für die genannten Probleme und entwickeln eine Metaheuristik, LSBM, die auf lokaler Suche basiert und ein GNN verwendet, um die Nachbarschaft des derzeitigen Lösungskandidaten auf Knoten einzuschränken, die am ehesten zu einer Verbesserung der Lösung führen. In diesem Zusammenhang präsentieren wir auch einen Trainingsalgorithmus LSBM-T, der verwendet wird, um das GNN zu trainieren, eine Nachbarschaftssuche zu imitieren. Wir untersuchen unterschiedliche Ansätze, die Knoten im GNN zu initialisieren und verwenden eine Encoder-Decoder Architekur für das GNN, die auf dem \emph{Attention}-Mechanismus aufbaut. 
+
+Die Ergebnisse unser Evaluierung zeigen, dass unser Ansatz auf Benchmark-Instanzen der Größe $|V| \leq 300$ mit den führenden Methoden, die algorithmisch komplexer aufgebaut sind, in Bezug auf Lösungsqualität mithalten kann, auf größeren Instanzen jedoch nocht nicht. 
+Darüber hinaus zeigen wir, dass unser Trainingsalgorithmus LSBM-T das GNN erfolgreich trainiert, und der Einsatz des GNNs in LSBM zu deutlich besseren Ergebnis führt als eine andere häufig verwendete Knotenbewertungsfunktion. 
 \end{kurzfassung}
 
 \begin{abstract}
@@ -287,11 +294,10 @@ We study and review the relevant literature and build upon the leading (meta)heu
 The first main contribution of this thesis is a local search-based metaheuristic named LSBM that can utilize a GNN as a scoring function for restricting the neighborhoods during the local search procedure to the most promising vertices. 
 Secondly, we propose a training algorithm LSBM-T that trains the GNN-based scoring function offline on randomly generated representative instances in an imitation learning setting. The expert strategy being imitated is an exhaustive search of a user-defined neighborhood structure. The GNN is thus trained to predict, which vertices in a neighborhood will most likely lead to an improved solution. 
 We investigate different centrality-based and learning-based feature initialization methods, as the input graphs of the considered problems are non-attributed.
-Furthermore, we present an attention-based Encoder-Decoder GNN architecture built upon similar applications of GNNs in combinatorial optimization and evaluate this architecture within our approach. 
+Furthermore, we present an attention-based Encoder-Decoder GNN architecture built upon similar applications of GNNs in combinatorial optimization. 
 
-We evaluate our methodology by conducting several computational experiments regarding the parameters of LSBM and LSBM-T. 
 The results on benchmark instances from the literature indicate that our approach can match the solution quality of the algorithmically more complex state-of-the-art methods for most instances with $|V| \leq 300$, but is not competitive yet for larger instances. 
-However, our evaluation shows that our training algorithm LSBM-T successfully trains the GNN-based scoring function to effectively guide the search, and the trained GNN-based scoring functions show substantial improvements in terms of solution quality compared to another commonly used scoring function. 
+However, it can clearly be seen that our training algorithm LSBM-T successfully trains the GNN-based scoring function to effectively guide the search, and LSBM with the trained GNN-based scoring function yields substantially better solutions than LSBM with a so far most often used scoring function. 
 
 \end{abstract}
 
@@ -951,7 +957,7 @@ Summarizing the previous sections, we present a flowchart visualization of LSBM 
 \section{Adaption to the Maximum Defective Clique Problem}\label{sec:adaption-to-mdcp}
 The MQCP and the MDCP can be approached similarly in the context of a local search-based algorithm, as during the local search procedure in both cases we try to find neighboring solutions that maximize the number of edges in the subgraph induced by the current candidate solution. The objective value of a candidate solution as defined in Section~\ref{sec:neighborhood-structure} is equivalent in both problems. Thus, we only have to change the feasibility checks for feasible MQCs in Line~\ref{alg:feasibility-check-1} of Algorithm~\ref{alg:structure}, Line~\ref{alg:feasibility-check-2} of Algorithm~\ref{alg:extend}, and Line~\ref{alg:feasibility-check-3} in Algorithm~\ref{alg:local-search-procedure}, as well as the expansion into feasible successors in the lower bound heuristic in Line~\ref{alg:lower-bound-heuristic-expansion} of Algorithm~\ref{alg:lower-bound-heuristic} to feasibility checks for MDCs. The proposed construction heuristic can be used for the MDCP without any change.  
 
-\chapter{The GNN-based scoring function}\label{chp:gnn}
+\chapter{A GNN-based Metaheuristic}\label{chp:gnn}
 
 In this Chapter, we extend our algorithm LSBM presented in Chapter \ref{chp:local-search-algorithm} by utilizing a GNN as a learnable scoring function to enhance the algorithm. 
 Section~\ref{sec:gnn-local-search} discusses the motivation for using a GNN within LSBM and points out weaknesses of current approaches that we attempt to overcome. Moreover, we show the general structure of our training algorithm LSBM-T and an overview of our approach. 
@@ -984,7 +990,7 @@ The use of a GNN in the context of LSBM in this approach is two-fold:
 
 We plan to achieve the desired behavior of $g_S$ by training the GNN using principles from imitation learning: 
 $g_S$ is trained offline on representative problem instances to imitate an expert strategy that searches a user-defined neighborhood structure (e.g., $\Omega_1 \cup \Omega_2$) with respect to a candidate solution $S$ and computes the neighboring candidate solutions that maximize the gain of edges. From these neighboring solutions, binary target labels are computed for all vertices in the input graph, where vertices outside $S$ are given a target value of one if they lead to one of the best neighboring solutions, and zero otherwise, whereas vertices in $S$ are given a target value of one if they appear in every neighboring solution, and zero otherwise. 
-The GNN, which has a final layer with a single sigmoid output per vertex, is then trained to predict the target values computed using this expert strategy, which can be seen as a vertex-level binary classification task. The concrete details regarding our training algorithm are presented in Sections~\ref{sec:gnn-training} and \ref{sec:lookahead-search}.
+The GNN has a final layer with a single sigmoid output per vertex and is trained to predict the target values computed using this expert strategy, which can be seen as a vertex-level binary classification task. The concrete details regarding our training algorithm are presented in Sections~\ref{sec:gnn-training} and \ref{sec:lookahead-search}.
 
 The concrete architecture of the GNN is inspired by \cite{Kool2019}, where the authors use an Encoder-Decoder-based architecture with a more complex attention-based encoder that generates node embeddings only once per graph, and a light-weight decoder that uses the node embeddings as inputs and is called multiple times to construct a solution in an end-to-end ML approach for the TSP. 
 In our approach, evaluating the whole graph by a ConvGNN every time the candidate solution is updated by a swap is too expensive, as the convolution operation has a time complexity of $\Theta(n^2)$ for dense graphs. This motivates the choice of the described architecture. The node embeddings are generated only once per graph by the encoder, which is an attention-based spatial ConvGNN. The node embeddings and the current candidate solution $S$ are then used to compute a context embedding. These embeddings are concatenated and used as inputs for the light-weight decoder, which is an MLP that evaluates the vertices of the graph with a time complexity of $O(n)$ and outputs scores for the vertices by the use of a final sigmoid layer with a single output per vertex. 
@@ -1054,7 +1060,7 @@ As already mentioned, a training sample consists of a graph $G = (V,E)$, a candi
 The computation of target vector $t$ is shown in Algorithm \ref{alg:target-values}. It is a subroutine called at the end of the look-ahead search. 
 The look-ahead search first computes the set $\mathcal{T} = \{(X_1, Y_1), \dots, (X_j, Y_j)\}$ of vertices $X_i \in S, Y_i \in V \setminus S, 1 \leq i \leq j$ that need to be removed from and added to the current candidate solution $S$, respectively, in order to obtain a neighboring solution with respect to $S$ that maximizes the objective value. This set $\mathcal{T}$ is passed as an input argument in Algorithm \ref{alg:target-values} to compute the target vector $t$.   
 Note that there might be multiple such neighboring solutions with equal objective value, or none if $S$ is a local optimum. 
-The target vector $t$ is then initialized by setting $t[u] = 0$ for $u \in V \setminus S$, and $t[v] = 1$ for $v \in V \setminus S$. Then, for every pair of vertex sets $(X_i, Y_i) \in \mathcal{T}$ we set $t[u] = 0$ for $u \in X_i$ and $t[v] = 1$ for $v \in Y_i$. The resulting target vector $t$ is then returned. 
+The target vector $t$ is then initialized by setting $t[u] = 1$ for $u \in S$, and $t[v] = 0$ for $v \in V \setminus S$. Then, for every pair of vertex sets $(X_i, Y_i) \in \mathcal{T}$ we set $t[u] = 0$ for $u \in X_i$ and $t[v] = 1$ for $v \in Y_i$. The resulting target vector $t$ is then returned. 
 We demonstrate this computation by a small example in Figure \ref{fig:target-values}. 
 
 % In order to do so, the neighborhood of the candidate solution is searched, and a set $\mathcal{Y} = \{(X_1, Y_1), \dots, (X_j, Y_j)\}$ containing the vertex sets $X_i \subseteq S, Y_i \subseteq V \setminus S, 1 \leq i \leq j$. Moreover, we define $S_i = (S \setminus X_i) \cup Y_i$ as the neighboring solution that can be obtained from $S$ by removing the vertices in $X_i$ and adding the vertices in $Y_i$. 
@@ -1225,8 +1231,6 @@ The concrete parameterizations of the learning-based feature initialization meth
 
 \subsection{Encoder}
 In general, any ConvGNN model can be used as an encoder. Recent applications of GNNs in the context of COPs (e.g., \cite{Kool2019}, \cite{Joshi2021}, \cite{Hudson2021}) show that attention-based GNNs seem especially promising, which is why we want to build our proposed GNN architecture upon an attention-based encoder as well. 
-In the following, we denote by $\mathit{dim}_i$ the input dimension of layer $i, 0 \leq i \leq l_e$ of the network, where $l_e$ is the number of layers used in the encoder, $dim_0$ corresponds to the feature dimension of the node features, and for $1 \leq i \leq l_e$ $\mathit{dim}_i$ corresponds to the output dimension of layer $i$. 
-
 The architecture of our encoder builds upon the work presented in \cite{Kool2019}, in which the authors use attention-based GNNs to solve the Euclidean 2D TSP. We use their encoder architecture in this proposed ConvGNN model and slightly adapt it to our purpose:
 \begin{itemize}
     \item Layer 1: We apply a linear transformation $A_1 x_i + b_1$ with learnable parameters $A_1, b_1$ for each feature vector $x_i, 1 \leq i \leq n$.
@@ -1236,7 +1240,7 @@ The architecture of our encoder builds upon the work presented in \cite{Kool2019
         h_i^{(l)} &= \text{BN}^l(\hat{h}_i + \mathrm{FF}^l(\hat{h}_i))
     \end{align*}
 \end{itemize}
-In \cite{Kool2019}, the authors use as the MHA layer an attention mechanism that is based on the transformer architecture in \cite{VaswaniSPUJGKP17}. We replace this layer with the newer GATv2 layer from \cite{Brody2021}, which was developed as an improved version of the Graph Attention Network \cite{Velickovic2018}. Here, a GATv2 attention layer is defined by the update function 
+In \cite{Kool2019}, the authors use as the MHA layer an attention mechanism that is based on the transformer architecture in \cite{VaswaniSPUJGKP17}. We replace this layer with the newer GATv2 layer from \cite{Brody2021}, which was developed as an improved version of the Graph Attention Network \cite{Velickovic2018}. Here, a GATv2 attention layer is defined by the update function  
 \[
     h_i^{(l)} = \sum_{j \in N_G[i]} \alpha_{ij} W_{1}^{(l)} h_j^{(l-1)}.    
 \]
@@ -1246,6 +1250,8 @@ The attention coefficients $\alpha_{ij}$ are defined as
 \]
 where $z_i$ is a normalization factor and $a, W_1, W_2$ are learned layers. 
 
+In our concrete implementation, we denote by $\mathit{dim}_{\mathit{in}}$ the size of the node embeddings, by $\mathit{dim}_e^{\mathit{conv}}$ the size of all MHA layers, and by $\mathit{dim}_e^{\mathit{FF}}$ the size of all FF layers in the encoder. 
+
 \subsection{Context}
 Within LSBM, the context is determined by the current candidate solution $S$. The context embedding is computed by aggregating the columns of the node embedding matrix that correspond to the vertices in $S$. 
 This is inspired by graph representation learning, where the node embeddings are aggregated into a graph embedding by the application of an order invariant aggregation function $\mathit{agg} \in \{\mathit{sum, mean, max}\}$. Most commonly, however, $\mathit{mean}$ is used to compute the graph embedding, e.g., in \cite{Kool2019}. 
@@ -1253,7 +1259,7 @@ We follow a similar approach but only consider the columns of the node embedding
 The main motivation behind this approach is to compress a context of linear size into a constant-size context embedding $c$. 
 However, we note that this definition of a context is one of the current weaknesses of our approach -- by taking the mean of the node embeddings of the vertices in $S$ the information of the candidate solution is highly compressed. Future work will be dedicated to developing methods that generate a stronger context embedding that preserves more relevant information about the candidate solution. 
 
-Furthermore, we derive features from the function $d_S$. From the $d_S$-values for the vertices in the input graph, we compute the mean and standard deviation. Then, for each vertex in the graph, we concatenate a vector containing its $d_S$-value and the mean and standard deviation of all$d_S$-values to the context embedding $c$, creating feature vectors $c_i$ for $v_i, 1 \leq i \leq |V|$. These vectors are then concatenated to the node embeddings, creating the final decoder inputs $e_i \; || \; c_i$ for $v_i, 1 \leq i \leq |V|$. 
+Furthermore, we derive features from the function $d_S$. From the $d_S$-values for the vertices in the input graph, we compute the mean and standard deviation. Then, for each vertex in the graph, we concatenate a vector containing its $d_S$-value and the mean and standard deviation of all $d_S$-values to the context embedding $c$, creating feature vectors $c_i$ for $v_i, 1 \leq i \leq |V|$. These vectors are then concatenated to the node embeddings, creating the final decoder inputs $e_i \; || \; c_i$ for $v_i, 1 \leq i \leq |V|$. 
 
 \subsection{Decoder}
 The decoder is a classification model that maps the inputs obtained from the node embeddings and the context embedding to scalar values representing scores for the vertices in $V$. We suggest using a simple MLP architecture. The input dimension of the decoder is determined by its inputs, which are computed as previously described by concatenating the context embeddings to the node embeddings. The first layer of the decoder then simply applies a learnable linear transformation, followed by a batch normalization. Furthermore, it consists of $l_d$ layers, with layers $2, \dots, l_d - 1$ being hidden feed-forward layers of dimension $\mathit{dim}_d$ with a ReLU activation function, each followed by a batch normalization. The final layer $l_d$ of the decoder has a single dimension, mapping the results of the previous layer to scalar values between zero and one with a sigmoid activation function. The concrete number of layers and their dimensions are shown in Chapter~\ref{chp:evaluation}, were we evaluate suitable values for our approach. 
@@ -1412,7 +1418,7 @@ All random graphs are generated using the Erd\H{o}s-Rényi random graph model \c
 We use this random graph model to generate graph instances in all our experiments due to its generality and ease of implementation. 
 However, we note that there are other methods to generate random graphs (e.g., \cite{Aiello2001}), and any method can be used within our approach. Especially if some structural properties of the graphs encountered at test time are known, it can lead to improved performance if these structural properties are also present in the generated random instances during training. 
 
-We generally sample $n, \mathrm{dens}(G)$ from distributions $\mathcal{V}, \mathcal{D}$ to make the trained GNNs more robust towards small variations in size and density of the input graphs. The instances generated are thus defined by a tuple, e.g., $(\mathcal{V} \sim \mathcal{N}(200, 10), \mathcal{D} \sim \mathcal{U}(0.45, 0.55))$ denotes that instances are generated by sampling the number of vertices $n$ from a normal distribution with $\mu=200, \sigma^2 = 10$ and the density of the graph is sampled from a uniform distribution with $a=0.45, b=0.55$. 
+We generally sample $n, \mathrm{dens}(G)$ from distributions $\mathcal{V}, \mathcal{D}$ to make the trained GNNs more robust towards small variations in size and density of the input graphs. The instances generated are thus defined by a tuple, e.g., $(\mathcal{V} \sim \mathcal{N}(200, 10), \mathcal{D} \sim \mathcal{U}(0.45, 0.55))$ denotes that instances are generated by sampling the number of vertices $n$ from a normal distribution $\mathcal{N}$ with $\mu=200, \sigma^2 = 10$ and the density of the graph is sampled from a uniform distribution $\mathcal{U}$ with $a=0.45, b=0.55$. 
 
 \begin{table}
     \centering
@@ -1460,7 +1466,7 @@ We generally sample $n, \mathrm{dens}(G)$ from distributions $\mathcal{V}, \math
 We implemented LSBM and LSBM-T in Julia 1.8.3 using Flux \footnote{https://github.com/FluxML/Flux.jl} and GraphNeuralNetworks \footnote{https://github.com/CarloLucibello/GraphNeuralNetworks.jl}\cite{Lucibello2021GNN} for the implementation of the GNN, and Word2Vec \footnote{https://github.com/JuliaText/Word2Vec.jl} for the implementation of Node2Vec and Struc2Vec. All computational experiments in this chapter are executed on an Intel Xeon E5-2640 processor with 2.40\,GHz. For training the NNs, we use a memory limit of 32\,GB, whereas, for all other experiments a memory limit of 20\,GB is used. 
 
 \subsubsection{Benchmark Instances}
-The DIMACS benchmark set is a heterogenous collection of artificially created graphs of different sizes and densities. It is a standard benchmark set for the MCP and related problems and it is used to evaluate the performance of state-of-the-art MQCP (e.g., \cite{peng_solving_2021}, \cite{chen_nuqclq_2021}) and MDCP (e.g. \cite{chen2021computing}) algorithms. Similarly, the BHOSLIB benchmark set is a collection of large graphs of high density which was specifically created for performing benchmark tests for graph problems. 
+The DIMACS benchmark set is a heterogenous collection of artificially created graphs of different sizes and densities. It is a standard benchmark set for the MCP and related problems and it is used to evaluate the performance of state-of-the-art MQCP (e.g., \cite{peng_solving_2021}, \cite{chen_nuqclq_2021}) and MDCP (e.g., \cite{chen2021computing}) algorithms. Similarly, the BHOSLIB benchmark set is a collection of large graphs of high density which was specifically created for performing benchmark tests for graph problems. 
 We evaluate the performance of our algorithm on a subset of these benchmark instances. 
 
 % \section{Evaluation of Algorithm Parameters}\label{sec:alg-params}
@@ -1552,7 +1558,7 @@ Thus, we set $\beta=10, \varepsilon=10$ in all further experiments and use the h
         \includegraphics[width=\textwidth]{graphics/lbh-09-1000-runtime.pdf}
         \caption{Runtimes in seconds for $\mathrm{dens}(G)=0.9$}
     \end{subfigure}
-    \caption{Beam Search solution sizes and runtimes in seconds for instances with $|V|=1000, \mathrm{dens}(G) \in \{0.75, 0.9\}$}
+    \caption{BS solution sizes and runtimes in seconds for instances with $|V|=1000, \mathrm{dens}(G) \in \{0.75, 0.9\}$.}
     \label{fig:bs-heuristics-random-2}
 \end{figure}
 
@@ -1561,13 +1567,13 @@ Thus, we set $\beta=10, \varepsilon=10$ in all further experiments and use the h
 The performance of LSBM when using a GNN-based scoring function depends mainly on how effectively the GNN is trained to make high-quality predictions. 
 First, we show that our training algorithm LSBM-T effectively trains the GNN to imitate the search of a neighborhood, which is a central result of this thesis. Furthermore, we provide evidence from computational experiments, that, after the training has been completed, the GNN-based scoring function $g_S$ is an improvement over the scoring function $d_S$ and guides the local search more effectively. In the remaining Section, we evaluate the impact of different feature initialization methods, different values for the look-ahead search parameter $d$, and the generalization on unseen, larger graph instances. 
 
-For the execution of LSBM within LSBM-T, we use the following settings in this Section unless stated otherwise: The short-term memory mechanism used in all experiments is a tabu list with a tabu tenure of ten, the construction heuristic parameters $\alpha=0.2, c=0.3$, the lower bound heuristic parameters $\beta=\varepsilon=10$, a time limit $\tau=300.0$, a maximum number of iterations without improvement $\eta=2000$, and a maximum number of $\xi = 3$ restarts before execution is terminated. 
+For the execution of LSBM within LSBM-T, we use the following settings in this Section unless stated otherwise: The short-term memory mechanism used in all experiments is a tabu list with a tabu tenure of ten, the construction heuristic parameters $\alpha=0.2, b=0.3$, the lower bound heuristic parameters $\beta=\varepsilon=10$, a time limit $\tau=300.0$, a maximum number of iterations without improvement $\eta=2000$, and a maximum number of $\xi = 3$ restarts before execution is terminated. 
 During the evaluation of random graphs and benchmark instances we set $\xi = 10$, but keep the remaining parameters unchanged. 
 
 The parameter settings regarding the GNN were obtained by manually fine-tuning our approach over many experiments. We use a GATv2-based encoder as described in Section~\ref{sec:gnn-architecture} with four attention heads per layer, $l_e = 3$ attention layers of size $\mathit{dim}^{conv}_e = 64$ and feed-forward layers of size $\mathit{dim}^{FF}_e = 128$, and an MLP-decoder with $l_d=2$ hidden layers of size $\mathit{dim}_d = 32$. We did not notice any significant increase in performance using an encoder or decoder with more or higher-dimensional layers, and in terms of efficiency, it is clearly beneficial to keep the NN as small as possible. By this reasoning, we justify our choice of the presented GNN parameter settings. 
 
 The remaining LSBM-T specific parameters are set as follows: The size of the restricted neighborhood is set to $k^\prime = 20$.
-Furthermore, we run LSBM-T with a replay buffer size $\rho=1000$ for $z=300$ iterations and generate $n_s = 50$ training samples per iteration. The GNN is trained in 4 batches of size $8$ in each iteration. We use the ADAM optimizer with a learning rate of $0.001$ and a momentum of $(0.9, 0.999)$ and train the models using FLux.jl's logitbinarycrossentropy loss function. 
+Furthermore, we run LSBM-T with a replay buffer size $\rho=1000$ for $z=300$ iterations and generate $n_s = 50$ training samples per iteration. The GNN is trained in four batches of size eight in each iteration. We use the ADAM optimizer with a learning rate of $0.001$ and a momentum of $(0.9, 0.999)$ and train the models using FLux.jl's logitbinarycrossentropy loss function. 
 
 In the following experiments, we evaluate the results of the trained models on uniform random graphs and on selected benchmark instances. 
 The benchmark instances used in this Section are shown in Table~\ref{tab:benchmark-instances-for-experiments} for reference. In all experiments shown in this Section, we train ten GNNs for each investigated parameter configuration unless stated otherwise. 
@@ -1603,7 +1609,7 @@ We observe that in both runs during the first 50 iterations the gap is negative,
 Note that the training starts after the replay buffer was filled to half its capacity, which is after the completion of ten iterations of the training loop. 
 As the training progresses and the loss decreases, the solution quality of LSBM using $g_S$ increases. This strongly indicates that the GNN is successfully learning to imitate the look-ahead search. 
 
-In the first experiment on smaller instances we notice that after the first 200 iterations of the training loop the gap never reaches a value below zero, which shows that LSBM consistently performs equally well or better using $g_S$ as compared to $d_S$. 
+In the first experiment on smaller instances, we notice that after the first 200 iterations of the training loop the gap never reaches a value below zero, which shows that LSBM consistently performs equally well or better using $g_S$ as compared to $d_S$. 
 The second experiment is done to evaluate the effect on larger MQCP instances with $|V|=400, \mathrm{dens}(G)=0.75, \gamma=0.999$. We observe a higher variance in the gap, but smoothing the lines shows that the average gap is above zero, which again indicates that the scoring function $g_S$ outperforms $d_S$. 
 
 \begin{figure}
@@ -1655,20 +1661,20 @@ Moreover, all models are trained with a look-ahead depth $d=1$, as we want to in
 
 The first experiment is done to investigate the effect of the choice of feature initialization methods on relatively small graphs with a density of about 0.5: $\mathcal{V} \sim \mathcal{N}(200, 5), \mathcal{D} \sim \mathcal{U}(0.48, 0.52)$. We set the MQCP input parameter $\gamma=0.8$ during training and evaluation. 
 The results obtained on 20 random graphs and on benchmark instance \emph{brock\_200\_2}, which has a similar size and density, are shown in Figure~\ref{fig:V200-node-features}. 
-The results on random graphs show that node features E1+E2, E1+S2V performed best, followed by E1, N2V, N2V+S2V. 
+Moreover, the results on random graphs show that node features E1+E2, E1+S2V performed best, followed by E1, N2V, N2V+S2V. 
 All trained models were able to obtain a solution of size 24 on the benchmark instance, which is the best known solution for this MQCP instance as reported in \cite{peng_solving_2021}. 
 
 \begin{figure}
     \centering
     \includegraphics[width=\textwidth]{graphics/V200-048-052-random.pdf}
-    \caption[]{Results for uniform random graphs with $ \mathcal{V} \sim \mathcal{N}(200, 5), \mathcal{D} \sim \mathcal{U}(0.48, 0.52)$, MQCP parameter $\gamma=0.8$. Results are grouped by average solution quality per model on unseen test instances. }
+    \caption[]{Results for uniform random graphs with $ \mathcal{V} \sim \mathcal{N}(200, 5), \mathcal{D} \sim \mathcal{U}(0.48, 0.52)$, MQCP parameter $\gamma=0.8$, grouped by average solution quality per model on unseen test instances. }
     \label{fig:V200-node-features}
 \end{figure}
 
 To investigate the performance of the trained models on graphs of even higher density, we target benchmark instance groups \emph{brock400\_}$i, i \in \{1,2,3\}$ with $|V| = 400, \mathrm{dens}(G) \approx 0.75$, and \emph{frb30-15-}$i, i \in \{1, \dots, 5\}$ with $|V| = 450, \mathrm{dens}(G) \approx 0.823$. 
 Again, we generate 20 random instances of similar size and density for both instance groups and evaluate the trained models by the average results obtained on the random graphs and the benchmark instances. The results are shown in Figure \ref{fig:node-features-comparison}. 
 Note that we removed the node feature E1+E2, as the 2-hop EgoNet for graphs of this density is already $G$ itself in most cases, and thus no additional information is provided. 
-The results show that the learning-based features N2V, S2V, perform well on random instances and on the \emph{brock400} instance group. Interestingly, E1 is among the lowest-performing feature initialization methods for the \emph{brock400} instance group and corresponding random graphs, but among the highest-performing for random graphs generated corresponding to the \emph{frb30-15} instance group. Furthermore, we notice that the solution sizes obtained on the \emph{frb30-15} benchmark instances are considerably smaller than those obtained on random instances, as these instances are generated differently than the uniform random graphs used to train the models. This indicates that using uniform random graphs during training does not generalize well to structurally different graph instances. 
+The results show that the learning-based features N2V, S2V, perform well in terms of solution quality on random instances and on the \emph{brock400} instance group compared to the other feature initialization methods. Interestingly, E1 is among the lowest-performing feature initialization methods for the \emph{brock400} instance group and corresponding random graphs, but among the highest-performing for random graphs generated corresponding to the \emph{frb30-15} instance group. Furthermore, we notice that the solution sizes obtained on the \emph{frb30-15} benchmark instances are considerably smaller than those obtained on random instances, as these instances are generated differently than the uniform random graphs used to train the models. This indicates that using uniform random graphs during training does not generalize well to structurally different graph instances. 
 
 \begin{figure}
     \centering
@@ -1822,7 +1828,7 @@ In conclusion, the presented method can reduce the computational effort on less 
         \centering
         \includegraphics[width=\textwidth]{graphics/sparse-eval-1-runtime.pdf}
     \end{subfigure}
-    \caption{Impact of sparse evaluation on solution quality and runtime for MQCP instances with $|V| = 250, \mathrm{dens}(G)=0.9, \gamma=0.999$}
+    \caption{Impact of sparse evaluation on solution quality and runtime in seconds for MQCP instances with $|V| = 250, \mathrm{dens}(G)=0.9, \gamma=0.999$}
     \label{fig:sparse-evaluation-1}
 \end{figure}
 
@@ -1836,7 +1842,7 @@ In conclusion, the presented method can reduce the computational effort on less 
         \centering
         \includegraphics[width=\textwidth]{graphics/sparse-eval-2-runtime.pdf}
     \end{subfigure}
-    \caption{Impact of sparse evaluation on solution quality and runtime for MQCP instances with $|V| = 300, \mathrm{dens}(G)=0.425, \gamma=0.8$}
+    \caption{Impact of sparse evaluation on solution quality and runtime in seconds for MQCP instances with $|V| = 300, \mathrm{dens}(G)=0.425, \gamma=0.8$}
     \label{fig:sparse-evaluation-2}
 \end{figure}
 
@@ -1853,8 +1859,8 @@ The results regarding the MQCP instances are shown in Table \ref{tab:mqcp-benchm
 The three considered variants of our algorithm, LSBM (E1), LSBM (N2V+S2V), and LSBM (E1+S2V) can match 17, 17 and 18 of the best known results out of the 26 evaluated instances, respectively. Again, this indicates that the impact of the chosen feature initialization method is only marginal. We notice that, especially on larger instances with high density (e.g., the \emph{brock400} instances, or \emph{MANN\_a27}), our approach is not yet competitive with the state-of-the-art in terms of solution quality. A determining factor in this regard is most likely that our approach uses uniform random graphs during training, and some of these benchmark instances are created artificially to include certain structural properties which are not commonly seen in randomly generated graphs. 
 Furthermore, we do not observe any significant differences in runtime for the three variants of LSBM. 
 
-Table \ref{tab:mdcp-benchmark} shows the results on MDCP instances. The rightmost column shows the reported optimal values from the comparison of exact algorithms for the MDCP presented in \cite{chen2021computing}. We compare the size of the solutions obtained by our algorithm to the reported optimal values. 
-LSBM finds optimal solutions on most of the evaluated instances, except for the instances \emph{keller4} and \emph{san200\_0.7\_2}. However, we note that the evaluated instances are fairly small. We expect that LSBM will perform worse on larger instances, similar to the results obtained on the MQCP. 
+Table \ref{tab:mdcp-benchmark} shows the results on MDCP instances. The rightmost column shows the reported optimal values from \cite{chen2021computing} for reference. 
+LSBM finds optimal solutions on most of the evaluated instances, except for the instances \emph{keller4} and \emph{san200\_0.7\_2}. We observe that the adaption to the MDCP is successful, as we notice similar results as with MQCP instances with high $\gamma$-values. 
 
 
 \begin{sidewaystable}
@@ -2093,11 +2099,11 @@ We employed an autoregressive Encoder-Decoder-based GNN architecture inspired by
 We are aware of the computational overhead introduced by the use of a NN, as the analysis of the additional computational effort is part of this work. 
 
 We evaluate selected benchmark instances for the MQCP and MDCP from the literature and compare our approach to the state-of-the-art. The results for the MQCP show that 
-in terms of solution quality, the performance of the models trained using LSBM-T gets close to the leading methods and can match most best known results on instances with $|V| < 300$. On larger instances, however, our approach is not yet competitive. Partly this can be explained by the fact that we only used uniform random graphs in our evaluation, whereas many of the benchmark instances are artificially created to include certain structural properties that are unlikely to be found in uniform random graphs. We expect training on representative instances to yield better results, as this is where the strength of our approach lies. 
-We note that in terms of runtime, LSBM is outperformed by the leading methods, as the computational overhead introduced by the GNN is too large. 
-Furthermore, the evaluation of MDCP-instances shows that our approach is successfully adapted to the MDCP and produces similar results on the related problem. 
+in terms of solution quality, the performance of the models trained using LSBM-T gets close to the leading methods and can match most best known results on instances with $|V| < 300$. On larger instances, however, our approach is not yet competitive. Partly this can be explained by the fact that we only used uniform random graphs  when training the GNNs, whereas many of the benchmark instances are artificially created to exhibit certain structural properties that are unlikely to be found in uniform random graphs. We expect training on representative instances to yield better results, as this is where the strength of our approach lies. 
+We note that in terms of runtime, LSBM is outperformed by the leading methods, as the computational overhead introduced by the GNN is too large. However, all experiments were conducted on CPUs. Since GPUs are known to speed up computations involving GNNs and NNs in general by a significant factor, the application of a GPU could greatly reduce the runtime of our approach. 
+Furthermore, the evaluation of MDCP-instances shows that our approach is successfully adapted to the MDCP and produces similar results on this related problem. 
 
-Finally, the results of our evaluation show that our approach performs well when evaluated on uniform random graphs and using the trained GNN-based scoring functions within our algorithm leads to a substantial improvement in terms of solution quality compared to the scoring function $d_S$. 
+Finally, the results of our evaluation show that our approach performs well when evaluated on uniform random graphs and using the trained GNN-based scoring functions within our algorithm leads to a substantial improvement in terms of solution quality compared to using the scoring function $d_S$. 
 
 
 % We investigate different 
