@@ -18,5 +18,11 @@
 \addvspace {10pt}
 \addvspace {10pt}
 \addvspace {10pt}
+\contentsline {table}{\numberline {5.1}{\ignorespaces Worst-case time complexity of the main operations used during LSBM when using the scoring functions $d_S$ and $g_S$. \relax }}{52}{table.caption.27}%
 \addvspace {10pt}
+\contentsline {table}{\numberline {6.1}{\ignorespaces LSBM parameters\relax }}{54}{table.caption.29}%
+\contentsline {table}{\numberline {6.2}{\ignorespaces LSBM-T parameters\relax }}{55}{table.caption.30}%
+\contentsline {table}{\numberline {6.3}{\ignorespaces Benchmark instances used for experiments\relax }}{59}{table.caption.35}%
+\contentsline {table}{\numberline {6.4}{\ignorespaces MQCP results for selected benchmark instances.\relax }}{72}{table.caption.46}%
+\contentsline {table}{\numberline {6.5}{\ignorespaces MDCP results for selected benchmark instances.\relax }}{73}{table.caption.47}%
 \addvspace {10pt}
