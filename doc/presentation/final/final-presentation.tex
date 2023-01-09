@@ -2,6 +2,7 @@
 \usepackage[utf8]{inputenc}
 % \usepackage{beamerthemesplit}
 \setbeamertemplate{footline}[frame number]
+\setbeamertemplate{navigation symbols}{}
 
 \newcommand{\backupbegin}{
    \newcounter{finalframe}
@@ -83,29 +84,6 @@
     % \end{figure}
 \end{frame}
 
-% \begin{frame}{Maximum $s$-defective-Clique Problem}
-%     Given a graph $G = (V,E)$ and $s \in \mathbb{N}$, find $S \subseteq V$ of maximum size with at least $\binom{|S|}{2} - s$ edges in $G[S]$
-%     \begin{itemize}
-%         \item<1-> Hereditary Property - if $S$ is an $s$-defective clique, every $S^\prime \subset S$ is $s$-defective clique
-%         \item<2-> Introduced in the context of predicting protein-protein interactions~\cite{Yu2006}
-%         \item<3-> NP-hard for $s \in \mathbb{N}$ \cite{Yannakakis1978},\cite{Trukhanov2013}
-%     \end{itemize}
-%     % \begin{figure}
-%     %     \centering
-%     %     \includegraphics[width=0.3\textwidth]{graphics/graph1-clique.eps}
-%     % \end{figure}
-% \end{frame}
-
-\begin{frame}{State of the Art - GNNs in COPs}
-    \begin{itemize}
-        \item<1-> Graph Attention Network \cite{Velickovic2018}: prominent GNN model based on attention mechanism \cite{Bahdanau2015}
-        \item<2-> Several applications: e.g. \cite{Kool2019}, \cite{Joshi2021} (TSP)
-        \item<3-> Graph Neural Network Guided Local Search for TSP: \cite{Hudson2021}: Lower optimality gaps, better generalization on larger instances
-        \item<4-> ML-based methods for MCP: Pointer Network \cite{Gu2020}, Graph Convolutional Network \cite{Li2018}
-        \item<5-> No approaches using GNNs for MQCP or other clique relaxations
-    \end{itemize}
-\end{frame}
-
 \begin{frame}{State of the Art - Algorithms for MQCP}
     \begin{itemize}
         \item<1-> Exact methods: B\&B, MI(L)P, runtimes $> 1$ hour for dense instances with $|V|=100$
@@ -124,29 +102,82 @@
 \end{frame}
 
 \begin{frame}{The Algorithm LSBM}
-    Example: Search for maximum $1$-defective clique
-\end{frame}
-
-\begin{frame}{The Algorithm LSBM}
-    Beam Search-based lower bound heuristic
-
-\end{frame}
-
-\begin{frame}{The Algorithm LSBM}
-    Construction heuristic
-     
-\end{frame}
-
-\begin{frame}{The Algorithm LSBM}
-    Local Search
-
+    \begin{itemize}
+        \item Example: Search for Maximum Quasi Clique (MQC) with density $\gamma=0.9$ \\
+        \item Approximate MQC by finding series of QCs of increasing size
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\textwidth]{graphics/algorithm_poster_0.eps}
+    \end{figure}
 \end{frame}
 
 \begin{frame}{The Algorithm LSBM}
     \begin{itemize}
-        \item Short-Term Memory
+        \item Initially, Beam Search-based lower bound heuristic computes starting solution $S^*$ \\
     \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\textwidth]{graphics/algorithm_poster_1.eps}
+    \end{figure}
+\end{frame}
 
+\begin{frame}{The Algorithm LSBM}
+    \begin{itemize}
+        \item<1-> Construction heuristic computes candidate solution of size $|S^*|+1$
+        \item<2-> Incremental randomized construction that takes into account
+        \begin{itemize}
+            \item<3-> which vertices haven't been considered often during search
+            \item<4-> which vertices add most edges to the candidate solution
+        \end{itemize}
+    \end{itemize}
+     
+\end{frame}
+
+\begin{frame}{The Algorithm LSBM}
+    \begin{itemize}
+        \item Construction heuristic computes candidate solution of size $|S^*|+1$
+        \item Not a feasible 0.9-quasi clique yet - density is $\frac{7}{10}$
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\textwidth]{graphics/algorithm_poster_2.eps}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{The Algorithm LSBM}
+    \begin{itemize}
+        \item Scoring function evaluates vertices in $G = (V, E)$
+        \item Move operator: Swap vertex in candidate solution $S$ with vertex in $V \setminus S$
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\textwidth]{graphics/algorithm_poster_3.eps}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{The Algorithm LSBM}
+    \begin{itemize}
+        \item Scoring function evaluates vertices in $G = (V, E)$
+        \item Move operator: Swap vertex in candidate solution $S$ with vertex in $V \setminus S$
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.6\textwidth]{graphics/algorithm_poster_4.eps}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{The Algorithm LSBM}
+    \begin{itemize}
+        \item<1-> Feasible QC of size 5 found
+        \item<2-> Restart search for QC of size 6
+        \item<3-> After a user-defined number of swaps without improvement, restart search
+        \item<4-> After a user-defined number of restarts, return best found solution
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.5\textwidth]{graphics/algorithm_poster_6.eps}
+    \end{figure}
 \end{frame}
 
 \begin{frame}{The scoring function $d_S$}
@@ -172,18 +203,6 @@
 \end{frame}
 
 \begin{frame}{The scoring function $d_S$}
-    \begin{itemize}
-        \item Restrict neighborhood to maximize gain of single swap:
-        \item $d_{\min} = \min_{u \in S} d_S(u)$ and $d_{\max} = \max_{u \in V \setminus S} d_S(u)$
-        \begin{align*}
-            X &= \{ u \mid u \in S,~~~~~ d_S(u) \leq d_{\min} + 1 \}, \\
-            Y &= \{ v \mid v \in V \setminus S, d_S(v) \geq d_{\max} - 1 \}.
-        \end{align*}
-    \end{itemize}
-\end{frame}
-
-
-\begin{frame}{The scoring function $d_S$}
     Problems using $d_S$:
     \begin{itemize}
         \item<1-> Search gets stuck in local optima easily
@@ -193,21 +212,112 @@
 
 \begin{frame}{A GNN-based Metaheuristic}
     \begin{itemize}
-        \item Use GNN-based scoring function $g_S$ to restrict neighborhood
-        \item Train GNN to imitate search of larger neighborhood
+        \item<1-> Use GNN-based scoring function $g_S$ to restrict neighborhood
+        \item<2-> Take into account structural information as well as $d_S$-values
+        \item<3-> Train GNN to imitate search of larger neighborhood
     \end{itemize}
 \end{frame}
 
 \begin{frame}{LSBM-T: Overview}
+    \begin{itemize}
+        \item<1-> Train $g_S$ offline on representative instances
+        \item<2-> Imitate expert strategy that searches user-defined neighborhood structure
+        \item<3-> Train $g_S$ in binary vertex classification task
+        \item<4-> Training sample: $G, S$ + target values
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.8\textwidth]{graphics/target_values.eps}<4->
+    \end{figure}
+\end{frame}
 
+\begin{frame}{LSBM-T: Overview}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/flowchart.eps}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Feature Initialization}
+    \begin{itemize}
+        \item<1-> Non-attributed graphs
+        \item<2-> Centrality-based initialization: Degree, EgoNet
+        \item<3-> Learning-based initialization: Node2Vec \cite{GroverL16}, Struc2Vec \cite{FigueiredoRS17}
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.7\textwidth]{graphics/architecture-1.eps}
+    \end{figure}
 \end{frame}
 
 \begin{frame}{GNN Architecture}
+    \begin{itemize}
+        \item Attention-based Encoder-Decoder architecture based on \cite{Kool2019}
+        \item Replace multi-head attention layers by newer GATv2 \cite{Brody2021} 
+        \item Use GNN to create node embeddings, $O(n^2)$ once per graph
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.7\textwidth]{graphics/architecture-2.eps}
+    \end{figure}
+\end{frame}
 
+\begin{frame}{GNN Architecture}
+    \begin{itemize}
+        \item Context embedding: aggregate embeddings of vertices in $S$
+        \item Add $d_S$-values, mean, std to context
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.7\textwidth]{graphics/architecture-3.eps}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{GNN Architecture}
+    \begin{itemize}
+        \item Decoder: MLP with $\sigma$ activation, $O(n)$
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/architecture-4.eps}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{GNN - Evaluation Recap}
+    \begin{itemize}
+        \item<1-> Once per graph: Initialize node features, compute embeddings
+        \item<2-> After every swap: Compute context, apply Decoder
+        \item<3-> Outputs: scores $\in [0,1]$
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.5\textwidth]{graphics/algorithm_poster_5.eps}
+    \end{figure}
 \end{frame}
 
 \begin{frame}{Computational Experiments}
+    Evaluate algorithm components and parameter settings:
+    \begin{itemize}
+        \item<1-> Lower bound heuristic
+        \item<2-> Effectivity of training
+        \item<3-> Comparison of $d_S$ and $g_S$
+        \item<4-> Feature initialization methods
+        \item<5-> Impact of context embedding
+        \item<6-> Generalization to larger instances
+        \item<7-> Neighborhood size
+        \item<8-> Benchmark Instances
+    \end{itemize} 
+\end{frame}
 
+\begin{frame}{Computational Experiments}
+    \begin{itemize}
+        \item Ten runs for instances with $|V| = 200, \mathtt{dens}(G) = 0.65, \gamma=0.999$
+        \item Gap: $\frac{|S^*_{g_S}| - |S^*_{d_S}|}{|S^*_{d_S}|}$. As loss goes down, $g_S$ improves
+    \end{itemize} 
+    \begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/training-plot-2.pdf}
+    \end{figure}
 \end{frame}
 
 \begin{frame}{Results and Conclusions}
@@ -224,11 +334,11 @@
 
 \begin{frame}{Future Work}
     \begin{itemize}
-        \item Define stronger context that is independent of $d_S$
-        \item Improve GNN: Two scores for each vertex
-        \item Improve generalization to larger instances
-        \item Investigate GPU speedup
-        \item Training data generation: Real-world datasets, other random graph models
+        \item<1-> Improve generalization to larger instances
+        \item<2-> Define stronger context that is independent of $d_S$
+        \item<3-> Improve GNN: Two scores for each vertex
+        \item<4-> Investigate GPU speedup
+        \item<5-> Training data generation: Real-world datasets, other random graph models
     \end{itemize}
 \end{frame}
 
@@ -237,13 +347,65 @@
 \bibliographystyle{apalike} 
 \bibliography{final-presentation}
 
-% \begin{frame}{Maximum k-defective Clique Problem}
-%     \begin{definition}
-% 	\label{def:mdcp}
-% 	Given a graph $G = (V,E)$ and integer $k$, the Maximum $k$-defective Clique Problem (MDCP) is the problem of finding a subset of vertices $S \subseteq V$ of maximum size 
-% 	such that the induced subgraph $G[S]$ contains at least $\binom{|S|}{2} - k$ edges. 
-% \end{definition}
-% \end{frame}
+\begin{frame}{State of the Art - GNNs in COPs}
+    \begin{itemize}
+        \item<1-> Graph Attention Network \cite{Velickovic2018}: prominent GNN model based on attention mechanism \cite{Bahdanau2015}
+        \item<2-> Several applications: e.g. \cite{Kool2019}, \cite{Joshi2021}, \cite{Hudson2021} (TSP)
+        \item<4-> ML-based methods for MCP: Pointer Network \cite{Gu2020}, Graph Convolutional Network \cite{Li2018}
+        \item<5-> No approaches using GNNs for MQCP or other clique relaxations
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Maximum $s$-defective-Clique Problem}
+    Given a graph $G = (V,E)$ and $s \in \mathbb{N}$, find $S \subseteq V$ of maximum size with at least $\binom{|S|}{2} - s$ edges in $G[S]$
+    \begin{itemize}
+        \item<1-> Hereditary Property - if $S$ is an $s$-defective clique, every $S^\prime \subset S$ is $s$-defective clique
+        \item<2-> Introduced in the context of predicting protein-protein interactions~\cite{Yu2006}
+        \item<3-> NP-hard for $s \in \mathbb{N}$ \cite{Yannakakis1978},\cite{Trukhanov2013}
+    \end{itemize}
+    % \begin{figure}
+    %     \centering
+    %     \includegraphics[width=0.3\textwidth]{graphics/graph1-clique.eps}
+    % \end{figure}
+\end{frame}
+
+\begin{frame}{The scoring function $d_S$}
+    \begin{itemize}
+        \item Restrict neighborhood to maximize gain of single swap:
+        \item $d_{\min} = \min_{u \in S} d_S(u)$ and $d_{\max} = \max_{u \in V \setminus S} d_S(u)$
+        \begin{align*}
+            X &= \{ u \mid u \in S,~~~~~ d_S(u) \leq d_{\min} + 1 \}, \\
+            Y &= \{ v \mid v \in V \setminus S, d_S(v) \geq d_{\max} - 1 \}.
+        \end{align*}
+        \item Only search neighborhood defined by swapping $u \in X, v \in Y$
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Computational Overhead}
+    Three main operations
+    \begin{itemize}
+        \item Initialization: $O(T_f + n^2)$ for $g_S$, $O(n^2)$ for $d_S$
+        \item Update: $O(n)$ for $g_S$ and $d_S$, but $d_S$ in general much faster (delta evaluation)
+        \item Restrict neighborhood: $O(k^\prime \cdot n)$ for $g_S$, $O(n)$ for $d_S$
+    \end{itemize}
+    Most overhead is introduced in update: 
+    \begin{itemize}
+        \item $g_S$ needs to evaluate all vertices
+        \item $d_S$ only needs to re-evaluate swapped vertices
+        \item Overhead depends on many factors like graph size, density, etc, in general 2-10x
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Computational Experiments}
+    \begin{itemize}
+        \item Ten runs for instances with $|V| = 400, \mathtt{dens}(G) = 0.75, \gamma=0.999$
+        \item Gap: $\frac{|S^*_{g_S}| - |S^*_{d_S}|}{|S^*_{d_S}|}$. As loss goes down, $g_S$ improves
+    \end{itemize} 
+    \begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/training-plot-1.pdf}
+    \end{figure}
+\end{frame}
 
 % \begin{frame}{Maximum k-plex Problem}
 %     \begin{definition}
