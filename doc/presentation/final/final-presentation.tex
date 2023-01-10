@@ -36,8 +36,8 @@
 \begin{frame}{Motivation and Aim of the Thesis}
     \begin{itemize}
         \item<1-> Combinatorial Optimization Problems (COPs): structured instances (graphs)
-        % \item<2-> Growing interest in utilizing Machine Learning (ML) in algorithms for COPs
-        \item<2-> Graph Neural Networks (GNNs): NNs specifically tailored to learn from graph input 
+        \item<2-> Machine Learning (ML) in algorithms for COPs
+        \item<3-> Graph Neural Networks (GNNs): NNs specifically tailored to learn from graph input 
     \end{itemize}
 \begin{figure}
     \centering
@@ -74,9 +74,9 @@
     Given a graph $G = (V,E)$ and $\gamma \in (0,1]$, find $S \subseteq V$ of maximum size with edge density at least $\gamma$ in $G[S]$
     \begin{itemize}
         % \item<1-> Introduced in \cite{Abello2002}
-        \item<1-> Not hereditary - if $S$ is a $\gamma$-quasi clique, $S^\prime \subset S$ is not necessarily a $\gamma$-quasi clique
-        \item<2-> Applications in bioinformatics, social network analysis, etc...
-        \item<3-> NP-hard for $\gamma \in (0,1]$ \cite{pattillo_maximum_2013}
+        % \item<2-> Not hereditary - if $S$ is a $\gamma$-quasi clique, $S^\prime \subset S$ is not necessarily a $\gamma$-quasi clique
+        \item<1-> Applications in bioinformatics, social network analysis, etc...
+        \item<2-> NP-hard for $\gamma \in (0,1]$ \cite{pattillo_maximum_2013}
     \end{itemize}
     % \begin{figure}
     %     \centering
@@ -124,18 +124,6 @@
 
 \begin{frame}{The Algorithm LSBM}
     \begin{itemize}
-        \item<1-> Construction heuristic computes candidate solution of size $|S^*|+1$
-        \item<2-> Incremental randomized construction that takes into account
-        \begin{itemize}
-            \item<3-> which vertices haven't been considered often during search
-            \item<4-> which vertices add most edges to the candidate solution
-        \end{itemize}
-    \end{itemize}
-     
-\end{frame}
-
-\begin{frame}{The Algorithm LSBM}
-    \begin{itemize}
         \item Construction heuristic computes candidate solution of size $|S^*|+1$
         \item Not a feasible 0.9-quasi clique yet - density is $\frac{7}{10}$
     \end{itemize}
@@ -173,6 +161,7 @@
         \item<2-> Restart search for QC of size 6
         \item<3-> After a user-defined number of swaps without improvement, restart search
         \item<4-> After a user-defined number of restarts, return best found solution
+        % \item<5-> Short-Term Memory: Tabu List
     \end{itemize}
     \begin{figure}
         \centering
@@ -188,17 +177,6 @@
     \begin{figure}
         \centering
         \includegraphics[width=0.6\textwidth]{graphics/ds1.eps}
-    \end{figure}
-\end{frame}
-
-\begin{frame}{The scoring function $d_S$}
-    \begin{itemize}
-        \item Gain of edges of a swap of vertices $u \in S, v \in V \setminus S$: \\
-         $d_S(v) - d_S(u) - e_{uv}$
-    \end{itemize}
-    \begin{figure}
-        \centering
-        \includegraphics[width=0.75\textwidth]{graphics/ds1-1.eps}
     \end{figure}
 \end{frame}
 
@@ -238,6 +216,19 @@
     \end{figure}
 \end{frame}
 
+\begin{frame}{GNN - Evaluation}
+    \begin{itemize}
+        \item<1-> Once per graph: Initialize node features, compute embeddings
+        \item<2-> After every swap: Compute context, apply Decoder
+        \item<3-> Outputs: scores $\in [0,1]$
+        \item<4-> Restrict neighborhood: Consider up to $k^\prime$ vertices in $S$ and $V \setminus S$
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.5\textwidth]{graphics/algorithm_poster_5.eps}
+    \end{figure}
+\end{frame}
+
 \begin{frame}{Feature Initialization}
     \begin{itemize}
         \item<1-> Non-attributed graphs
@@ -252,7 +243,7 @@
 
 \begin{frame}{GNN Architecture}
     \begin{itemize}
-        \item Attention-based Encoder-Decoder architecture based on \cite{Kool2019}
+        \item Attention-based Encoder based on \cite{Kool2019}
         \item Replace multi-head attention layers by newer GATv2 \cite{Brody2021} 
         \item Use GNN to create node embeddings, $O(n^2)$ once per graph
     \end{itemize}
@@ -283,52 +274,15 @@
     \end{figure}
 \end{frame}
 
-\begin{frame}{GNN - Evaluation Recap}
-    \begin{itemize}
-        \item<1-> Once per graph: Initialize node features, compute embeddings
-        \item<2-> After every swap: Compute context, apply Decoder
-        \item<3-> Outputs: scores $\in [0,1]$
-    \end{itemize}
-    \begin{figure}
-        \centering
-        \includegraphics[width=0.5\textwidth]{graphics/algorithm_poster_5.eps}
-    \end{figure}
-\end{frame}
-
-\begin{frame}{Computational Experiments}
-    Evaluate algorithm components and parameter settings:
-    \begin{itemize}
-        \item<1-> Lower bound heuristic
-        \item<2-> Effectivity of training
-        \item<3-> Comparison of $d_S$ and $g_S$
-        \item<4-> Feature initialization methods
-        \item<5-> Impact of context embedding
-        \item<6-> Generalization to larger instances
-        \item<7-> Neighborhood size
-        \item<8-> Benchmark Instances
-    \end{itemize} 
-\end{frame}
-
-\begin{frame}{Computational Experiments}
-    \begin{itemize}
-        \item Ten runs for instances with $|V| = 200, \mathtt{dens}(G) = 0.65, \gamma=0.999$
-        \item Gap: $\frac{|S^*_{g_S}| - |S^*_{d_S}|}{|S^*_{d_S}|}$. As loss goes down, $g_S$ improves
-    \end{itemize} 
-    \begin{figure}
-        \centering
-        \includegraphics[width=\textwidth]{graphics/training-plot-2.pdf}
-    \end{figure}
-\end{frame}
-
 \begin{frame}{Results and Conclusions}
     \begin{itemize}
         \item<1-> GNN-based algorithm LSBM and training algorithm LSBM-T
         \item<2-> Attention-based Encoder-Decoder GNN architecture based on \cite{Kool2019}
         \item<3-> Analysis of computational overhead introduced by GNN
         \item<4-> LSBM-T successfully trains GNN to imitate exhaustive search of a neighborhood
-        \item<5-> Successful application of learning-based feature initialization methods
-        \item<6-> Benchmark instances
-        \item<7-> GNN-based scoring function outperforms $d_S$ on random graphs
+        % \item<5-> Successful application of learning-based feature initialization methods
+        \item<5-> Benchmark instances
+        \item<6-> GNN-based scoring function outperforms $d_S$ on random graphs
     \end{itemize}
 \end{frame}
 
@@ -356,6 +310,18 @@
     \end{itemize}
 \end{frame}
 
+\begin{frame}{The Algorithm LSBM}
+    \begin{itemize}
+        \item<1-> Construction heuristic computes candidate solution of size $|S^*|+1$
+        \item<2-> Incremental randomized construction that takes into account
+        \begin{itemize}
+            \item<3-> which vertices haven't been considered often during search
+            \item<4-> which vertices add most edges to the candidate solution
+        \end{itemize}
+    \end{itemize}
+     
+\end{frame}
+
 \begin{frame}{Maximum $s$-defective-Clique Problem}
     Given a graph $G = (V,E)$ and $s \in \mathbb{N}$, find $S \subseteq V$ of maximum size with at least $\binom{|S|}{2} - s$ edges in $G[S]$
     \begin{itemize}
@@ -367,6 +333,17 @@
     %     \centering
     %     \includegraphics[width=0.3\textwidth]{graphics/graph1-clique.eps}
     % \end{figure}
+\end{frame}
+
+\begin{frame}{The scoring function $d_S$}
+    \begin{itemize}
+        \item Gain of edges of a swap of vertices $u \in S, v \in V \setminus S$: \\
+         $d_S(v) - d_S(u) - e_{uv}$
+    \end{itemize}
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.75\textwidth]{graphics/ds1-1.eps}
+    \end{figure}
 \end{frame}
 
 \begin{frame}{The scoring function $d_S$}
@@ -397,6 +374,20 @@
 \end{frame}
 
 \begin{frame}{Computational Experiments}
+    Evaluate algorithm components and parameter settings:
+    \begin{itemize}
+        \item<1-> Lower bound heuristic
+        \item<2-> Effectivity of training
+        \item<3-> Comparison of $d_S$ and $g_S$
+        \item<4-> Feature initialization methods
+        \item<5-> Impact of context embedding
+        \item<6-> Generalization to larger instances
+        \item<7-> Neighborhood size
+        \item<8-> Benchmark Instances
+    \end{itemize} 
+\end{frame}
+
+\begin{frame}{Computational Experiments}
     \begin{itemize}
         \item Ten runs for instances with $|V| = 400, \mathtt{dens}(G) = 0.75, \gamma=0.999$
         \item Gap: $\frac{|S^*_{g_S}| - |S^*_{d_S}|}{|S^*_{d_S}|}$. As loss goes down, $g_S$ improves
@@ -404,6 +395,17 @@
     \begin{figure}
         \centering
         \includegraphics[width=\textwidth]{graphics/training-plot-1.pdf}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Computational Experiments}
+    \begin{itemize}
+        \item Ten runs for instances with $|V| = 200, \mathtt{dens}(G) = 0.65, \gamma=0.999$
+        \item Gap: $\frac{|S^*_{g_S}| - |S^*_{d_S}|}{|S^*_{d_S}|}$. As loss goes down, $g_S$ improves
+    \end{itemize} 
+    \begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{graphics/training-plot-2.pdf}
     \end{figure}
 \end{frame}
 
